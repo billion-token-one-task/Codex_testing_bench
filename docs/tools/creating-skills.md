@@ -1,58 +1,89 @@
 ---
 title: "Creating Skills"
-summary: "Build and test custom workspace skills with SKILL.md"
+summary: "Build Codex-compatible skills that OpenClaw manages, syncs, and presents."
 read_when:
-  - You are creating a new custom skill in your workspace
-  - You need a quick starter workflow for SKILL.md-based skills
+  - You are creating a new custom skill
+  - You need the current CodexPlusClaw skill layout
 ---
 
-# Creating Custom Skills 🛠
+# Creating Custom Skills
 
-OpenClaw is designed to be easily extensible. "Skills" are the primary way to add new capabilities to your assistant.
+In CodexPlusClaw, **skills are native Codex skills**. OpenClaw manages where they live, syncs legacy workspace installs into Codex-readable roots, and exposes them through the shell. It does **not** emulate skills as fake tools.
 
-## What is a Skill?
+## Canonical skill locations
 
-A skill is a directory containing a `SKILL.md` file (which provides instructions and tool definitions to the LLM) and optionally some scripts or resources.
+Use these locations first:
 
-## Step-by-Step: Your First Skill
+- Shared/user skills: `~/.agents/skills/<skill-name>/SKILL.md`
+- Workspace skills: `<workspace>/.agents/skills/<skill-name>/SKILL.md`
 
-### 1. Create the Directory
+OpenClaw still keeps the older `<workspace>/skills` layout as a compatibility layer, but the `.agents/skills` roots are canonical.
 
-Skills live in your workspace, usually `~/.openclaw/workspace/skills/`. Create a new folder for your skill:
+## Your first skill
+
+### 1. Create the directory
 
 ```bash
-mkdir -p ~/.openclaw/workspace/skills/hello-world
+mkdir -p ~/.agents/skills/hello-world
 ```
 
-### 2. Define the `SKILL.md`
+Or for a workspace-only skill:
 
-Create a `SKILL.md` file in that directory. This file uses YAML frontmatter for metadata and Markdown for instructions.
+```bash
+mkdir -p ~/.openclaw/workspace/.agents/skills/hello-world
+```
+
+### 2. Create `SKILL.md`
 
 ```markdown
 ---
-name: hello_world
-description: A simple skill that says hello.
+name: hello-world
+description: Greets the user and confirms the skill wiring is working.
 ---
 
-# Hello World Skill
+# Hello World
 
-When the user asks for a greeting, use the `echo` tool to say "Hello from your custom skill!".
+When the user asks for a greeting or a quick skill test:
+
+1. Reply with a short friendly greeting.
+2. Mention that the response came from the `hello-world` skill.
+3. Do not invent extra steps or tools unless the user asks for them.
 ```
 
-### 3. Add Tools (Optional)
+### 3. Reload or refresh
 
-You can define custom tools in the frontmatter or instruct the agent to use existing system tools (like `bash` or `browser`).
+OpenClaw and Codex will pick up new skills on the next relevant session start. To force a refresh:
 
-### 4. Refresh OpenClaw
+```bash
+openclaw skills check
+openclaw gateway restart
+```
 
-Ask your agent to "refresh skills" or restart the gateway. OpenClaw will discover the new directory and index the `SKILL.md`.
+## How execution works
 
-## Best Practices
+When OpenClaw intentionally routes a skill, it can send:
 
-- **Be Concise**: Instruct the model on _what_ to do, not how to be an AI.
-- **Safety First**: If your skill uses `bash`, ensure the prompts don't allow arbitrary command injection from untrusted user input.
-- **Test Locally**: Use `openclaw agent --message "use my new skill"` to test.
+- the textual `$skill-name` marker, and
+- the matching Codex `skill` input item path
 
-## Shared Skills
+That lets Codex load the exact OpenClaw-managed skill quickly and deterministically.
 
-You can also browse and contribute skills to [ClawHub](https://clawhub.com).
+## Best practices
+
+- Keep the description concrete. Say when the skill applies and what good output looks like.
+- Prefer instructions over roleplay. A skill should teach behavior, not identity.
+- Reuse existing OpenClaw and Codex tools instead of embedding giant shell snippets.
+- Keep supporting files next to the skill if they are truly required.
+- Test with a fresh session so you know Codex loaded the newest version.
+
+## Testing a skill
+
+```bash
+openclaw agent --message "Use the hello-world skill to greet me."
+```
+
+Also check the Control UI skills/status surfaces if you want to verify that the skill is visible and enabled.
+
+## Sharing skills
+
+Use [ClawHub](/tools/clawhub) to publish and sync reusable skills. OpenClaw syncs installs into the Codex-compatible skills layout so the same skill set works for both the shell and the runtime.

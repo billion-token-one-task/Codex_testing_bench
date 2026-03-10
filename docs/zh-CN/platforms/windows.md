@@ -35,7 +35,7 @@ Windows 上的 OpenClaw 推荐**通过 WSL2**（推荐 Ubuntu）。CLI + Gateway
 在 WSL2 内：
 
 ```
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 或：

@@ -314,7 +314,7 @@ openclaw doctor
 
 ```bash
 curl -fsSL https://openclaw.ai/install.sh | bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 向导还可以自动构建 UI 资源。新手引导后，通常在端口 **18789** 上运行 Gateway 网关。
@@ -1627,7 +1627,7 @@ openclaw reset --scope full --yes --non-interactive
 然后重新运行新手引导：
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 注意：

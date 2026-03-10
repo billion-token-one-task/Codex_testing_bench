@@ -63,6 +63,17 @@ function buildResolvedByLabel(params: Parameters<CommandHandler>[0]): string {
   return `${channel}:${sender}`;
 }
 
+function buildOperatorResolution(decision: "allow-once" | "allow-always" | "deny") {
+  return {
+    decision:
+      decision === "allow-once"
+        ? "accept"
+        : decision === "allow-always"
+          ? "acceptForSession"
+          : "decline",
+  };
+}
+
 export const handleApproveCommand: CommandHandler = async (params, allowTextCommands) => {
   if (!allowTextCommands) {
     return null;
@@ -94,13 +105,26 @@ export const handleApproveCommand: CommandHandler = async (params, allowTextComm
 
   const resolvedBy = buildResolvedByLabel(params);
   try {
-    await callGateway({
-      method: "exec.approval.resolve",
-      params: { id: parsed.id, decision: parsed.decision },
-      clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
-      clientDisplayName: `Chat approval (${resolvedBy})`,
-      mode: GATEWAY_CLIENT_MODES.BACKEND,
-    });
+    try {
+      await callGateway({
+        method: "exec.approval.resolve",
+        params: { id: parsed.id, decision: parsed.decision },
+        clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
+        clientDisplayName: `Chat approval (${resolvedBy})`,
+        mode: GATEWAY_CLIENT_MODES.BACKEND,
+      });
+    } catch {
+      await callGateway({
+        method: "operator.request.resolve",
+        params: {
+          id: parsed.id,
+          resolution: buildOperatorResolution(parsed.decision),
+        },
+        clientName: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
+        clientDisplayName: `Chat approval (${resolvedBy})`,
+        mode: GATEWAY_CLIENT_MODES.BACKEND,
+      });
+    }
   } catch (err) {
     return {
       shouldContinue: false,
@@ -112,6 +136,6 @@ export const handleApproveCommand: CommandHandler = async (params, allowTextComm
 
   return {
     shouldContinue: false,
-    reply: { text: `✅ Exec approval ${parsed.decision} submitted for ${parsed.id}.` },
+    reply: { text: `✅ Approval ${parsed.decision} submitted for ${parsed.id}.` },
   };
 };

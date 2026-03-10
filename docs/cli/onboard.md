@@ -1,5 +1,5 @@
 ---
-summary: "CLI reference for `openclaw onboard` (interactive onboarding wizard)"
+summary: "CLI reference for `openclaw onboard` (manual/remote onboarding wizard)"
 read_when:
   - You want guided setup for gateway, workspace, auth, channels, and skills
 title: "onboard"
@@ -8,6 +8,9 @@ title: "onboard"
 # `openclaw onboard`
 
 Interactive onboarding wizard (local or remote Gateway setup).
+
+For most local CodexPlusClaw installs, prefer [`openclaw setup --one-click`](/cli/setup).
+Use `openclaw onboard` when you want the manual/remote flow instead of the one-click bootstrap.
 
 ## Related guides
 

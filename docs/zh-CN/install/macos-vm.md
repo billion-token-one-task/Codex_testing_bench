@@ -145,7 +145,7 @@ ssh youruser@192.168.64.X
 
 ```bash
 npm install -g openclaw@latest
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 按照新手引导提示设置你的模型提供商（Anthropic、OpenAI 等）。

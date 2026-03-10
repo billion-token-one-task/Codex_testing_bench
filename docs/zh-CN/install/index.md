@@ -32,7 +32,7 @@ iwr -useb https://openclaw.ai/install.ps1 | iex
 下一步（如果你跳过了新手引导）：
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 ## 系统要求
@@ -94,7 +94,7 @@ pnpm 需要显式批准带有构建脚本的包。在首次安装显示"Ignored 
 然后：
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 ### 3）从源代码（贡献者/开发）
@@ -105,7 +105,7 @@ cd openclaw
 pnpm install
 pnpm ui:build # 首次运行时自动安装 UI 依赖
 pnpm build
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 提示：如果你还没有全局安装，请通过 `pnpm openclaw ...` 运行仓库命令。
@@ -119,7 +119,7 @@ openclaw onboard --install-daemon
 
 ## 安装后
 
-- 运行新手引导：`openclaw onboard --install-daemon`
+- 运行新手引导：`openclaw setup --one-click`
 - 快速检查：`openclaw doctor`
 - 检查 Gateway 网关健康状态：`openclaw status` + `openclaw health`
 - 打开仪表板：`openclaw dashboard`

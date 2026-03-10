@@ -130,7 +130,7 @@ The hackable install gives you direct access to logs and code — useful for deb
 ## 7) Run Onboarding
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 Follow the wizard:
@@ -318,7 +318,7 @@ Since the Pi is just the Gateway (models run in the cloud), use API-based models
 
 ## Auto-Start on Boot
 
-The onboarding wizard sets this up, but to verify:
+One-click setup configures this by default, but to verify:
 
 ```bash
 # Check service is enabled

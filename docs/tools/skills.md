@@ -15,22 +15,35 @@ OpenClaw uses **[AgentSkills](https://agentskills.io)-compatible** skill folders
 Skills are loaded from **three** places:
 
 1. **Bundled skills**: shipped with the install (npm package or OpenClaw.app)
-2. **Managed/local skills**: `~/.openclaw/skills`
-3. **Workspace skills**: `<workspace>/skills`
+2. **Managed/local skills**: `~/.agents/skills`
+3. **Workspace skills**: `<workspace>/.agents/skills`
 
 If a skill name conflicts, precedence is:
 
-`<workspace>/skills` (highest) → `~/.openclaw/skills` → bundled skills (lowest)
+`<workspace>/.agents/skills` (highest) → `~/.agents/skills` → bundled skills (lowest)
 
 Additionally, you can configure extra skill folders (lowest precedence) via
 `skills.load.extraDirs` in `~/.openclaw/openclaw.json`.
+
+## CodexPlusClaw execution model
+
+In CodexPlusClaw, OpenClaw is the **skills control plane** and Codex is the
+**skills execution engine**.
+
+- OpenClaw owns discovery, syncing, gating, config/env injection, and UI.
+- Codex loads the resulting skills from the Codex-compatible roots.
+- When OpenClaw intentionally steers Codex toward a skill, it can provide both
+  the `$skill-name` text marker and the matching skill input item path.
+
+That means skills are not emulated as fake dynamic tools. They stay native to
+the Codex harness, while OpenClaw manages everything around them.
 
 ## Per-agent vs shared skills
 
 In **multi-agent** setups, each agent has its own workspace. That means:
 
-- **Per-agent skills** live in `<workspace>/skills` for that agent only.
-- **Shared skills** live in `~/.openclaw/skills` (managed/local) and are visible
+- **Per-agent skills** live in `<workspace>/.agents/skills` for that agent only.
+- **Shared skills** live in `~/.agents/skills` (managed/local) and are visible
   to **all agents** on the same machine.
 - **Shared folders** can also be added via `skills.load.extraDirs` (lowest
   precedence) if you want a common skills pack used by multiple agents.
@@ -63,8 +76,9 @@ Common flows:
   - `clawhub sync --all`
 
 By default, `clawhub` installs into `./skills` under your current working
-directory (or falls back to the configured OpenClaw workspace). OpenClaw picks
-that up as `<workspace>/skills` on the next session.
+directory (or falls back to the configured OpenClaw workspace). CodexPlusClaw
+syncs that into the Codex-compatible `<workspace>/.agents/skills` root and keeps
+the old path as a compatibility layer.
 
 ## Security notes
 
@@ -75,7 +89,7 @@ that up as `<workspace>/skills` on the next session.
   for that agent turn (not the sandbox). Keep secrets out of prompts and logs.
 - For a broader threat model and checklists, see [Security](/gateway/security).
 
-## Format (AgentSkills + Pi-compatible)
+## Format (AgentSkills + Codex-compatible)
 
 `SKILL.md` must include at least:
 
@@ -287,9 +301,10 @@ Notes:
 ## Managed skills lifecycle
 
 OpenClaw ships a baseline set of skills as **bundled skills** as part of the
-install (npm package or OpenClaw.app). `~/.openclaw/skills` exists for local
-overrides (for example, pinning/patching a skill without changing the bundled
-copy). Workspace skills are user-owned and override both on name conflicts.
+install (npm package or OpenClaw.app). `~/.agents/skills` is the canonical
+user/global override root. Workspace skills are user-owned and override both on
+name conflicts. Older `~/.openclaw/skills` and `<workspace>/skills` layouts are
+migration-only compatibility layers, not the primary runtime layout.
 
 ## Config reference
 

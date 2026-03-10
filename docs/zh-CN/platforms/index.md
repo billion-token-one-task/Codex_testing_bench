@@ -49,7 +49,7 @@ Windows 原生配套应用也在计划中；推荐通过 WSL2 使用 Gateway 网
 
 使用以下任一方式（均支持）：
 
-- 向导（推荐）：`openclaw onboard --install-daemon`
+- 向导（推荐）：`openclaw setup --one-click`
 - 直接安装：`openclaw gateway install`
 - 配置流程：`openclaw configure` → 选择 **Gateway service**
 - 修复/迁移：`openclaw doctor`（提供安装或修复服务）

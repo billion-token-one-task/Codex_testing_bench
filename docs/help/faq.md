@@ -317,14 +317,16 @@ Install docs: [Install](/install), [Installer flags](/install/installer), [Updat
 
 ### What's the recommended way to install and set up OpenClaw
 
-The repo recommends running from source and using the onboarding wizard:
+The recommended local path is the one-click CodexPlusClaw bootstrap:
 
 ```bash
 curl -fsSL https://openclaw.ai/install.sh | bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
-The wizard can also build UI assets automatically. After onboarding, you typically run the Gateway on port **18789**.
+That installs or upgrades Codex CLI, prepares the workspace and skills layout,
+installs the local service, runs compatibility checks, and opens the dashboard.
+After setup, you typically run or inspect the Gateway on port **18789**.
 
 From source (contributors/dev):
 
@@ -334,10 +336,10 @@ cd openclaw
 pnpm install
 pnpm build
 pnpm ui:build # auto-installs UI deps on first run
-openclaw onboard
+pnpm openclaw setup --one-click
 ```
 
-If you don't have a global install yet, run it via `pnpm openclaw onboard`.
+If you don't have a global install yet, run it via `pnpm openclaw setup --one-click`.
 
 ### How do I open the dashboard after onboarding
 
@@ -627,7 +629,7 @@ More detail: [Install](/install) and [Installer flags](/install/installer).
 
 ### How do I install OpenClaw on Linux
 
-Short answer: follow the Linux guide, then run the onboarding wizard.
+Short answer: follow the Linux guide, then run `openclaw setup --one-click`.
 
 - Linux quick path + service install: [Linux](/platforms/linux).
 - Full walkthrough: [Getting Started](/start/getting-started).
@@ -687,7 +689,10 @@ Docs: [Update](/cli/update), [Updating](/install/updating).
 
 ### What does the onboarding wizard actually do
 
-`openclaw onboard` is the recommended setup path. In **local mode** it walks you through:
+`openclaw onboard` is the **manual/remote wizard path**. For most local
+CodexPlusClaw installs, prefer `openclaw setup --one-click`.
+
+When you do use the wizard, in **local mode** it walks you through:
 
 - **Model/auth setup** (provider OAuth/setup-token flows and API keys supported, plus local model options such as LM Studio)
 - **Workspace** location + bootstrap files
@@ -1057,11 +1062,20 @@ Showcase: [https://openclaw.ai/showcase](https://openclaw.ai/showcase)
 
 ### How do I customize skills without keeping the repo dirty
 
-Use managed overrides instead of editing the repo copy. Put your changes in `~/.openclaw/skills/<name>/SKILL.md` (or add a folder via `skills.load.extraDirs` in `~/.openclaw/openclaw.json`). Precedence is `<workspace>/skills` > `~/.openclaw/skills` > bundled, so managed overrides win without touching git. Only upstream-worthy edits should live in the repo and go out as PRs.
+Use managed overrides instead of editing the repo copy. Put your changes in
+`~/.agents/skills/<name>/SKILL.md` (or add a folder via
+`skills.load.extraDirs` in `~/.openclaw/openclaw.json`). Precedence is
+`<workspace>/.agents/skills` > `~/.agents/skills` > bundled, so managed
+overrides win without touching git. Only upstream-worthy edits should live in
+the repo and go out as PRs.
 
 ### Can I load skills from a custom folder
 
-Yes. Add extra directories via `skills.load.extraDirs` in `~/.openclaw/openclaw.json` (lowest precedence). Default precedence remains: `<workspace>/skills` → `~/.openclaw/skills` → bundled → `skills.load.extraDirs`. `clawhub` installs into `./skills` by default, which OpenClaw treats as `<workspace>/skills`.
+Yes. Add extra directories via `skills.load.extraDirs` in
+`~/.openclaw/openclaw.json` (lowest precedence). Default precedence remains:
+`<workspace>/.agents/skills` → `~/.agents/skills` → bundled →
+`skills.load.extraDirs`. `clawhub` installs into `./skills` by default, and
+OpenClaw syncs that into the canonical workspace `.agents/skills` root.
 
 ### How can I use different models for different tasks
 
@@ -1176,7 +1190,7 @@ Keep the Gateway on Linux, but make the required CLI binaries resolve to SSH wra
    ```
 
 2. Put the wrapper on `PATH` on the Linux host (for example `~/bin/memo`).
-3. Override the skill metadata (workspace or `~/.openclaw/skills`) to allow Linux:
+3. Override the skill metadata (workspace or `~/.agents/skills`) to allow Linux:
 
    ```markdown
    ---
@@ -1212,7 +1226,13 @@ clawhub install <skill-slug>
 clawhub update --all
 ```
 
-ClawHub installs into `./skills` under your current directory (or falls back to your configured OpenClaw workspace); OpenClaw treats that as `<workspace>/skills` on the next session. For shared skills across agents, place them in `~/.openclaw/skills/<name>/SKILL.md`. Some skills expect binaries installed via Homebrew; on Linux that means Linuxbrew (see the Homebrew Linux FAQ entry above). See [Skills](/tools/skills) and [ClawHub](/tools/clawhub).
+ClawHub installs into `./skills` under your current directory (or falls back to
+your configured OpenClaw workspace); OpenClaw syncs that into
+`<workspace>/.agents/skills` on the next session. For shared skills across
+agents, place them in `~/.agents/skills/<name>/SKILL.md`. Some skills expect
+binaries installed via Homebrew; on Linux that means Linuxbrew (see the
+Homebrew Linux FAQ entry above). See [Skills](/tools/skills) and
+[ClawHub](/tools/clawhub).
 
 ### How do I install the Chrome extension for browser takeover
 
@@ -1360,7 +1380,7 @@ These files live in the **agent workspace**, not `~/.openclaw`.
 - **Workspace (per agent)**: `AGENTS.md`, `SOUL.md`, `IDENTITY.md`, `USER.md`,
   `MEMORY.md` (or `memory.md`), `memory/YYYY-MM-DD.md`, optional `HEARTBEAT.md`.
 - **State dir (`~/.openclaw`)**: config, credentials, auth profiles, sessions, logs,
-  and shared skills (`~/.openclaw/skills`).
+  and cached runtime metadata. Shared skills live in `~/.agents/skills`.
 
 Default workspace is `~/.openclaw/workspace`, configurable via:
 
@@ -1892,10 +1912,10 @@ Non-interactive full reset:
 openclaw reset --scope full --yes --non-interactive
 ```
 
-Then re-run onboarding:
+Then re-run setup:
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 Notes:

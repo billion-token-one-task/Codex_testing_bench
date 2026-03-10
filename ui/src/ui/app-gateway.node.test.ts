@@ -110,6 +110,9 @@ function createHost() {
     refreshSessionsAfterChat: new Set<string>(),
     execApprovalQueue: [],
     execApprovalError: null,
+    operatorRequestQueue: [],
+    operatorRequestError: null,
+    operatorRequestDraft: "",
     updateAvailable: null,
   } as unknown as Parameters<typeof connectGateway>[0];
 }
@@ -188,6 +191,58 @@ describe("connectGateway", () => {
       latestVersion: "2.0.0",
       channel: "latest",
     });
+  });
+
+  it("queues and clears generic operator requests from gateway events", () => {
+    const host = createHost();
+
+    connectGateway(host);
+    const client = gatewayClientInstances[0];
+    expect(client).toBeDefined();
+
+    client.emitEvent({
+      event: "operator.requested",
+      payload: {
+        id: "op-1",
+        request: {
+          kind: "codex_command_approval",
+          method: "item/commandExecution/requestApproval",
+          sessionKey: "main",
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-1",
+          payload: {
+            command: "git status",
+          },
+        },
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 60_000,
+      },
+    });
+
+    expect(host.operatorRequestQueue).toHaveLength(1);
+    expect(host.operatorRequestQueue[0]?.id).toBe("op-1");
+    expect(host.operatorRequestDraft).toContain("\"decision\": \"accept\"");
+
+    client.emitEvent({
+      event: "operator.resolved",
+      payload: {
+        id: "op-1",
+        request: {
+          kind: "codex_command_approval",
+          method: "item/commandExecution/requestApproval",
+          payload: {
+            command: "git status",
+          },
+        },
+        createdAtMs: Date.now(),
+        expiresAtMs: Date.now() + 60_000,
+        resolvedAtMs: Date.now(),
+      },
+    });
+
+    expect(host.operatorRequestQueue).toHaveLength(0);
+    expect(host.operatorRequestDraft).toBe("");
   });
 
   it("ignores stale client onClose callbacks after reconnect", () => {

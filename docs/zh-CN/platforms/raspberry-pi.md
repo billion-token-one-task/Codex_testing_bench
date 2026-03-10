@@ -137,7 +137,7 @@ npm link
 ## 7) 运行新手引导
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 按照向导操作：

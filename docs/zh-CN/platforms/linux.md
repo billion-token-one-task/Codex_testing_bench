@@ -24,7 +24,7 @@ Gateway 网关在 Linux 上完全支持。**Node 是推荐的运行时**。
 
 1. 安装 Node 22+
 2. `npm i -g openclaw@latest`
-3. `openclaw onboard --install-daemon`
+3. `openclaw setup --one-click`
 4. 从你的笔记本电脑：`ssh -N -L 18789:127.0.0.1:18789 <user>@<host>`
 5. 打开 `http://127.0.0.1:18789/` 并粘贴你的令牌
 
@@ -46,7 +46,7 @@ Gateway 网关在 Linux 上完全支持。**Node 是推荐的运行时**。
 使用以下任一方式：
 
 ```
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 或：

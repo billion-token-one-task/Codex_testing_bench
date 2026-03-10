@@ -4,6 +4,7 @@ import type { CronModelSuggestionsState, CronState } from "./controllers/cron.ts
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
+import type { OperatorRequest } from "./controllers/operator-request.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
@@ -89,6 +90,10 @@ export type AppViewState = {
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalBusy: boolean;
   execApprovalError: string | null;
+  operatorRequestQueue: OperatorRequest[];
+  operatorRequestBusy: boolean;
+  operatorRequestError: string | null;
+  operatorRequestDraft: string;
   pendingGatewayUrl: string | null;
   configLoading: boolean;
   configRaw: string;
@@ -277,6 +282,22 @@ export type AppViewState = {
     handleNostrProfileImport: () => Promise<void>;
     handleNostrProfileToggleAdvanced: () => void;
     handleExecApprovalDecision: (decision: "allow-once" | "allow-always" | "deny") => Promise<void>;
+    handleOperatorRequestDecision: (
+      decision: "allow-once" | "allow-always" | "deny",
+    ) => Promise<void>;
+    handleOperatorRequestSubmitDraft: () => Promise<void>;
+    handleOperatorRequestDraftChange: (next: string) => void;
+    handleOperatorToolAnswerChange: (questionId: string, value: string) => void;
+    handleOperatorPermissionDraftChange: (updates: {
+      scope?: "turn" | "session";
+      networkEnabled?: boolean;
+      readPaths?: string;
+      writePaths?: string;
+    }) => void;
+    handleOperatorMcpDraftChange: (updates: {
+      action?: "accept" | "decline" | "cancel";
+      content?: string;
+    }) => void;
     handleGatewayUrlConfirm: () => void;
     handleGatewayUrlCancel: () => void;
     handleConfigLoad: () => Promise<void>;

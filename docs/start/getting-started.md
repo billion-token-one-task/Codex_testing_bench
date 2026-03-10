@@ -8,7 +8,7 @@ title: "Getting Started"
 
 # Getting Started
 
-Goal: go from zero to a first working chat with minimal setup.
+Goal: go from zero to a first working CodexPlusClaw chat with minimal setup.
 
 <Info>
 Fastest chat: open the Control UI (no channel setup needed). Run `openclaw dashboard`
@@ -52,13 +52,14 @@ Check your Node version with `node --version` if you are unsure.
     </Note>
 
   </Step>
-  <Step title="Run the onboarding wizard">
+  <Step title="Run the one-click setup">
     ```bash
-    openclaw onboard --install-daemon
+    openclaw setup --one-click
     ```
 
-    The wizard configures auth, gateway settings, and optional channels.
-    See [Onboarding Wizard](/start/wizard) for details.
+    This installs or upgrades a compatible Codex CLI, configures the local gateway,
+    prepares the workspace + skills layout, runs health checks, and opens the dashboard.
+    Use `openclaw onboard` if you want the manual/remote wizard instead.
 
   </Step>
   <Step title="Check the Gateway">
@@ -114,8 +115,8 @@ Full environment variable reference: [Environment vars](/help/environment).
 ## Go deeper
 
 <Columns>
-  <Card title="Onboarding Wizard (details)" href="/start/wizard">
-    Full CLI wizard reference and advanced options.
+  <Card title="One-click setup (details)" href="/cli/setup">
+    Fast local bootstrap with Codex as the runtime.
   </Card>
   <Card title="macOS app onboarding" href="/start/onboarding">
     First run flow for the macOS app.

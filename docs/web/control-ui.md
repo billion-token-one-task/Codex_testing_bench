@@ -28,7 +28,7 @@ Auth is supplied during the WebSocket handshake via:
 - `connect.params.auth.token`
 - `connect.params.auth.password`
   The dashboard settings panel keeps a token for the current browser tab session and selected gateway URL; passwords are not persisted.
-  The onboarding wizard generates a gateway token by default, so paste it here on first connect.
+  One-click setup and the onboarding wizard generate gateway auth by default, so paste that token here on first connect.
 
 ## Device pairing (first connection)
 
@@ -105,7 +105,9 @@ Cron jobs panel notes:
 - `chat.send` is **non-blocking**: it acks immediately with `{ runId, status: "started" }` and the response streams via `chat` events.
 - Re-sending with the same `idempotencyKey` returns `{ status: "in_flight" }` while running, and `{ status: "ok" }` after completion.
 - `chat.history` responses are size-bounded for UI safety. When transcript entries are too large, Gateway may truncate long text fields, omit heavy metadata blocks, and replace oversized messages with a placeholder (`[chat.history omitted: message too large]`).
-- `chat.inject` appends an assistant note to the session transcript and broadcasts a `chat` event for UI-only updates (no agent run, no channel delivery).
+- `chat.inject` appends an assistant note to OpenClaw’s cached session
+  projection and broadcasts a `chat` event for UI-only updates (no agent run,
+  no channel delivery).
 - Stop:
   - Click **Stop** (calls `chat.abort`)
   - Type `/stop` (or standalone abort phrases like `stop`, `stop action`, `stop run`, `stop openclaw`, `please stop`) to abort out-of-band

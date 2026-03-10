@@ -14,9 +14,10 @@ Nostr is a decentralized protocol for social networking. This channel enables Op
 
 ## Install (on demand)
 
-### Onboarding (recommended)
+### Setup (recommended)
 
-- The onboarding wizard (`openclaw onboard`) and `openclaw channels add` list optional channel plugins.
+- Start with `openclaw setup --one-click` to prepare the local stack, then use `openclaw channels add` to install optional channel plugins.
+- The onboarding wizard (`openclaw onboard`) can also list optional channel plugins if you prefer the manual flow.
 - Selecting Nostr prompts you to install the plugin on demand.
 
 Install defaults:

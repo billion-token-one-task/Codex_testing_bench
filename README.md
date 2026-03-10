@@ -19,15 +19,15 @@
 </p>
 
 **OpenClaw** is a _personal AI assistant_ you run on your own devices.
-It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Synology Chat, Tlon, Twitch, Zalo, Zalo Personal, WebChat). It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+This fork ships **CodexPlusClaw**: **OpenClaw is the shell** (gateway, channels, Control UI, daemon, local integrations, sessions, approvals, setup), and **Codex app-server is the brain** (agent turns, planning, review, skills, approvals, sandboxed execution, compaction, thread lifecycle). It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Synology Chat, Tlon, Twitch, Zalo, Zalo Personal, WebChat). It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
 If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
 
 [Website](https://openclaw.ai) · [Docs](https://docs.openclaw.ai) · [Vision](VISION.md) · [DeepWiki](https://deepwiki.com/openclaw/openclaw) · [Getting Started](https://docs.openclaw.ai/start/getting-started) · [Updating](https://docs.openclaw.ai/install/updating) · [Showcase](https://docs.openclaw.ai/start/showcase) · [FAQ](https://docs.openclaw.ai/help/faq) · [Wizard](https://docs.openclaw.ai/start/wizard) · [Nix](https://github.com/openclaw/nix-openclaw) · [Docker](https://docs.openclaw.ai/install/docker) · [Discord](https://discord.gg/clawd)
 
-Preferred setup: run the onboarding wizard (`openclaw onboard`) in your terminal.
-The wizard guides you step by step through setting up the gateway, workspace, channels, and skills. The CLI wizard is the recommended path and works on **macOS, Linux, and Windows (via WSL2; strongly recommended)**.
-Works with npm, pnpm, or bun.
+Preferred setup: run the one-click bootstrap in your terminal: `openclaw setup --one-click`.
+That path installs or upgrades a compatible Codex CLI, configures the local gateway and Control UI, prepares the workspace + skills layout, runs health checks, and opens the dashboard. Use `openclaw onboard` when you want the manual or remote wizard instead of the local happy path. The CLI setup flow works on **macOS, Linux, and Windows (via WSL2; strongly recommended)**.
+OpenClaw itself works with npm, pnpm, or bun; Codex is managed by OpenClaw in the one-click flow.
 New install? Start here: [Getting started](https://docs.openclaw.ai/start/getting-started)
 
 ## Sponsors
@@ -55,10 +55,10 @@ Runtime: **Node ≥22**.
 npm install -g openclaw@latest
 # or: pnpm add -g openclaw@latest
 
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
-The wizard installs the Gateway daemon (launchd/systemd user service) so it stays running.
+The one-click flow installs or upgrades a compatible Codex CLI, configures `gpt-5.4` as the default model, installs the Gateway daemon (launchd/systemd user service), validates the Codex app-server surface, and opens the local dashboard.
 
 ## Quick start (TL;DR)
 
@@ -67,7 +67,7 @@ Runtime: **Node ≥22**.
 Full beginner guide (auth, pairing, channels): [Getting started](https://docs.openclaw.ai/start/getting-started)
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 
 openclaw gateway --port 18789 --verbose
 
@@ -79,6 +79,28 @@ openclaw agent --message "Ship checklist" --thinking high
 ```
 
 Upgrading? [Updating guide](https://docs.openclaw.ai/install/updating) (and run `openclaw doctor`).
+
+## CodexPlusClaw status
+
+Today’s built-in local path is:
+
+- `openclaw setup --one-click`
+- Codex app-server as the sole built-in agent runtime on the Codex path
+- `gpt-5.4` as the default model written by one-click setup
+- OpenClaw-managed approvals, UI, channels, sessions, skills sync, and local integrations around Codex
+
+What has strong automated coverage in this fork:
+
+- Codex app-server compatibility probing (`thread/start`, `thread/read`, `thread/fork`, `thread/compact/start`, `review/start`, `skills/list`)
+- Codex-backed session compaction and thread-history reads
+- operator request bridging into the OpenClaw control plane
+- one-click setup defaults and Codex-first agent routing
+- gateway/session/chat/skills/channel/Discord regression coverage
+
+What is not fully claimed yet:
+
+- live credentialed third-party channel smoke against your personal accounts
+- full browser/CDP parity without the existing browser test failures being resolved
 
 ## Development channels
 
@@ -101,7 +123,7 @@ pnpm install
 pnpm ui:build # auto-installs UI deps on first run
 pnpm build
 
-pnpm openclaw onboard --install-daemon
+pnpm openclaw setup --one-click
 
 # Dev loop (auto-reload on TS changes)
 pnpm gateway:watch
@@ -126,6 +148,7 @@ Run `openclaw doctor` to surface risky/misconfigured DM policies.
 ## Highlights
 
 - **[Local-first Gateway](https://docs.openclaw.ai/gateway)** — single control plane for sessions, channels, tools, and events.
+- **Codex-native runtime** — Codex app-server over stdio with `experimentalApi`, dynamic tools, approvals, skills, review, thread history, and `gpt-5.4` as the default local setup model.
 - **[Multi-channel inbox](https://docs.openclaw.ai/channels)** — WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, BlueBubbles (iMessage), iMessage (legacy), IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Synology Chat, Tlon, Twitch, Zalo, Zalo Personal, WebChat, macOS, iOS/Android.
 - **[Multi-agent routing](https://docs.openclaw.ai/gateway/configuration)** — route inbound channels/accounts/peers to isolated agents (workspaces + per-agent sessions).
 - **[Voice Wake](https://docs.openclaw.ai/nodes/voicewake) + [Talk Mode](https://docs.openclaw.ai/nodes/talk)** — wake words on macOS/iOS and continuous voice on Android (ElevenLabs + system TTS fallback).
@@ -144,7 +167,7 @@ Run `openclaw doctor` to surface risky/misconfigured DM policies.
 
 - [Gateway WS control plane](https://docs.openclaw.ai/gateway) with sessions, presence, config, cron, webhooks, [Control UI](https://docs.openclaw.ai/web), and [Canvas host](https://docs.openclaw.ai/platforms/mac/canvas#canvas-a2ui).
 - [CLI surface](https://docs.openclaw.ai/tools/agent-send): gateway, agent, send, [wizard](https://docs.openclaw.ai/start/wizard), and [doctor](https://docs.openclaw.ai/gateway/doctor).
-- [Pi agent runtime](https://docs.openclaw.ai/concepts/agent) in RPC mode with tool streaming and block streaming.
+- [Codex app-server runtime](https://docs.openclaw.ai/concepts/agent): thread/start, thread/read, thread/fork, thread compaction, review, approvals, request-user-input, skills, and dynamic OpenClaw tools over a managed stdio bridge.
 - [Session model](https://docs.openclaw.ai/concepts/session): `main` for direct chats, group isolation, activation modes, queue modes, reply-back. Group rules: [Groups](https://docs.openclaw.ai/channels/groups).
 - [Media pipeline](https://docs.openclaw.ai/nodes/images): images/audio/video, transcription hooks, size caps, temp file lifecycle. Audio details: [Audio](https://docs.openclaw.ai/nodes/audio).
 
@@ -189,17 +212,19 @@ WhatsApp / Telegram / Slack / Discord / Google Chat / Signal / iMessage / BlueBu
                │
                ▼
 ┌───────────────────────────────┐
-│            Gateway            │
-│       (control plane)         │
+│     OpenClaw Gateway Shell    │
+│ channels + UI + sessions      │
 │     ws://127.0.0.1:18789      │
 └──────────────┬────────────────┘
                │
-               ├─ Pi agent (RPC)
+               ├─ Codex app-server (brain)
                ├─ CLI (openclaw …)
                ├─ WebChat UI
                ├─ macOS app
                └─ iOS / Android nodes
 ```
+
+OpenClaw owns the outer platform: channels, session identity, Control UI, daemon, local tools, operator approvals, and persistence. Codex owns the agent runtime: model execution, thread lifecycle, plan/review items, request-user-input, approvals, MCP/apps, and thread compaction.
 
 ## Key subsystems
 
@@ -313,7 +338,9 @@ Runbook: [iOS connect](https://docs.openclaw.ai/platforms/ios).
 
 - Workspace root: `~/.openclaw/workspace` (configurable via `agents.defaults.workspace`).
 - Injected prompt files: `AGENTS.md`, `SOUL.md`, `TOOLS.md`.
-- Skills: `~/.openclaw/workspace/skills/<skill>/SKILL.md`.
+- User/global skills: `~/.agents/skills/<skill>/SKILL.md`.
+- Workspace skills: `<workspace>/.agents/skills/<skill>/SKILL.md`.
+- OpenClaw keeps the older `<workspace>/skills` path as a compatibility layer, but CodexPlusClaw treats the Codex-compatible `.agents/skills` roots as canonical.
 
 ## Configuration
 
@@ -458,6 +485,7 @@ Use these when you’re past the onboarding flow and want the deeper reference.
 ## Workspace & skills
 
 - [Skills config](https://docs.openclaw.ai/tools/skills-config)
+- [Skills runtime + locations](https://docs.openclaw.ai/tools/skills)
 - [Default AGENTS](https://docs.openclaw.ai/reference/AGENTS.default)
 - [Templates: AGENTS](https://docs.openclaw.ai/reference/templates/AGENTS)
 - [Templates: BOOTSTRAP](https://docs.openclaw.ai/reference/templates/BOOTSTRAP)
@@ -496,7 +524,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, maintainers, and how to s
 AI/vibe-coded PRs welcome! 🤖
 
 Special thanks to [Mario Zechner](https://mariozechner.at/) for his support and for
-[pi-mono](https://github.com/badlogic/pi-mono).
+the earlier runtime work that helped inspire OpenClaw’s agent architecture.
 Special thanks to Adam Doppelt for lobster.bot.
 
 Thanks to all clawtributors:

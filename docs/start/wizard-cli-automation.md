@@ -1,5 +1,5 @@
 ---
-summary: "Scripted onboarding and agent setup for the OpenClaw CLI"
+summary: "Scripted manual onboarding and agent setup for the OpenClaw CLI"
 read_when:
   - You are automating onboarding in scripts or CI
   - You need non-interactive examples for specific providers
@@ -9,7 +9,11 @@ sidebarTitle: "CLI automation"
 
 # CLI Automation
 
-Use `--non-interactive` to automate `openclaw onboard`.
+Use `--non-interactive` to automate the manual `openclaw onboard` flow.
+
+<Info>
+For the normal local CodexPlusClaw path, prefer `openclaw setup --one-click`.
+</Info>
 
 <Note>
 `--json` does not imply non-interactive mode. Use `--non-interactive` (and `--workspace`) for scripts.

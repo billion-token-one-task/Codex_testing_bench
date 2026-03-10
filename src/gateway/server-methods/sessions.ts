@@ -37,6 +37,11 @@ import {
   validateSessionsResolveParams,
 } from "../protocol/index.js";
 import {
+  compactCodexThread,
+  readCodexThreadMessages,
+  readCodexThreadPreviewItems,
+} from "../codex-thread-history.js";
+import {
   archiveFileOnDisk,
   archiveSessionTranscripts,
   listSessionsFromStore,
@@ -344,7 +349,7 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     });
     respond(true, result, undefined);
   },
-  "sessions.preview": ({ params, respond }) => {
+  "sessions.preview": async ({ params, respond }) => {
     if (!assertValidParams(params, validateSessionsPreviewParams, "sessions.preview", respond)) {
       return;
     }
@@ -386,14 +391,37 @@ export const sessionsHandlers: GatewayRequestHandlers = {
           previews.push({ key, status: "missing", items: [] });
           continue;
         }
-        const items = readSessionPreviewItemsFromTranscript(
-          entry.sessionId,
-          target.storePath,
-          entry.sessionFile,
-          target.agentId,
-          limit,
-          maxChars,
-        );
+        const workspaceDir =
+          entry.systemPromptReport?.workspaceDir ??
+          (typeof cfg.agents?.defaults?.workspace === "string"
+            ? cfg.agents.defaults.workspace
+            : undefined);
+        const items =
+          entry.engine?.kind === "codex"
+            ? await readCodexThreadPreviewItems({
+                cfg,
+                entry,
+                workspaceDir,
+                limit,
+                maxChars,
+              }).catch(() =>
+                readSessionPreviewItemsFromTranscript(
+                  entry.sessionId,
+                  target.storePath,
+                  entry.sessionFile,
+                  target.agentId,
+                  limit,
+                  maxChars,
+                ),
+              )
+            : readSessionPreviewItemsFromTranscript(
+                entry.sessionId,
+                target.storePath,
+                entry.sessionFile,
+                target.agentId,
+                limit,
+                maxChars,
+              );
         previews.push({
           key,
           status: items.length > 0 ? "ok" : "empty",
@@ -627,7 +655,7 @@ export const sessionsHandlers: GatewayRequestHandlers = {
 
     respond(true, { ok: true, key: target.canonicalKey, deleted, archived }, undefined);
   },
-  "sessions.get": ({ params, respond }) => {
+  "sessions.get": async ({ params, respond }) => {
     const p = params;
     const key = requireSessionKey(p.key ?? p.sessionKey, respond);
     if (!key) {
@@ -638,14 +666,26 @@ export const sessionsHandlers: GatewayRequestHandlers = {
         ? Math.max(1, Math.floor(p.limit))
         : 200;
 
-    const { target, storePath } = resolveGatewaySessionTargetFromKey(key);
+    const { cfg, target, storePath } = resolveGatewaySessionTargetFromKey(key);
     const store = loadSessionStore(storePath);
     const entry = target.storeKeys.map((k) => store[k]).find(Boolean);
     if (!entry?.sessionId) {
       respond(true, { messages: [] }, undefined);
       return;
     }
-    const allMessages = readSessionMessages(entry.sessionId, storePath, entry.sessionFile);
+    const workspaceDir =
+      entry.systemPromptReport?.workspaceDir ??
+      (typeof cfg.agents?.defaults?.workspace === "string"
+        ? cfg.agents.defaults.workspace
+        : undefined);
+    const allMessages =
+      entry.engine?.kind === "codex"
+        ? await readCodexThreadMessages({
+            cfg,
+            entry,
+            workspaceDir,
+          }).catch(() => readSessionMessages(entry.sessionId, storePath, entry.sessionFile))
+        : readSessionMessages(entry.sessionId, storePath, entry.sessionFile);
     const messages = limit < allMessages.length ? allMessages.slice(-limit) : allMessages;
     respond(true, { messages }, undefined);
   },
@@ -680,6 +720,33 @@ export const sessionsHandlers: GatewayRequestHandlers = {
           key: target.canonicalKey,
           compacted: false,
           reason: "no sessionId",
+        },
+        undefined,
+      );
+      return;
+    }
+    if (entry?.engine?.kind === "codex") {
+      const workspaceDir =
+        entry.systemPromptReport?.workspaceDir ??
+        (typeof cfg.agents?.defaults?.workspace === "string"
+          ? cfg.agents.defaults.workspace
+          : undefined);
+      const compacted = await compactCodexThread({
+        cfg,
+        entry,
+        workspaceDir,
+      }).catch((error) => ({
+        compacted: false,
+        reason: error instanceof Error ? error.message : String(error),
+      }));
+      respond(
+        true,
+        {
+          ok: true,
+          key: target.canonicalKey,
+          compacted: compacted.compacted,
+          reason: compacted.reason ?? (compacted.compacted ? "codex-thread-compaction-started" : undefined),
+          threadId: "threadId" in compacted ? compacted.threadId : undefined,
         },
         undefined,
       );

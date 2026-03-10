@@ -57,6 +57,15 @@ import type { CronFieldErrors } from "./controllers/cron.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
+import {
+  buildOperatorDecisionResolution,
+  buildDefaultOperatorResolutionDraft,
+  parseOperatorResolutionDraft,
+  updateOperatorMcpDraft,
+  updateOperatorPermissionDraft,
+  updateOperatorToolAnswerDraft,
+  type OperatorRequest,
+} from "./controllers/operator-request.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
 import type { Tab } from "./navigation.ts";
@@ -177,6 +186,10 @@ export class OpenClawApp extends LitElement {
   @state() execApprovalQueue: ExecApprovalRequest[] = [];
   @state() execApprovalBusy = false;
   @state() execApprovalError: string | null = null;
+  @state() operatorRequestQueue: OperatorRequest[] = [];
+  @state() operatorRequestBusy = false;
+  @state() operatorRequestError: string | null = null;
+  @state() operatorRequestDraft = "";
   @state() pendingGatewayUrl: string | null = null;
   pendingGatewayToken: string | null = null;
 
@@ -566,6 +579,91 @@ export class OpenClawApp extends LitElement {
       this.execApprovalError = `Exec approval failed: ${String(err)}`;
     } finally {
       this.execApprovalBusy = false;
+    }
+  }
+
+  handleOperatorRequestDraftChange(next: string) {
+    this.operatorRequestDraft = next;
+  }
+
+  handleOperatorToolAnswerChange(questionId: string, value: string) {
+    const active = this.operatorRequestQueue[0];
+    if (!active) {
+      return;
+    }
+    this.operatorRequestDraft = updateOperatorToolAnswerDraft(
+      active,
+      this.operatorRequestDraft,
+      questionId,
+      value,
+    );
+  }
+
+  handleOperatorPermissionDraftChange(updates: {
+    scope?: "turn" | "session";
+    networkEnabled?: boolean;
+    readPaths?: string;
+    writePaths?: string;
+  }) {
+    const active = this.operatorRequestQueue[0];
+    if (!active) {
+      return;
+    }
+    this.operatorRequestDraft = updateOperatorPermissionDraft(
+      active,
+      this.operatorRequestDraft,
+      updates,
+    );
+  }
+
+  handleOperatorMcpDraftChange(updates: {
+    action?: "accept" | "decline" | "cancel";
+    content?: string;
+  }) {
+    const active = this.operatorRequestQueue[0];
+    if (!active) {
+      return;
+    }
+    this.operatorRequestDraft = updateOperatorMcpDraft(
+      active,
+      this.operatorRequestDraft,
+      updates,
+    );
+  }
+
+  async handleOperatorRequestDecision(decision: "allow-once" | "allow-always" | "deny") {
+    const active = this.operatorRequestQueue[0];
+    if (!active) {
+      return;
+    }
+    const resolution = buildOperatorDecisionResolution(active, decision);
+    this.operatorRequestDraft = JSON.stringify(resolution, null, 2);
+    await this.handleOperatorRequestSubmitDraft();
+  }
+
+  async handleOperatorRequestSubmitDraft() {
+    const active = this.operatorRequestQueue[0];
+    if (!active || !this.client || this.operatorRequestBusy) {
+      return;
+    }
+    this.operatorRequestBusy = true;
+    this.operatorRequestError = null;
+    try {
+      const draft = this.operatorRequestDraft.trim() || buildDefaultOperatorResolutionDraft(active);
+      const resolution = parseOperatorResolutionDraft(draft);
+      await this.client.request("operator.request.resolve", {
+        id: active.id,
+        resolution,
+      });
+      this.operatorRequestQueue = this.operatorRequestQueue.filter((entry) => entry.id !== active.id);
+      this.operatorRequestDraft =
+        this.operatorRequestQueue.length > 0
+          ? buildDefaultOperatorResolutionDraft(this.operatorRequestQueue[0]!)
+          : "";
+    } catch (err) {
+      this.operatorRequestError = `Operator response failed: ${String(err)}`;
+    } finally {
+      this.operatorRequestBusy = false;
     }
   }
 

@@ -20,7 +20,10 @@ If the file is missing, OpenClaw uses safe defaults. Common reasons to add a con
 See the [full reference](/gateway/configuration-reference) for every available field.
 
 <Tip>
-**New to configuration?** Start with `openclaw onboard` for interactive setup, or check out the [Configuration Examples](/gateway/configuration-examples) guide for complete copy-paste configs.
+**New to configuration?** Start with `openclaw setup --one-click` for the
+preferred local CodexPlusClaw bootstrap, or use `openclaw onboard` when you
+want the manual/remote wizard. For complete copy-paste configs, see
+[Configuration Examples](/gateway/configuration-examples).
 </Tip>
 
 ## Minimal config
@@ -38,7 +41,8 @@ See the [full reference](/gateway/configuration-reference) for every available f
 <Tabs>
   <Tab title="Interactive wizard">
     ```bash
-    openclaw onboard       # full setup wizard
+    openclaw setup --one-click  # preferred local bootstrap
+    openclaw onboard            # full manual/remote wizard
     openclaw configure     # config wizard
     ```
   </Tab>

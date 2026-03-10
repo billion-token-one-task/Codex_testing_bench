@@ -74,7 +74,7 @@ openclaw hooks info session-memory
 
 ### Onboarding
 
-During onboarding (`openclaw onboard`), you'll be prompted to enable recommended hooks. The wizard automatically discovers eligible hooks and presents them for selection.
+During one-click setup and the onboarding wizard, OpenClaw can prompt you to enable recommended hooks. The wizard path still surfaces them explicitly, and the local setup flow can seed the same recommendations.
 
 ## Hook Discovery
 
@@ -362,7 +362,7 @@ export default handler;
 
 These hooks are not event-stream listeners; they let plugins synchronously adjust tool results before OpenClaw persists them.
 
-- **`tool_result_persist`**: transform tool results before they are written to the session transcript. Must be synchronous; return the updated tool result payload or `undefined` to keep it as-is. See [Agent Loop](/concepts/agent-loop).
+- **`tool_result_persist`**: transform tool results before they are written to the gateway-managed session history or cached projection. Must be synchronous; return the updated tool result payload or `undefined` to keep it as-is. See [Agent Loop](/concepts/agent-loop).
 
 ### Plugin Hook Events
 

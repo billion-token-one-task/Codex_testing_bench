@@ -32,7 +32,7 @@ Native Windows companion apps are planned.
 Inside WSL2:
 
 ```
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 Or:
@@ -192,7 +192,7 @@ cd openclaw
 pnpm install
 pnpm ui:build # auto-installs UI deps on first run
 pnpm build
-openclaw onboard
+openclaw setup --one-click
 ```
 
 Full guide: [Getting Started](/start/getting-started)

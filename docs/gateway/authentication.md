@@ -49,8 +49,9 @@ openclaw models status
 openclaw doctor
 ```
 
-If you’d rather not manage env vars yourself, the onboarding wizard can store
-API keys for daemon use: `openclaw onboard`.
+If you’d rather not manage env vars yourself, the manual wizard can store
+API keys for daemon use: `openclaw onboard`. For the normal local path, start
+with `openclaw setup --one-click`.
 
 See [Help](/help) for details on env inheritance (`env.shellEnv`,
 `~/.openclaw/.env`, systemd/launchd).

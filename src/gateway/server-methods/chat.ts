@@ -56,6 +56,7 @@ import {
   readSessionMessages,
   resolveSessionModelRef,
 } from "../session-utils.js";
+import { readCodexThreadMessages } from "../codex-thread-history.js";
 import { formatForLog } from "../ws-log.js";
 import { injectTimestamp, timestampOptsFromConfig } from "./agent-timestamp.js";
 import { setGatewayDedupeEntry } from "./agent-wait-dedupe.js";
@@ -758,7 +759,19 @@ export const chatHandlers: GatewayRequestHandlers = {
     const { cfg, storePath, entry } = loadSessionEntry(sessionKey);
     const sessionId = entry?.sessionId;
     const rawMessages =
-      sessionId && storePath ? readSessionMessages(sessionId, storePath, entry?.sessionFile) : [];
+      sessionId && storePath
+        ? entry?.engine?.kind === "codex"
+          ? await readCodexThreadMessages({
+              cfg,
+              entry,
+              workspaceDir:
+                entry.systemPromptReport?.workspaceDir ??
+                (typeof cfg.agents?.defaults?.workspace === "string"
+                  ? cfg.agents.defaults.workspace
+                  : undefined),
+            }).catch(() => readSessionMessages(sessionId, storePath, entry?.sessionFile))
+          : readSessionMessages(sessionId, storePath, entry?.sessionFile)
+        : [];
     const hardMax = 1000;
     const defaultLimit = 200;
     const requested = typeof limit === "number" ? limit : defaultLimit;

@@ -348,10 +348,18 @@ function runAgentAttempt(params: {
 }) {
   const normalizedProvider = normalizeProviderId(params.providerOverride);
   const agentRuntime = params.cfg.agents?.list?.find((entry) => entry.id === params.sessionAgentId)?.runtime;
+  const configuredCodex = params.cfg.agents?.defaults?.codex;
+  const hasConfiguredCodexRuntime =
+    Boolean(configuredCodex?.command?.trim()) ||
+    Boolean(configuredCodex?.defaultModel?.trim()) ||
+    Boolean(configuredCodex?.provider?.trim()) ||
+    Boolean(configuredCodex?.minimumVersion?.trim());
   const shouldUseCodexEngine =
-    normalizedProvider === "codex-cli" ||
-    normalizedProvider === "codex" ||
-    agentRuntime?.type === "codex";
+    agentRuntime?.type !== "embedded" &&
+    (normalizedProvider === "codex-cli" ||
+      normalizedProvider === "codex" ||
+      agentRuntime?.type === "codex" ||
+      (hasConfiguredCodexRuntime && !isCliProvider(params.providerOverride, params.cfg)));
   const effectivePrompt = resolveFallbackRetryPrompt({
     body: params.body,
     isFallbackRetry: params.isFallbackRetry,

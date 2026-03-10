@@ -114,6 +114,39 @@ describe("app-tool-stream fallback lifecycle handling", () => {
     vi.useRealTimers();
   });
 
+  it("tracks compaction lifecycle events from structured agent streams", () => {
+    vi.useFakeTimers();
+    const host = createHost();
+    host.chatRunId = "run-1";
+
+    handleAgentEvent(host, {
+      runId: "run-1",
+      seq: 1,
+      stream: "compaction",
+      ts: Date.now(),
+      sessionKey: "main",
+      data: { phase: "start", itemType: "contextCompaction" },
+    });
+    expect(host.compactionStatus).toMatchObject({
+      active: true,
+    });
+
+    handleAgentEvent(host, {
+      runId: "run-1",
+      seq: 2,
+      stream: "compaction",
+      ts: Date.now(),
+      sessionKey: "main",
+      data: { phase: "end", itemType: "contextCompaction" },
+    });
+    expect(host.compactionStatus).toMatchObject({
+      active: false,
+    });
+    vi.advanceTimersByTime(5_000);
+    expect(host.compactionStatus).toBeNull();
+    vi.useRealTimers();
+  });
+
   it("builds previous fallback label from provider + model on fallback_cleared", () => {
     vi.useFakeTimers();
     const host = createHost();

@@ -29,6 +29,8 @@ const BASE_METHODS = [
   "exec.approval.request",
   "exec.approval.waitDecision",
   "exec.approval.resolve",
+  "operator.request.wait",
+  "operator.request.resolve",
   "wizard.start",
   "wizard.next",
   "wizard.cancel",
@@ -128,5 +130,7 @@ export const GATEWAY_EVENTS = [
   "voicewake.changed",
   "exec.approval.requested",
   "exec.approval.resolved",
+  "operator.requested",
+  "operator.resolved",
   GATEWAY_EVENT_UPDATE_AVAILABLE,
 ];

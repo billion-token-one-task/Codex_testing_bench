@@ -1,5 +1,5 @@
 ---
-summary: "Agent runtime (embedded pi-mono), workspace contract, and session bootstrap"
+summary: "Agent runtime (Codex app-server), workspace contract, and session bootstrap"
 read_when:
   - Changing agent runtime, workspace bootstrap, or session behavior
 title: "Agent Runtime"
@@ -7,7 +7,24 @@ title: "Agent Runtime"
 
 # Agent Runtime 🤖
 
-OpenClaw runs a single embedded agent runtime derived from **pi-mono**.
+CodexPlusClaw runs Codex app-server as the built-in agent runtime.
+
+OpenClaw owns the shell around it:
+
+- session keys and channel identity
+- Control UI and gateway event projection
+- local tools and integrations
+- setup/doctor flows
+- persistence metadata around Codex threads
+
+Codex owns the inner harness:
+
+- model execution
+- planning/review turns
+- approvals and request-user-input
+- skills loading
+- thread history and compaction
+- sandboxed command/file execution semantics
 
 ## Workspace (required)
 
@@ -58,26 +75,44 @@ guidance for how _you_ want them used.
 OpenClaw loads skills from three locations (workspace wins on name conflict):
 
 - Bundled (shipped with the install)
-- Managed/local: `~/.openclaw/skills`
-- Workspace: `<workspace>/skills`
+- Managed/local: `~/.agents/skills`
+- Workspace: `<workspace>/.agents/skills`
 
 Skills can be gated by config/env (see `skills` in [Gateway configuration](/gateway/configuration)).
 
-## pi-mono integration
+OpenClaw maintains the older `<workspace>/skills` path as a compatibility layer,
+but the Codex-compatible `.agents/skills` roots are canonical.
 
-OpenClaw reuses pieces of the pi-mono codebase (models/tools), but **session management, discovery, and tool wiring are OpenClaw-owned**.
+## Codex integration contract
 
-- No pi-coding agent runtime.
-- No `~/.pi/agent` or `<workspace>/.pi` settings are consulted.
+OpenClaw talks to Codex app-server over JSON-RPC v2 on stdio and depends on:
+
+- `initialize` with `experimentalApi`
+- `skills/list`
+- `thread/start` / `thread/resume`
+- `thread/read`
+- `thread/fork`
+- `thread/compact/start`
+- `turn/start` / `turn/interrupt`
+- `review/start`
+- approval + request-user-input server requests
+
+OpenClaw also exposes its own integrations to Codex as dynamic tools under the
+`openclaw_*` namespace.
 
 ## Sessions
 
-Session transcripts are stored as JSONL at:
+For Codex-backed sessions, the canonical history lives in the Codex thread.
+OpenClaw persists session metadata such as:
 
-- `~/.openclaw/agents/<agentId>/sessions/<SessionId>.jsonl`
+- `sessionKey -> threadId`
+- last known turn id
+- thread status
+- runtime/protocol compatibility metadata
 
-The session ID is stable and chosen by OpenClaw.
-Legacy Pi/Tau session folders are **not** read.
+OpenClaw still keeps local projections and compatibility transcript files where
+needed for UI/chat/history surfaces, but the Codex thread is the source of truth
+for the runtime itself.
 
 ## Steering while streaming
 

@@ -16,6 +16,9 @@ Last updated: 2026-01-22
 - Control-plane clients (macOS app, CLI, web UI, automations) connect to the
   Gateway over **WebSocket** on the configured bind host (default
   `127.0.0.1:18789`).
+- In CodexPlusClaw, the Gateway is the **shell** around the model runtime.
+  Codex app-server is launched as a managed subprocess over stdio and acts as
+  the **agent brain**.
 - **Nodes** (macOS/iOS/Android/headless) also connect over **WebSocket**, but
   declare `role: node` with explicit caps/commands.
 - One Gateway per host; it is the only place that opens a WhatsApp session.
@@ -32,6 +35,21 @@ Last updated: 2026-01-22
 - Exposes a typed WS API (requests, responses, server‑push events).
 - Validates inbound frames against JSON Schema.
 - Emits events like `agent`, `chat`, `presence`, `health`, `heartbeat`, `cron`.
+- Owns session identity, channel routing, operator approvals, local tools,
+  setup/doctor flows, and UI projections.
+
+### Codex runtime (managed subprocess)
+
+- Launched as `codex app-server --listen stdio://` by OpenClaw.
+- Initialized with `experimentalApi`.
+- Receives `thread/start`, `thread/resume`, `turn/start`, `turn/interrupt`,
+  `review/start`, `thread/read`, `thread/fork`, and `thread/compact/start`.
+- Emits structured lifecycle events (`thread/*`, `turn/*`, `item/*`,
+  reasoning/plan/diff/command streams, approvals, request-user-input).
+- Treats Codex thread history as the canonical agent-side conversation state.
+
+OpenClaw translates those Codex-native events into gateway/UI/session behavior
+without replacing the Codex harness itself.
 
 ### Clients (mac app / CLI / web admin)
 
@@ -131,9 +149,12 @@ Details: [Gateway protocol](/gateway/protocol), [Pairing](/channels/pairing),
 - Start: `openclaw gateway` (foreground, logs to stdout).
 - Health: `health` over WS (also included in `hello-ok`).
 - Supervision: launchd/systemd for auto‑restart.
+- Preferred local bootstrap: `openclaw setup --one-click`.
 
 ## Invariants
 
 - Exactly one Gateway controls a single Baileys session per host.
 - Handshake is mandatory; any non‑JSON or non‑connect first frame is a hard close.
 - Events are not replayed; clients must refresh on gaps.
+- For Codex-backed sessions, Codex thread state is the source of truth for agent
+  history; OpenClaw stores metadata + projections around that thread.

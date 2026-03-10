@@ -219,8 +219,8 @@ Designed for environments where you want everything under a local prefix (defaul
 | `--version <ver>`      | OpenClaw version or dist-tag (default: `latest`)                                |
 | `--node-version <ver>` | Node version (default: `22.22.0`)                                               |
 | `--json`               | Emit NDJSON events                                                              |
-| `--onboard`            | Run `openclaw onboard` after install                                            |
-| `--no-onboard`         | Skip onboarding (default)                                                       |
+| `--onboard`            | Legacy flag name; triggers post-install setup flow                              |
+| `--no-onboard`         | Skip post-install setup (default)                                               |
 | `--set-npm-prefix`     | On Linux, force npm prefix to `~/.npm-global` if current prefix is not writable |
 | `--help`               | Show usage (`-h`)                                                               |
 

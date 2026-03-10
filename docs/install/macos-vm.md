@@ -138,10 +138,10 @@ Inside the VM:
 
 ```bash
 npm install -g openclaw@latest
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
-Follow the onboarding prompts to set up your model provider (Anthropic, OpenAI, etc.).
+Follow the setup prompts to configure Codex or another model/auth path.
 
 ---
 

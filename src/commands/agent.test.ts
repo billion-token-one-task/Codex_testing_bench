@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, type MockInstance, vi } from "vitest"
 import { withTempHome as withTempHomeBase } from "../../test/helpers/temp-home.js";
 import "../cron/isolated-agent.mocks.js";
 import * as cliRunnerModule from "../agents/cli-runner.js";
+import * as codexEngineModule from "../agents/codex-engine.js";
 import { FailoverError } from "../agents/failover-error.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import * as modelSelectionModule from "../agents/model-selection.js";
@@ -54,6 +55,7 @@ const configSpy = vi.spyOn(configModule, "loadConfig");
 const readConfigFileSnapshotForWriteSpy = vi.spyOn(configModule, "readConfigFileSnapshotForWrite");
 const setRuntimeConfigSnapshotSpy = vi.spyOn(configModule, "setRuntimeConfigSnapshot");
 const runCliAgentSpy = vi.spyOn(cliRunnerModule, "runCliAgent");
+const runCodexAgentSpy = vi.spyOn(codexEngineModule, "runCodexAgent");
 const deliverAgentCommandResultSpy = vi.spyOn(agentDeliveryModule, "deliverAgentCommandResult");
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
@@ -260,6 +262,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   configModule.clearRuntimeConfigSnapshot();
   runCliAgentSpy.mockResolvedValue(createDefaultAgentResult() as never);
+  runCodexAgentSpy.mockResolvedValue(createDefaultAgentResult() as never);
   vi.mocked(runEmbeddedPiAgent).mockResolvedValue(createDefaultAgentResult());
   vi.mocked(loadModelCatalog).mockResolvedValue([]);
   vi.mocked(modelSelectionModule.isCliProvider).mockImplementation(() => false);
@@ -270,6 +273,33 @@ beforeEach(() => {
 });
 
 describe("agentCommand", () => {
+  it("uses Codex as the built-in runtime when codex defaults are configured", async () => {
+    await withTempHome(async (home) => {
+      const store = path.join(home, "sessions.json");
+      mockConfig(
+        home,
+        store,
+        {
+          codex: {
+            command: "/tmp/codex",
+            defaultModel: "gpt-5.4",
+            provider: "openai",
+          },
+        },
+        undefined,
+      );
+
+      await agentCommand({ message: "hello codex runtime", agentId: "main" }, runtime);
+
+      expect(runCodexAgentSpy).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(runEmbeddedPiAgent)).not.toHaveBeenCalled();
+      expect(runCodexAgentSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        provider: "anthropic",
+        model: "claude-opus-4-5",
+      });
+    });
+  });
+
   it("sets runtime snapshots from source config before embedded agent run", async () => {
     await withTempHome(async (home) => {
       const store = path.join(home, "sessions.json");

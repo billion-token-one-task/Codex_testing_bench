@@ -307,11 +307,44 @@ describe("/approve command", () => {
 
     const result = await handleCommands(params);
     expect(result.shouldContinue).toBe(false);
-    expect(result.reply?.text).toContain("Exec approval allow-once submitted");
+    expect(result.reply?.text).toContain("Approval allow-once submitted");
     expect(callGatewayMock).toHaveBeenCalledWith(
       expect.objectContaining({
         method: "exec.approval.resolve",
         params: { id: "abc", decision: "allow-once" },
+      }),
+    );
+  });
+
+  it("falls back to operator requests when exec approvals are unavailable", async () => {
+    const cfg = {
+      commands: { text: true },
+      channels: { whatsapp: { allowFrom: ["*"] } },
+    } as OpenClawConfig;
+    const params = buildParams("/approve abc allow-always", cfg, { SenderId: "123" });
+
+    callGatewayMock
+      .mockRejectedValueOnce(new Error("exec approval not found"))
+      .mockResolvedValueOnce({ ok: true });
+
+    const result = await handleCommands(params);
+    expect(result.shouldContinue).toBe(false);
+    expect(result.reply?.text).toContain("Approval allow-always submitted");
+    expect(callGatewayMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        method: "exec.approval.resolve",
+        params: { id: "abc", decision: "allow-always" },
+      }),
+    );
+    expect(callGatewayMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        method: "operator.request.resolve",
+        params: {
+          id: "abc",
+          resolution: { decision: "acceptForSession" },
+        },
       }),
     );
   });
@@ -349,7 +382,7 @@ describe("/approve command", () => {
 
       const result = await handleCommands(params);
       expect(result.shouldContinue).toBe(false);
-      expect(result.reply?.text).toContain("Exec approval allow-once submitted");
+      expect(result.reply?.text).toContain("Approval allow-once submitted");
       expect(callGatewayMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           method: "exec.approval.resolve",

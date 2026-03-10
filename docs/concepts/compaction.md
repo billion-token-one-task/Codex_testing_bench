@@ -8,21 +8,25 @@ title: "Compaction"
 
 # Context Window & Compaction
 
-Every model has a **context window** (max tokens it can see). Long-running chats accumulate messages and tool results; once the window is tight, OpenClaw **compacts** older history to stay within limits.
+Every model has a **context window** (max tokens it can see). Long-running chats accumulate messages and tool results; once the window is tight, CodexPlusClaw compacts older history to stay within limits.
 
 ## What compaction is
 
-Compaction **summarizes older conversation** into a compact summary entry and keeps recent messages intact. The summary is stored in the session history, so future requests use:
+For Codex-backed sessions, compaction is a **Codex thread operation**. OpenClaw
+requests `thread/compact/start`, and Codex performs the compaction against the
+thread history it owns.
 
-- The compaction summary
-- Recent messages after the compaction point
+What persists:
 
-Compaction **persists** in the session’s JSONL history.
+- Codex thread history is compacted on the Codex side.
+- OpenClaw stores metadata and UI projections around that thread.
+- Legacy transcript-trimming behavior still exists for older non-Codex session paths.
 
 ## Configuration
 
-Use the `agents.defaults.compaction` setting in your `openclaw.json` to configure compaction behavior (mode, target tokens, etc.).
-Compaction summarization preserves opaque identifiers by default (`identifierPolicy: "strict"`). You can override this with `identifierPolicy: "off"` or provide custom text with `identifierPolicy: "custom"` and `identifierInstructions`.
+Use the `agents.defaults.compaction` setting in your `openclaw.json` to configure legacy/local compaction behavior where applicable.
+For Codex-backed sessions, the important runtime contract is that OpenClaw can
+trigger Codex thread compaction and surface compaction lifecycle events in the UI.
 
 You can optionally specify a different model for compaction summarization via `agents.defaults.compaction.model`. This is useful when your primary model is a local or small model and you want compaction summaries produced by a more capable model. The override accepts any `provider/model-id` string:
 
@@ -52,11 +56,14 @@ This also works with local models, for example a second Ollama model dedicated t
 }
 ```
 
-When unset, compaction uses the agent's primary model.
+When unset, compaction uses the agent's primary model where a local summarization
+path exists. Codex-native thread compaction uses the active Codex runtime.
 
 ## Auto-compaction (default on)
 
-When a session nears or exceeds the model’s context window, OpenClaw triggers auto-compaction and may retry the original request using the compacted context.
+When a session nears or exceeds the model’s context window, Codex or OpenClaw
+may trigger compaction depending on the runtime path. For Codex-backed sessions,
+OpenClaw surfaces Codex context-compaction events to the chat UI.
 
 You’ll see:
 
@@ -85,17 +92,8 @@ Context window is model-specific. OpenClaw uses the model definition from the co
 
 See [/concepts/session-pruning](/concepts/session-pruning) for pruning details.
 
-## OpenAI server-side compaction
-
-OpenClaw also supports OpenAI Responses server-side compaction hints for
-compatible direct OpenAI models. This is separate from local OpenClaw
-compaction and can run alongside it.
-
-- Local compaction: OpenClaw summarizes and persists into session JSONL.
-- Server-side compaction: OpenAI compacts context on the provider side when
-  `store` + `context_management` are enabled.
-
-See [OpenAI provider](/providers/openai) for model params and overrides.
+For Codex-backed sessions, `/compact` maps to Codex thread compaction rather than
+rewriting the transcript locally.
 
 ## Tips
 

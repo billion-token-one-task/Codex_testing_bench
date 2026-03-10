@@ -1,7 +1,7 @@
 ---
-summary: "OpenClaw is a multi-channel gateway for AI agents that runs on any OS."
+summary: "OpenClaw is a local-first gateway shell for Codex-powered assistants."
 read_when:
-  - Introducing OpenClaw to newcomers
+  - Introducing OpenClaw or CodexPlusClaw to newcomers
 title: "OpenClaw"
 ---
 
@@ -25,71 +25,76 @@ title: "OpenClaw"
 > _"EXFOLIATE! EXFOLIATE!"_ — A space lobster, probably
 
 <p align="center">
-  <strong>Any OS gateway for AI agents across WhatsApp, Telegram, Discord, iMessage, and more.</strong><br />
-  Send a message, get an agent response from your pocket. Plugins add Mattermost and more.
+  <strong>Local-first gateway shell for Codex across WhatsApp, Telegram, Discord, iMessage, Slack, WebChat, and more.</strong><br />
+  OpenClaw handles the channels, UI, sessions, approvals, and device integrations. Codex app-server handles the agent runtime.
 </p>
 
 <Columns>
   <Card title="Get Started" href="/start/getting-started" icon="rocket">
-    Install OpenClaw and bring up the Gateway in minutes.
+    Install OpenClaw and finish the one-click Codex bootstrap in minutes.
   </Card>
-  <Card title="Run the Wizard" href="/start/wizard" icon="sparkles">
-    Guided setup with `openclaw onboard` and pairing flows.
+  <Card title="Manual Wizard" href="/start/wizard" icon="sparkles">
+    Use the advanced/manual wizard when you want remote or custom setup.
   </Card>
   <Card title="Open the Control UI" href="/web/control-ui" icon="layout-dashboard">
-    Launch the browser dashboard for chat, config, and sessions.
+    Launch the browser dashboard for chat, config, sessions, approvals, and tools.
   </Card>
 </Columns>
 
 ## What is OpenClaw?
 
-OpenClaw is a **self-hosted gateway** that connects your favorite chat apps — WhatsApp, Telegram, Discord, iMessage, and more — to AI coding agents like Pi. You run a single Gateway process on your own machine (or a server), and it becomes the bridge between your messaging apps and an always-available AI assistant.
+OpenClaw is a **self-hosted gateway shell** for AI assistants. In this fork, that shell is paired with **Codex app-server as the default and recommended brain**. You run one local or remote gateway, connect the channels you already use, and keep the control plane on infrastructure you trust.
 
-**Who is it for?** Developers and power users who want a personal AI assistant they can message from anywhere — without giving up control of their data or relying on a hosted service.
+**OpenClaw owns the shell:**
 
-**What makes it different?**
+- Channels and routing
+- Control UI, dashboard, and daemon lifecycle
+- Session identity, projections, and gateway APIs
+- Operator approvals, pairing, and safety controls
+- Local integrations, nodes, browser control, and automation
 
-- **Self-hosted**: runs on your hardware, your rules
-- **Multi-channel**: one Gateway serves WhatsApp, Telegram, Discord, and more simultaneously
-- **Agent-native**: built for coding agents with tool use, sessions, memory, and multi-agent routing
-- **Open source**: MIT licensed, community-driven
+**Codex owns the brain:**
 
-**What do you need?** Node 22+, an API key from your chosen provider, and 5 minutes. For best quality and security, use the strongest latest-generation model available.
+- `gpt-5.4` by default in one-click setup
+- Thread lifecycle and canonical history
+- Planning, review, compaction, and approvals
+- Skills, MCP/apps, sandboxed execution, and dynamic tools
+- Rich item/event streaming during turns
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  A["Chat apps + plugins"] --> B["Gateway"]
-  B --> C["Pi agent"]
-  B --> D["CLI"]
-  B --> E["Web Control UI"]
+  A["Chat apps + plugins"] --> B["OpenClaw Gateway Shell"]
+  B --> C["Codex app-server"]
+  B --> D["Web Control UI"]
+  B --> E["CLI"]
   B --> F["macOS app"]
   B --> G["iOS and Android nodes"]
 ```
 
-The Gateway is the single source of truth for sessions, routing, and channel connections.
+For Codex-backed sessions, **Codex thread state is canonical**. OpenClaw keeps the surrounding shell state, cached projections, routing, channel identity, and operator workflows.
 
 ## Key capabilities
 
 <Columns>
   <Card title="Multi-channel gateway" icon="network">
-    WhatsApp, Telegram, Discord, and iMessage with a single Gateway process.
+    WhatsApp, Telegram, Discord, Slack, Signal, iMessage, BlueBubbles, WebChat, and more from one gateway.
   </Card>
-  <Card title="Plugin channels" icon="plug">
-    Add Mattermost and more with extension packages.
+  <Card title="Codex-native runtime" icon="cpu">
+    Managed Codex app-server over stdio with approvals, compaction, review, skills, and thread APIs.
   </Card>
-  <Card title="Multi-agent routing" icon="route">
-    Isolated sessions per agent, workspace, or sender.
-  </Card>
-  <Card title="Media support" icon="image">
-    Send and receive images, audio, and documents.
+  <Card title="Operator control plane" icon="shield">
+    Approval prompts, request-user-input flows, pairing, session controls, and policy surfaces stay in OpenClaw.
   </Card>
   <Card title="Web Control UI" icon="monitor">
-    Browser dashboard for chat, config, sessions, and nodes.
+    Browser dashboard for chat, config, session history, review output, and structured runtime events.
   </Card>
-  <Card title="Mobile nodes" icon="smartphone">
-    Pair iOS and Android nodes for Canvas, camera, and voice-enabled workflows.
+  <Card title="Skills + local tools" icon="wrench">
+    OpenClaw-managed skills roots plus local browser, node, canvas, exec, and automation integrations.
+  </Card>
+  <Card title="Mobile + desktop nodes" icon="smartphone">
+    Pair iOS, Android, and macOS nodes for camera, voice, screen, and device-local actions.
   </Card>
 </Columns>
 
@@ -101,24 +106,26 @@ The Gateway is the single source of truth for sessions, routing, and channel con
     npm install -g openclaw@latest
     ```
   </Step>
-  <Step title="Onboard and install the service">
+  <Step title="Run the one-click bootstrap">
     ```bash
-    openclaw onboard --install-daemon
+    openclaw setup --one-click
     ```
   </Step>
-  <Step title="Pair WhatsApp and start the Gateway">
+  <Step title="Connect a channel or chat in the dashboard">
     ```bash
     openclaw channels login
-    openclaw gateway --port 18789
+    openclaw dashboard
     ```
   </Step>
 </Steps>
 
-Need the full install and dev setup? See [Quick start](/start/quickstart).
+The one-click path installs or upgrades a compatible Codex CLI, enables the app-server runtime surface, prepares skills directories, validates health, installs the gateway service, and opens the Control UI.
+
+Need the full install and dev setup? See [Getting Started](/start/getting-started) and [Install](/install).
 
 ## Dashboard
 
-Open the browser Control UI after the Gateway starts.
+Open the browser Control UI after the gateway starts.
 
 - Local default: [http://127.0.0.1:18789/](http://127.0.0.1:18789/)
 - Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
@@ -131,8 +138,8 @@ Open the browser Control UI after the Gateway starts.
 
 Config lives at `~/.openclaw/openclaw.json`.
 
-- If you **do nothing**, OpenClaw uses the bundled Pi binary in RPC mode with per-sender sessions.
-- If you want to lock it down, start with `channels.whatsapp.allowFrom` and (for groups) mention rules.
+- If you do nothing, one-click setup writes a Codex-first local config with `gpt-5.4`, managed gateway auth, and a prepared workspace.
+- If you want to lock down inbound access, start with per-channel `allowFrom`, `dmPolicy`, and mention rules.
 
 Example:
 
@@ -155,13 +162,13 @@ Example:
     All docs and guides, organized by use case.
   </Card>
   <Card title="Configuration" href="/gateway/configuration" icon="settings">
-    Core Gateway settings, tokens, and provider config.
+    Core gateway settings, auth, sessions, sandboxing, and channels.
   </Card>
   <Card title="Remote access" href="/gateway/remote" icon="globe">
     SSH and tailnet access patterns.
   </Card>
   <Card title="Channels" href="/channels/telegram" icon="message-square">
-    Channel-specific setup for WhatsApp, Telegram, Discord, and more.
+    Channel-specific setup for WhatsApp, Telegram, Discord, Slack, and more.
   </Card>
   <Card title="Nodes" href="/nodes" icon="smartphone">
     iOS and Android nodes with pairing, Canvas, camera, and device actions.
@@ -174,17 +181,20 @@ Example:
 ## Learn more
 
 <Columns>
-  <Card title="Full feature list" href="/concepts/features" icon="list">
-    Complete channel, routing, and media capabilities.
+  <Card title="Architecture" href="/concepts/architecture" icon="blocks">
+    OpenClaw shell boundaries, Codex runtime boundary, and event flow.
+  </Card>
+  <Card title="Agent Runtime" href="/concepts/agent" icon="terminal">
+    Codex app-server methods, skills, approvals, and thread lifecycle.
   </Card>
   <Card title="Multi-agent routing" href="/concepts/multi-agent" icon="route">
     Workspace isolation and per-agent sessions.
   </Card>
   <Card title="Security" href="/gateway/security" icon="shield">
-    Tokens, allowlists, and safety controls.
+    Tokens, allowlists, approvals, and safety controls.
   </Card>
   <Card title="Troubleshooting" href="/gateway/troubleshooting" icon="wrench">
-    Gateway diagnostics and common errors.
+    Gateway diagnostics and common runtime errors.
   </Card>
   <Card title="About and credits" href="/reference/credits" icon="info">
     Project origins, contributors, and license.

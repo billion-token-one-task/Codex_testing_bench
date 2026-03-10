@@ -86,6 +86,7 @@ import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.t
 import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
+import { renderOperatorRequestPrompt } from "./views/operator-request.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
@@ -1117,6 +1118,7 @@ export function renderApp(state: AppViewState) {
         }
       </main>
       ${renderExecApprovalPrompt(state)}
+      ${renderOperatorRequestPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
     </div>
   `;

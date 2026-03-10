@@ -12,6 +12,14 @@ export const WizardStartParamsSchema = Type.Object(
   {
     mode: Type.Optional(Type.Union([Type.Literal("local"), Type.Literal("remote")])),
     workspace: Type.Optional(Type.String()),
+    oneClick: Type.Optional(Type.Boolean()),
+    authChoice: Type.Optional(
+      Type.Union([
+        Type.Literal("openai-codex"),
+        Type.Literal("openai-api-key"),
+        Type.Literal("skip"),
+      ]),
+    ),
   },
   { additionalProperties: false },
 );

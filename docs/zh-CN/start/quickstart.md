@@ -36,7 +36,7 @@ OpenClaw 需要 Node 22 或更新版本。
 <Steps>
   <Step title="新手引导并安装服务">
     ```bash
-    openclaw onboard --install-daemon
+    openclaw setup --one-click
     ```
   </Step>
   <Step title="配对 WhatsApp">
@@ -66,7 +66,7 @@ cd openclaw
 pnpm install
 pnpm ui:build # 首次运行时会自动安装 UI 依赖
 pnpm build
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 如果你还没有全局安装，可以在仓库目录中通过 `pnpm openclaw ...` 运行新手引导。

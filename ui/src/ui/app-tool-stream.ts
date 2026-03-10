@@ -171,6 +171,42 @@ function formatToolOutput(value: unknown): string | null {
   return `${truncated.text}\n\n… truncated (${truncated.total} chars, showing first ${truncated.text.length}).`;
 }
 
+function formatStructuredStreamOutput(value: unknown): string | null {
+  if (!value || typeof value !== "object") {
+    return formatToolOutput(value);
+  }
+  const record = value as Record<string, unknown>;
+  const payload = record.payload;
+  if (typeof record.delta === "string" && record.delta.trim()) {
+    return record.delta;
+  }
+  if (typeof record.message === "string" && record.message.trim()) {
+    return record.message;
+  }
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const payloadRecord = payload as Record<string, unknown>;
+    if (typeof payloadRecord.text === "string" && payloadRecord.text.trim()) {
+      return payloadRecord.text;
+    }
+    if (typeof payloadRecord.review === "string" && payloadRecord.review.trim()) {
+      return payloadRecord.review;
+    }
+  }
+  if (record.item && typeof record.item === "object" && !Array.isArray(record.item)) {
+    const item = record.item as Record<string, unknown>;
+    if (typeof item.text === "string" && item.text.trim()) {
+      return item.text;
+    }
+    if (typeof item.review === "string" && item.review.trim()) {
+      return item.review;
+    }
+    if (typeof item.aggregatedOutput === "string" && item.aggregatedOutput.trim()) {
+      return item.aggregatedOutput;
+    }
+  }
+  return formatToolOutput(value);
+}
+
 function buildToolStreamMessage(entry: ToolStreamEntry): Record<string, unknown> {
   const content: Array<Record<string, unknown>> = [];
   content.push({
@@ -405,7 +441,17 @@ export function handleAgentEvent(host: ToolStreamHost, payload?: AgentEventPaylo
     return;
   }
 
-  if (payload.stream !== "tool") {
+  const structuredToolLikeStreams = new Set([
+    "item",
+    "plan",
+    "reasoning",
+    "command",
+    "diff",
+    "approval",
+    "server_request",
+  ]);
+
+  if (payload.stream !== "tool" && !structuredToolLikeStreams.has(payload.stream)) {
     return;
   }
 
@@ -418,19 +464,42 @@ export function handleAgentEvent(host: ToolStreamHost, payload?: AgentEventPaylo
   }
 
   const data = payload.data ?? {};
-  const toolCallId = typeof data.toolCallId === "string" ? data.toolCallId : "";
+  const toolCallId =
+    typeof data.toolCallId === "string"
+      ? data.toolCallId
+      : typeof data.requestId === "number" || typeof data.requestId === "string"
+        ? `${payload.stream}:${String(data.requestId)}`
+        : typeof data.operatorRequestId === "string"
+          ? `${payload.stream}:${data.operatorRequestId}`
+          : payload.stream === "item" && typeof data.type === "string"
+            ? `${payload.stream}:${payload.runId}:${data.type}`
+            : structuredToolLikeStreams.has(payload.stream)
+              ? `${payload.stream}:${payload.runId}`
+              : "";
   if (!toolCallId) {
     return;
   }
-  const name = typeof data.name === "string" ? data.name : "tool";
-  const phase = typeof data.phase === "string" ? data.phase : "";
+  const name =
+    typeof data.name === "string"
+      ? data.name
+      : structuredToolLikeStreams.has(payload.stream)
+        ? payload.stream
+        : "tool";
+  const phase =
+    typeof data.phase === "string"
+      ? data.phase
+      : payload.stream === "tool"
+        ? ""
+        : "result";
   const args = phase === "start" ? data.args : undefined;
   const output =
-    phase === "update"
-      ? formatToolOutput(data.partialResult)
-      : phase === "result"
-        ? formatToolOutput(data.result)
-        : undefined;
+    payload.stream === "tool"
+      ? phase === "update"
+        ? formatToolOutput(data.partialResult)
+        : phase === "result"
+          ? formatToolOutput(data.result)
+          : undefined
+      : formatStructuredStreamOutput(data);
 
   const now = Date.now();
   let entry = host.toolStreamById.get(toolCallId);

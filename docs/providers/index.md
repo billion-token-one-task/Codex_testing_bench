@@ -15,7 +15,7 @@ Looking for chat channel docs (WhatsApp/Telegram/Discord/Slack/Mattermost (plugi
 
 ## Quick start
 
-1. Authenticate with the provider (usually via `openclaw onboard`).
+1. Authenticate with the provider (`openclaw setup --one-click` for the default local Codex path, or `openclaw onboard` for the manual wizard).
 2. Set the default model:
 
 ```json5

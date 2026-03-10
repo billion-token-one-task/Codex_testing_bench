@@ -1,7 +1,7 @@
 ---
-summary: "Overview of OpenClaw onboarding options and flows"
+summary: "Overview of setup paths: one-click local bootstrap first, manual wizard second."
 read_when:
-  - Choosing an onboarding path
+  - Choosing a setup path
   - Setting up a new environment
 title: "Onboarding Overview"
 sidebarTitle: "Onboarding Overview"
@@ -9,43 +9,54 @@ sidebarTitle: "Onboarding Overview"
 
 # Onboarding Overview
 
-OpenClaw supports multiple onboarding paths depending on where the Gateway runs
-and how you prefer to configure providers.
+OpenClaw now has two main setup paths:
 
-## Choose your onboarding path
+- **One-click local bootstrap** for most CodexPlusClaw installs
+- **Manual wizard** for remote or advanced setups
 
-- **CLI wizard** for macOS, Linux, and Windows (via WSL2).
-- **macOS app** for a guided first run on Apple silicon or Intel Macs.
+## Recommended path
 
-## CLI onboarding wizard
+Run:
 
-Run the wizard in a terminal:
+```bash
+openclaw setup --one-click
+```
+
+Use this when you want a working local OpenClaw + Codex stack with minimal ceremony.
+
+It handles:
+
+- compatible Codex installation or upgrade
+- Codex auth bootstrap
+- local gateway config
+- workspace and skills roots
+- daemon install
+- health checks and dashboard launch
+
+Docs:
+
+- [Getting Started](/start/getting-started)
+- [`openclaw setup`](/cli/setup)
+
+## Manual wizard
+
+Run:
 
 ```bash
 openclaw onboard
 ```
 
-Use the CLI wizard when you want full control of the Gateway, workspace,
-channels, and skills. Docs:
+Use the manual wizard when you want full control over remote mode, provider/auth details, or channel-by-channel guided setup.
+
+Docs:
 
 - [Onboarding Wizard (CLI)](/start/wizard)
 - [`openclaw onboard` command](/cli/onboard)
 
 ## macOS app onboarding
 
-Use the OpenClaw app when you want a fully guided setup on macOS. Docs:
+Use the OpenClaw app when you want a guided first run on macOS.
+
+Docs:
 
 - [Onboarding (macOS App)](/start/onboarding)
-
-## Custom Provider
-
-If you need an endpoint that is not listed, including hosted providers that
-expose standard OpenAI or Anthropic APIs, choose **Custom Provider** in the
-CLI wizard. You will be asked to:
-
-- Pick OpenAI-compatible, Anthropic-compatible, or **Unknown** (auto-detect).
-- Enter a base URL and API key (if required by the provider).
-- Provide a model ID and optional alias.
-- Choose an Endpoint ID so multiple custom endpoints can coexist.
-
-For detailed steps, follow the CLI onboarding docs above.

@@ -1,33 +1,34 @@
 ---
-summary: "End-to-end guide for running OpenClaw as a personal assistant with safety cautions"
+summary: "End-to-end guide for running OpenClaw as a personal assistant with Codex as the brain."
 read_when:
-  - Onboarding a new assistant instance
-  - Reviewing safety/permission implications
+  - Setting up a new personal assistant instance
+  - Reviewing safety and permission implications
 title: "Personal Assistant Setup"
 ---
 
 # Building a personal assistant with OpenClaw
 
-OpenClaw is a WhatsApp + Telegram + Discord + iMessage gateway for **Pi** agents. Plugins add Mattermost. This guide is the "personal assistant" setup: one dedicated WhatsApp number that behaves like your always-on agent.
+OpenClaw is a WhatsApp + Telegram + Discord + iMessage + Web gateway shell for **Codex-powered assistants**. This guide is the personal-assistant setup: one dedicated chat identity that behaves like your always-on local-first assistant, while OpenClaw owns the channels, UI, sessions, and approvals.
 
-## ⚠️ Safety first
+## Safety first
 
 You’re putting an agent in a position to:
 
-- run commands on your machine (depending on your Pi tool setup)
-- read/write files in your workspace
-- send messages back out via WhatsApp/Telegram/Discord/Mattermost (plugin)
+- run commands on your machine through Codex approvals and sandbox policies
+- read and write files in your workspace
+- send messages back out through WhatsApp, Telegram, Discord, Slack, and other connected channels
 
 Start conservative:
 
-- Always set `channels.whatsapp.allowFrom` (never run open-to-the-world on your personal Mac).
-- Use a dedicated WhatsApp number for the assistant.
-- Heartbeats now default to every 30 minutes. Disable until you trust the setup by setting `agents.defaults.heartbeat.every: "0m"`.
+- Always set `channels.whatsapp.allowFrom` or the equivalent DM policy on the channels you enable.
+- Use a dedicated WhatsApp number or bot identity for the assistant.
+- Leave heartbeat off until you trust the setup, or keep the default cadence conservative.
 
 ## Prerequisites
 
-- OpenClaw installed and onboarded — see [Getting Started](/start/getting-started) if you haven't done this yet
-- A second phone number (SIM/eSIM/prepaid) for the assistant
+- OpenClaw installed and bootstrapped
+- Preferred path: [Getting Started](/start/getting-started)
+- A second phone number or dedicated bot/account for the assistant, if you plan to use WhatsApp or similar personal channels
 
 ## The two-phone setup (recommended)
 
@@ -36,26 +37,26 @@ You want this:
 ```mermaid
 flowchart TB
     A["<b>Your Phone (personal)<br></b><br>Your WhatsApp<br>+1-555-YOU"] -- message --> B["<b>Second Phone (assistant)<br></b><br>Assistant WA<br>+1-555-ASSIST"]
-    B -- linked via QR --> C["<b>Your Mac (openclaw)<br></b><br>Pi agent"]
+    B -- linked via QR --> C["<b>Your Gateway Host<br></b><br>OpenClaw shell + Codex brain"]
 ```
 
-If you link your personal WhatsApp to OpenClaw, every message to you becomes “agent input”. That’s rarely what you want.
+If you link your personal WhatsApp to OpenClaw, every message to you becomes potential agent input. That is rarely what you want.
 
 ## 5-minute quick start
 
-1. Pair WhatsApp Web (shows QR; scan with the assistant phone):
+1. Run the local bootstrap:
+
+```bash
+openclaw setup --one-click
+```
+
+2. Pair WhatsApp Web if you want WhatsApp:
 
 ```bash
 openclaw channels login
 ```
 
-2. Start the Gateway (leave it running):
-
-```bash
-openclaw gateway --port 18789
-```
-
-3. Put a minimal config in `~/.openclaw/openclaw.json`:
+3. Put a minimal allowlist config in `~/.openclaw/openclaw.json`:
 
 ```json5
 {
@@ -63,65 +64,50 @@ openclaw gateway --port 18789
 }
 ```
 
-Now message the assistant number from your allowlisted phone.
+4. Open the dashboard:
 
-When onboarding finishes, we auto-open the dashboard and print a clean (non-tokenized) link. If it prompts for auth, paste the token from `gateway.auth.token` into Control UI settings. To reopen later: `openclaw dashboard`.
+```bash
+openclaw dashboard
+```
 
-## Give the agent a workspace (AGENTS)
+Now message the assistant account from your allowlisted phone.
 
-OpenClaw reads operating instructions and “memory” from its workspace directory.
+## Give the agent a workspace
 
-By default, OpenClaw uses `~/.openclaw/workspace` as the agent workspace, and will create it (plus starter `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `IDENTITY.md`, `USER.md`, `HEARTBEAT.md`) automatically on setup/first agent run. `BOOTSTRAP.md` is only created when the workspace is brand new (it should not come back after you delete it). `MEMORY.md` is optional (not auto-created); when present, it is loaded for normal sessions. Subagent sessions only inject `AGENTS.md` and `TOOLS.md`.
+OpenClaw reads operating instructions and memory from its workspace directory.
 
-Tip: treat this folder like OpenClaw’s “memory” and make it a git repo (ideally private) so your `AGENTS.md` + memory files are backed up. If git is installed, brand-new workspaces are auto-initialized.
+By default, OpenClaw uses `~/.openclaw/workspace` and will create it with starter files automatically on setup. Workspace skills now live primarily in `~/.openclaw/workspace/.agents/skills`, with the older `skills/` path kept only as a compatibility alias.
 
 ```bash
 openclaw setup
 ```
 
-Full workspace layout + backup guide: [Agent workspace](/concepts/agent-workspace)
+Full workspace layout: [Agent workspace](/concepts/agent-workspace)  
 Memory workflow: [Memory](/concepts/memory)
 
-Optional: choose a different workspace with `agents.defaults.workspace` (supports `~`).
+## The config that turns it into an assistant
 
-```json5
-{
-  agent: {
-    workspace: "~/.openclaw/workspace",
-  },
-}
-```
+OpenClaw defaults to a good CodexPlusClaw local setup, but you will usually want to tune:
 
-If you already ship your own workspace files from a repo, you can disable bootstrap file creation entirely:
-
-```json5
-{
-  agent: {
-    skipBootstrap: true,
-  },
-}
-```
-
-## The config that turns it into “an assistant”
-
-OpenClaw defaults to a good assistant setup, but you’ll usually want to tune:
-
-- persona/instructions in `SOUL.md`
-- thinking defaults (if desired)
-- heartbeats (once you trust it)
+- persona and rules in `SOUL.md` / `AGENTS.md`
+- per-channel access rules
+- heartbeat and automation behavior
 
 Example:
 
 ```json5
 {
   logging: { level: "info" },
-  agent: {
-    model: "anthropic/claude-opus-4-6",
-    workspace: "~/.openclaw/workspace",
-    thinkingDefault: "high",
-    timeoutSeconds: 1800,
-    // Start with 0; enable later.
-    heartbeat: { every: "0m" },
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace",
+      codex: {
+        defaultModel: "gpt-5.4",
+        sandbox: "workspace-write",
+        approvalPolicy: "on-request",
+      },
+      heartbeat: { every: "0m" },
+    },
   },
   channels: {
     whatsapp: {
@@ -137,8 +123,7 @@ Example:
     },
   },
   session: {
-    scope: "per-sender",
-    resetTriggers: ["/new", "/reset"],
+    dmScope: "per-channel-peer",
     reset: {
       mode: "daily",
       atHour: 4,
@@ -150,65 +135,42 @@ Example:
 
 ## Sessions and memory
 
-- Session files: `~/.openclaw/agents/<agentId>/sessions/{{SessionId}}.jsonl`
-- Session metadata (token usage, last route, etc): `~/.openclaw/agents/<agentId>/sessions/sessions.json` (legacy: `~/.openclaw/sessions/sessions.json`)
-- `/new` or `/reset` starts a fresh session for that chat (configurable via `resetTriggers`). If sent alone, the agent replies with a short hello to confirm the reset.
-- `/compact [instructions]` compacts the session context and reports the remaining context budget.
+- Session metadata: `~/.openclaw/agents/<agentId>/sessions/sessions.json`
+- OpenClaw projections and cached transcript artifacts: `~/.openclaw/agents/<agentId>/sessions/`
+- Codex thread state is the canonical conversation history for Codex-backed sessions
+- `/new` or `/reset` starts a fresh session for that chat
+- `/compact` requests Codex thread compaction for Codex-backed sessions
 
-## Heartbeats (proactive mode)
+## Heartbeats
 
-By default, OpenClaw runs a heartbeat every 30 minutes with the prompt:
-`Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.`
-Set `agents.defaults.heartbeat.every: "0m"` to disable.
-
-- If `HEARTBEAT.md` exists but is effectively empty (only blank lines and markdown headers like `# Heading`), OpenClaw skips the heartbeat run to save API calls.
-- If the file is missing, the heartbeat still runs and the model decides what to do.
-- If the agent replies with `HEARTBEAT_OK` (optionally with short padding; see `agents.defaults.heartbeat.ackMaxChars`), OpenClaw suppresses outbound delivery for that heartbeat.
-- By default, heartbeat delivery to DM-style `user:<id>` targets is allowed. Set `agents.defaults.heartbeat.directPolicy: "block"` to suppress direct-target delivery while keeping heartbeat runs active.
-- Heartbeats run full agent turns — shorter intervals burn more tokens.
+Heartbeats run full agent turns. Keep them conservative until you trust the assistant’s behavior.
 
 ```json5
 {
-  agent: {
-    heartbeat: { every: "30m" },
+  agents: {
+    defaults: {
+      heartbeat: { every: "30m" },
+    },
   },
 }
 ```
 
-## Media in and out
-
-Inbound attachments (images/audio/docs) can be surfaced to your command via templates:
-
-- `{{MediaPath}}` (local temp file path)
-- `{{MediaUrl}}` (pseudo-URL)
-- `{{Transcript}}` (if audio transcription is enabled)
-
-Outbound attachments from the agent: include `MEDIA:<path-or-url>` on its own line (no spaces). Example:
-
-```
-Here’s the screenshot.
-MEDIA:https://example.com/screenshot.png
-```
-
-OpenClaw extracts these and sends them as media alongside the text.
-
 ## Operations checklist
 
 ```bash
-openclaw status          # local status (creds, sessions, queued events)
-openclaw status --all    # full diagnosis (read-only, pasteable)
-openclaw status --deep   # adds gateway health probes (Telegram + Discord)
-openclaw health --json   # gateway health snapshot (WS)
+openclaw status
+openclaw status --all
+openclaw status --deep
+openclaw health --json
+openclaw logs --follow
 ```
-
-Logs live under `/tmp/openclaw/` (default: `openclaw-YYYY-MM-DD.log`).
 
 ## Next steps
 
 - WebChat: [WebChat](/web/webchat)
-- Gateway ops: [Gateway runbook](/gateway)
+- Gateway ops: [Gateway](/gateway)
 - Cron + wakeups: [Cron jobs](/automation/cron-jobs)
-- macOS menu bar companion: [OpenClaw macOS app](/platforms/macos)
+- macOS companion: [OpenClaw macOS app](/platforms/macos)
 - iOS node app: [iOS app](/platforms/ios)
 - Android node app: [Android app](/platforms/android)
 - Windows status: [Windows (WSL2)](/platforms/windows)

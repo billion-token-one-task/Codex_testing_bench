@@ -24,7 +24,7 @@ On Windows, we strongly recommend running OpenClaw under [WSL2](https://learn.mi
 ## Install methods
 
 <Tip>
-The **installer script** is the recommended way to install OpenClaw. It handles Node detection, installation, and onboarding in one step.
+The **installer script** is the recommended way to install OpenClaw. On the happy path it handles Node detection, installation, and then launches `openclaw setup --one-click`.
 </Tip>
 
 <Warning>
@@ -33,7 +33,7 @@ For VPS/cloud hosts, avoid third-party "1-click" marketplace images when possibl
 
 <AccordionGroup>
   <Accordion title="Installer script" icon="rocket" defaultOpen>
-    Downloads the CLI, installs it globally via npm, and launches the onboarding wizard.
+    Downloads the CLI, installs it globally via npm, and launches the one-click bootstrap.
 
     <Tabs>
       <Tab title="macOS / Linux / WSL2">
@@ -48,9 +48,9 @@ For VPS/cloud hosts, avoid third-party "1-click" marketplace images when possibl
       </Tab>
     </Tabs>
 
-    That's it — the script handles Node detection, installation, and onboarding.
+    That's it — the script handles Node detection, installation, and one-click setup.
 
-    To skip onboarding and just install the binary:
+    To skip setup and just install the binary:
 
     <Tabs>
       <Tab title="macOS / Linux / WSL2">
@@ -76,7 +76,7 @@ For VPS/cloud hosts, avoid third-party "1-click" marketplace images when possibl
       <Tab title="npm">
         ```bash
         npm install -g openclaw@latest
-        openclaw onboard --install-daemon
+        openclaw setup --one-click
         ```
 
         <Accordion title="sharp build errors?">
@@ -93,7 +93,7 @@ For VPS/cloud hosts, avoid third-party "1-click" marketplace images when possibl
         ```bash
         pnpm add -g openclaw@latest
         pnpm approve-builds -g        # approve openclaw, node-llama-cpp, sharp, etc.
-        openclaw onboard --install-daemon
+        openclaw setup --one-click
         ```
 
         <Note>
@@ -128,9 +128,9 @@ For VPS/cloud hosts, avoid third-party "1-click" marketplace images when possibl
 
         Alternatively, skip the link and run commands via `pnpm openclaw ...` from inside the repo.
       </Step>
-      <Step title="Run onboarding">
+      <Step title="Run setup">
         ```bash
-        openclaw onboard --install-daemon
+        openclaw setup --one-click
         ```
       </Step>
     </Steps>

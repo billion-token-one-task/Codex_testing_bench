@@ -133,7 +133,11 @@ Default file:
 
 `~/.openclaw/logs/raw-stream.jsonl`
 
-## Raw chunk logging (pi-mono)
+## Raw chunk logging (legacy pi-mono path)
+
+This section is only relevant when debugging older legacy processes that still
+emit pi-mono raw stream logs. It is **not** the normal CodexPlusClaw runtime
+path.
 
 To capture **raw OpenAI-compat chunks** before they are parsed into blocks,
 pi-mono exposes a separate logger:

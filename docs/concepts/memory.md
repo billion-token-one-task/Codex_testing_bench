@@ -542,7 +542,7 @@ With the default half-life of 30 days:
 - These contain durable reference information that should always rank normally.
 
 **Dated daily files** (`memory/YYYY-MM-DD.md`) use the date extracted from the filename.
-Other sources (e.g., session transcripts) fall back to file modification time (`mtime`).
+Other sources (for example local session artifacts or compatibility transcript files) fall back to file modification time (`mtime`).
 
 **Example — query: "what's Rod's work schedule?"**
 
@@ -615,7 +615,7 @@ You can enable either feature independently:
 
 ### Embedding cache
 
-OpenClaw can cache **chunk embeddings** in SQLite so reindexing and frequent updates (especially session transcripts) don't re-embed unchanged text.
+OpenClaw can cache **chunk embeddings** in SQLite so reindexing and frequent updates (especially local session artifacts and cached history projections) don't re-embed unchanged text.
 
 Config:
 
@@ -634,7 +634,7 @@ agents: {
 
 ### Session memory search (experimental)
 
-You can optionally index **session transcripts** and surface them via `memory_search`.
+You can optionally index **session history artifacts** and surface them via `memory_search`.
 This is gated behind an experimental flag.
 
 ```json5

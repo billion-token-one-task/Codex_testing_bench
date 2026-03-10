@@ -7,6 +7,11 @@ import { resolveHeartbeatPrompt } from "../auto-reply/heartbeat.js";
 import type { ThinkLevel, VerboseLevel } from "../auto-reply/thinking.js";
 import type { OpenClawConfig } from "../config/config.js";
 import type { SessionSystemPromptReport } from "../config/sessions/types.js";
+import {
+  DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS,
+  type OperatorRequestKind,
+} from "../gateway/operator-request-manager.js";
+import { requestOperatorResolution } from "../gateway/operator-request-runtime.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveSessionAgentIds } from "./agent-scope.js";
@@ -86,6 +91,7 @@ type CodexToolCallParams = {
 type CodexEngineConfig = {
   command: string;
   args: string[];
+  env?: Record<string, string>;
   defaultModel: string;
   modelProvider: string;
   approvalPolicy: "untrusted" | "on-failure" | "on-request" | "never";
@@ -205,12 +211,21 @@ function toJsonError(method: string, error: unknown): Error {
 
 function normalizeCodexConfig(cfg?: OpenClawConfig): CodexEngineConfig {
   const configured = cfg?.agents?.defaults?.codex;
+  const backendEnv = cfg?.agents?.defaults?.cliBackends?.codex?.env;
   const rawArgs = Array.isArray(configured?.args) ? configured.args.filter(Boolean) : [];
   const args =
     rawArgs.length > 0 ? rawArgs : ["app-server", "--listen", configured?.listen ?? "stdio://"];
   return {
     command: configured?.command?.trim() || "codex",
     args,
+    env:
+      backendEnv && typeof backendEnv === "object"
+        ? Object.fromEntries(
+            Object.entries(backendEnv)
+              .filter(([, value]) => typeof value === "string" && value.length > 0)
+              .map(([key, value]) => [key, value]),
+          )
+        : undefined,
     defaultModel: configured?.defaultModel?.trim() || "gpt-5.4",
     modelProvider: configured?.provider?.trim() || "openai",
     approvalPolicy: configured?.approvalPolicy ?? "never",
@@ -312,7 +327,10 @@ class CodexEngine {
     this.child = spawn(runtime.command, runtime.args, {
       cwd: workspaceDir,
       stdio: ["pipe", "pipe", "pipe"],
-      env: process.env,
+      env: {
+        ...process.env,
+        ...(runtime.env ?? {}),
+      },
     });
     this.lineReader = readline.createInterface({ input: this.child.stdout });
     this.lineReader.on("line", (line) => {
@@ -496,6 +514,45 @@ function extractTurnStatus(payload: unknown): string | undefined {
   return asString(turn.status);
 }
 
+function extractItemRecord(payload: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+  return isRecord(payload.item) ? payload.item : payload;
+}
+
+export function buildCodexCompactionEvent(
+  method: string,
+  payload: unknown,
+): Record<string, unknown> | null {
+  const payloadRecord = isRecord(payload) ? payload : {};
+  const topLevelThreadId = asString(payloadRecord.threadId);
+  const topLevelTurnId = asString(payloadRecord.turnId);
+  if (method === "context/compacted") {
+    const data = payloadRecord;
+    return {
+      phase: "end",
+      threadId: topLevelThreadId ?? extractThreadId(payload),
+      previousTokens: typeof data.previousTokens === "number" ? data.previousTokens : undefined,
+      newTokens: typeof data.newTokens === "number" ? data.newTokens : undefined,
+    };
+  }
+  if (method !== "item/started" && method !== "item/completed") {
+    return null;
+  }
+  const item = extractItemRecord(payload);
+  if (asString(item?.type) !== "contextCompaction") {
+    return null;
+  }
+  return {
+    phase: method === "item/started" ? "start" : "end",
+    threadId: topLevelThreadId ?? extractThreadId(payload),
+    turnId: topLevelTurnId ?? extractTurnId(payload),
+    itemId: asString(item?.id),
+    itemType: "contextCompaction",
+  };
+}
+
 function isNotFoundError(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return message.includes("not found") || message.includes("unknown thread");
@@ -551,6 +608,68 @@ function buildUnsupportedServerRequestResponse(method: CodexServerRequestMethod)
   }
 }
 
+function resolveOperatorRequestKind(method: CodexServerRequestMethod): OperatorRequestKind | null {
+  switch (method) {
+    case "item/commandExecution/requestApproval":
+      return "codex_command_approval";
+    case "item/fileChange/requestApproval":
+      return "codex_file_change_approval";
+    case "item/permissions/requestApproval":
+      return "codex_permissions_approval";
+    case "item/tool/requestUserInput":
+      return "codex_tool_input";
+    case "mcpServer/elicitation/request":
+      return "codex_mcp_elicitation";
+    case "item/tool/call":
+      return null;
+  }
+}
+
+function normalizeInteractiveServerRequestResponse(
+  method: CodexServerRequestMethod,
+  resolution: unknown,
+): unknown {
+  switch (method) {
+    case "item/commandExecution/requestApproval":
+      if (isRecord(resolution) && "decision" in resolution) {
+        return resolution;
+      }
+      if (typeof resolution === "string" || isRecord(resolution)) {
+        return { decision: resolution };
+      }
+      return buildUnsupportedServerRequestResponse(method);
+    case "item/fileChange/requestApproval":
+      if (isRecord(resolution) && "decision" in resolution) {
+        return resolution;
+      }
+      if (typeof resolution === "string") {
+        return { decision: resolution };
+      }
+      return buildUnsupportedServerRequestResponse(method);
+    case "item/permissions/requestApproval":
+      if (isRecord(resolution) && "permissions" in resolution && "scope" in resolution) {
+        return resolution;
+      }
+      return buildUnsupportedServerRequestResponse(method);
+    case "item/tool/requestUserInput":
+      if (isRecord(resolution) && "answers" in resolution) {
+        return resolution;
+      }
+      return buildUnsupportedServerRequestResponse(method);
+    case "mcpServer/elicitation/request":
+      if (isRecord(resolution) && "action" in resolution) {
+        return {
+          ...resolution,
+          content: "content" in resolution ? resolution.content : null,
+          _meta: "_meta" in resolution ? resolution._meta : null,
+        };
+      }
+      return buildUnsupportedServerRequestResponse(method);
+    case "item/tool/call":
+      return resolution;
+  }
+}
+
 export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedPiRunResult> {
   const started = Date.now();
   const runtime = normalizeCodexConfig(params.config);
@@ -587,23 +706,53 @@ export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedP
   );
   const { specs: dynamicTools, byName: toolsByName } = buildDynamicTools(tools);
 
-  const respondUnsupportedServerRequest = async (
+  const resolveInteractiveServerRequest = async (
     method: CodexServerRequestMethod,
     requestId: JsonRpcId,
     requestPayload: unknown,
   ) => {
+    const payload = isRecord(requestPayload)
+      ? { ...requestPayload, requestId: String(requestId) }
+      : { requestId: String(requestId) };
+    const kind = resolveOperatorRequestKind(method);
     emitCodexAgentEvent(params, {
       stream: method.includes("Approval") ? "approval" : "server_request",
       data: {
+        phase: "requested",
         type: method,
         requestId,
-        autoResolved: true,
-        resolution: "decline",
-        message: unsupportedServerRequestMessage(method),
-        payload: isRecord(requestPayload) ? requestPayload : undefined,
+        payload,
       },
     });
-    codex.respondResult(requestId, buildUnsupportedServerRequestResponse(method));
+    const interactive =
+      kind === null
+        ? null
+        : await requestOperatorResolution({
+            kind,
+            method,
+            payload,
+            sessionKey: params.sessionKey ?? null,
+            runId: params.runId,
+            timeoutMs: DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS,
+          });
+    const normalizedResponse = interactive
+      ? normalizeInteractiveServerRequestResponse(method, interactive.resolution)
+      : buildUnsupportedServerRequestResponse(method);
+    emitCodexAgentEvent(params, {
+      stream: method.includes("Approval") ? "approval" : "server_request",
+      data: {
+        phase: "resolved",
+        type: method,
+        requestId,
+        operatorRequestId: interactive?.record.id,
+        autoResolved: !interactive || interactive.resolution == null,
+        resolution: interactive?.resolution ?? normalizedResponse,
+        message:
+          interactive?.resolution == null ? unsupportedServerRequestMessage(method) : undefined,
+        payload,
+      },
+    });
+    codex.respondResult(requestId, normalizedResponse);
   };
 
   codex.onRequest("item/tool/call", async (request) => {
@@ -677,19 +826,27 @@ export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedP
     }
   });
   codex.onRequest("item/commandExecution/requestApproval", async (request) => {
-    await respondUnsupportedServerRequest("item/commandExecution/requestApproval", request.id, request.params);
+    await resolveInteractiveServerRequest(
+      "item/commandExecution/requestApproval",
+      request.id,
+      request.params,
+    );
   });
   codex.onRequest("item/fileChange/requestApproval", async (request) => {
-    await respondUnsupportedServerRequest("item/fileChange/requestApproval", request.id, request.params);
+    await resolveInteractiveServerRequest("item/fileChange/requestApproval", request.id, request.params);
   });
   codex.onRequest("item/permissions/requestApproval", async (request) => {
-    await respondUnsupportedServerRequest("item/permissions/requestApproval", request.id, request.params);
+    await resolveInteractiveServerRequest(
+      "item/permissions/requestApproval",
+      request.id,
+      request.params,
+    );
   });
   codex.onRequest("item/tool/requestUserInput", async (request) => {
-    await respondUnsupportedServerRequest("item/tool/requestUserInput", request.id, request.params);
+    await resolveInteractiveServerRequest("item/tool/requestUserInput", request.id, request.params);
   });
   codex.onRequest("mcpServer/elicitation/request", async (request) => {
-    await respondUnsupportedServerRequest("mcpServer/elicitation/request", request.id, request.params);
+    await resolveInteractiveServerRequest("mcpServer/elicitation/request", request.id, request.params);
   });
 
   const handleNotification = (method: string, stream: string, extra?: (params: unknown) => Record<string, unknown>) => {
@@ -721,6 +878,15 @@ export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedP
   handleNotification("turn/plan/updated", "plan", (payload) => ({
     payload: isRecord(payload) ? payload : {},
   }));
+  handleNotification("model/rerouted", "lifecycle", (payload) => ({
+    payload: isRecord(payload) ? payload : {},
+  }));
+  handleNotification("configWarning", "lifecycle", (payload) => ({
+    payload: isRecord(payload) ? payload : {},
+  }));
+  handleNotification("deprecationNotice", "lifecycle", (payload) => ({
+    payload: isRecord(payload) ? payload : {},
+  }));
   handleNotification("item/plan/delta", "plan", (payload) => ({
     payload: isRecord(payload) ? payload : {},
   }));
@@ -748,12 +914,45 @@ export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedP
   handleNotification("item/fileChange/outputDelta", "diff", (payload) => ({
     payload: isRecord(payload) ? payload : {},
   }));
+  handleNotification("skills/changed", "lifecycle", (payload) => ({
+    payload: isRecord(payload) ? payload : {},
+  }));
   handleNotification("serverRequest/resolved", "approval", (payload) => ({
     payload: isRecord(payload) ? payload : {},
   }));
   handleNotification("error", "error", (payload) => ({
     payload: isRecord(payload) ? payload : {},
   }));
+  codex.onNotification("item/started", (payload) => {
+    const compaction = buildCodexCompactionEvent("item/started", payload);
+    if (!compaction) {
+      return;
+    }
+    emitCodexAgentEvent(params, {
+      stream: "compaction",
+      data: compaction,
+    });
+  });
+  codex.onNotification("item/completed", (payload) => {
+    const compaction = buildCodexCompactionEvent("item/completed", payload);
+    if (!compaction) {
+      return;
+    }
+    emitCodexAgentEvent(params, {
+      stream: "compaction",
+      data: compaction,
+    });
+  });
+  codex.onNotification("context/compacted", (payload) => {
+    const compaction = buildCodexCompactionEvent("context/compacted", payload);
+    if (!compaction) {
+      return;
+    }
+    emitCodexAgentEvent(params, {
+      stream: "compaction",
+      data: compaction,
+    });
+  });
   codex.onNotification("item/agentMessage/delta", (payload) => {
     const delta = isRecord(payload) ? asString(payload.delta) ?? "" : "";
     if (!delta) {
@@ -772,6 +971,10 @@ export async function runCodexAgent(params: CodexAgentParams): Promise<EmbeddedP
 
   try {
     await codex.initialize();
+    await codex.request("skills/list", {
+      cwd: params.workspaceDir,
+      forceReload: false,
+    });
 
     const bootstrapMaxChars = resolveBootstrapMaxChars(params.config);
     const bootstrapTotalMaxChars = resolveBootstrapTotalMaxChars(params.config);

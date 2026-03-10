@@ -26,6 +26,13 @@ import {
   parseExecApprovalResolved,
   removeExecApproval,
 } from "./controllers/exec-approval.ts";
+import {
+  addOperatorRequest,
+  buildDefaultOperatorResolutionDraft,
+  parseOperatorRequest,
+  removeOperatorRequest,
+  type OperatorRequest,
+} from "./controllers/operator-request.ts";
 import { loadNodes } from "./controllers/nodes.ts";
 import { loadSessions } from "./controllers/sessions.ts";
 import {
@@ -94,6 +101,9 @@ type GatewayHost = {
   refreshSessionsAfterChat: Set<string>;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
+  operatorRequestQueue: OperatorRequest[];
+  operatorRequestError: string | null;
+  operatorRequestDraft: string;
   updateAvailable: UpdateAvailable | null;
 };
 
@@ -190,6 +200,9 @@ export function connectGateway(host: GatewayHost) {
   host.connected = false;
   host.execApprovalQueue = [];
   host.execApprovalError = null;
+  host.operatorRequestQueue = [];
+  host.operatorRequestError = null;
+  host.operatorRequestDraft = "";
 
   const previousClient = host.client;
   const clientVersion = resolveControlUiClientVersion({
@@ -392,6 +405,44 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     const resolved = parseExecApprovalResolved(evt.payload);
     if (resolved) {
       host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
+    }
+    return;
+  }
+
+  if (evt.event === "operator.requested") {
+    const entry = parseOperatorRequest(evt.payload);
+    if (entry) {
+      host.operatorRequestQueue = addOperatorRequest(host.operatorRequestQueue, entry);
+      host.operatorRequestError = null;
+      if (host.operatorRequestQueue[0]?.id === entry.id && !host.operatorRequestDraft.trim()) {
+        host.operatorRequestDraft = buildDefaultOperatorResolutionDraft(entry);
+      }
+      const delay = Math.max(0, entry.expiresAtMs - Date.now() + 500);
+      window.setTimeout(() => {
+        const wasActive = host.operatorRequestQueue[0]?.id === entry.id;
+        host.operatorRequestQueue = removeOperatorRequest(host.operatorRequestQueue, entry.id);
+        if (wasActive) {
+          host.operatorRequestDraft =
+            host.operatorRequestQueue.length > 0
+              ? buildDefaultOperatorResolutionDraft(host.operatorRequestQueue[0]!)
+              : "";
+        }
+      }, delay);
+    }
+    return;
+  }
+
+  if (evt.event === "operator.resolved") {
+    const resolved = parseOperatorRequest(evt.payload);
+    if (resolved) {
+      const wasActive = host.operatorRequestQueue[0]?.id === resolved.id;
+      host.operatorRequestQueue = removeOperatorRequest(host.operatorRequestQueue, resolved.id);
+      if (wasActive) {
+        host.operatorRequestDraft =
+          host.operatorRequestQueue.length > 0
+            ? buildDefaultOperatorResolutionDraft(host.operatorRequestQueue[0]!)
+            : "";
+      }
     }
     return;
   }

@@ -11,6 +11,9 @@ title: "Anthropic"
 Anthropic builds the **Claude** model family and provides access via an API.
 In OpenClaw you can authenticate with an API key or a **setup-token**.
 
+For the default local CodexPlusClaw path, prefer `openclaw setup --one-click`
+unless you explicitly want Anthropic as your manual provider choice.
+
 ## Option A: Anthropic API key
 
 **Best for:** standard API access and usage-based billing.

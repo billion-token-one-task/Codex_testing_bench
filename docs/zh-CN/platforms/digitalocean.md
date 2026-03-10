@@ -83,7 +83,7 @@ openclaw --version
 ## 4) 运行新手引导
 
 ```bash
-openclaw onboard --install-daemon
+openclaw setup --one-click
 ```
 
 向导将引导你完成：

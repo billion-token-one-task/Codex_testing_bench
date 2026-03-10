@@ -721,7 +721,9 @@ export async function syncSkillsToWorkspace(params: {
   }
 
   await serializeByKey(`syncSkills:${targetDir}`, async () => {
-    const targetSkillsDir = path.join(targetDir, "skills");
+    const targetAgentsDir = path.join(targetDir, ".agents");
+    const targetSkillsDir = path.join(targetAgentsDir, "skills");
+    const legacySkillsDir = path.join(targetDir, "skills");
 
     const entries = loadSkillEntries(sourceDir, {
       config: params.config,
@@ -729,7 +731,9 @@ export async function syncSkillsToWorkspace(params: {
       bundledSkillsDir: params.bundledSkillsDir,
     });
 
+    await fsp.rm(legacySkillsDir, { recursive: true, force: true });
     await fsp.rm(targetSkillsDir, { recursive: true, force: true });
+    await fsp.mkdir(targetAgentsDir, { recursive: true });
     await fsp.mkdir(targetSkillsDir, { recursive: true });
 
     const usedDirNames = new Set<string>();
@@ -761,6 +765,17 @@ export async function syncSkillsToWorkspace(params: {
         const message = error instanceof Error ? error.message : JSON.stringify(error);
         skillsLogger.warn(`Failed to copy ${entry.skill.name} to sandbox: ${message}`);
       }
+    }
+
+    try {
+      await fsp.symlink(path.relative(targetDir, targetSkillsDir), legacySkillsDir, "dir");
+    } catch {
+      await fsp.rm(legacySkillsDir, { recursive: true, force: true });
+      await fsp.mkdir(legacySkillsDir, { recursive: true });
+      await fsp.cp(targetSkillsDir, legacySkillsDir, {
+        recursive: true,
+        force: true,
+      });
     }
   });
 }

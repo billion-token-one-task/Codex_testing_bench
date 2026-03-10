@@ -147,7 +147,7 @@ Details: [Slash commands](/tools/slash-commands).
 
 What persists across messages depends on the mechanism:
 
-- **Normal history** persists in the session transcript until compacted/pruned by policy.
+- **Normal history** persists in the canonical history for the active runtime. For Codex-backed sessions, that means Codex thread history plus the gateway projection.
 - **Compaction** persists a summary into the transcript and keeps recent messages intact.
 - **Pruning** removes old tool results from the _in-memory_ prompt for a run, but does not rewrite the transcript.
 

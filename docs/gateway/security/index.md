@@ -353,8 +353,8 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
 ## Local session logs live on disk
 
-OpenClaw stores session transcripts on disk under `~/.openclaw/agents/<agentId>/sessions/*.jsonl`.
-This is required for session continuity and (optionally) session memory indexing, but it also means
+OpenClaw stores local session metadata and cached history artifacts under `~/.openclaw/agents/<agentId>/sessions/`.
+Compatibility transcript artifacts may still exist on disk. This is required for shell continuity and (optionally) session memory indexing, but it also means
 **any process/user with filesystem access can read those logs**. Treat disk access as the trust
 boundary and lock down permissions on `~/.openclaw` (see the audit section below). If you need
 stronger isolation between agents, run them under separate OS users or separate hosts.
@@ -730,7 +730,7 @@ In minimal mode, the Gateway still broadcasts enough for device discovery (`role
 Gateway auth is **required by default**. If no token/password is configured,
 the Gateway refuses WebSocket connections (fail‑closed).
 
-The onboarding wizard generates a token by default (even for loopback) so
+One-click setup and the onboarding wizard generate a token by default (even for loopback) so
 local clients must authenticate.
 
 Set a token so **all** WS clients must authenticate:
@@ -833,7 +833,7 @@ Assume anything under `~/.openclaw/` (or `$OPENCLAW_STATE_DIR/`) may contain sec
 - `agents/<agentId>/agent/auth-profiles.json`: API keys, token profiles, OAuth tokens, and optional `keyRef`/`tokenRef`.
 - `secrets.json` (optional): file-backed secret payload used by `file` SecretRef providers (`secrets.providers`).
 - `agents/<agentId>/agent/auth.json`: legacy compatibility file. Static `api_key` entries are scrubbed when discovered.
-- `agents/<agentId>/sessions/**`: session transcripts (`*.jsonl`) + routing metadata (`sessions.json`) that can contain private messages and tool output.
+- `agents/<agentId>/sessions/**`: routing metadata (`sessions.json`) plus cached session projections or compatibility transcript artifacts that can contain private messages and tool output.
 - `extensions/**`: installed plugins (plus their `node_modules/`).
 - `sandboxes/**`: tool sandbox workspaces; can accumulate copies of files you read/write inside the sandbox.
 
@@ -855,7 +855,7 @@ Recommendations:
 - Keep tool summary redaction on (`logging.redactSensitive: "tools"`; default).
 - Add custom patterns for your environment via `logging.redactPatterns` (tokens, hostnames, internal URLs).
 - When sharing diagnostics, prefer `openclaw status --all` (pasteable, secrets redacted) over raw logs.
-- Prune old session transcripts and log files if you don’t need long retention.
+- Prune old session artifacts and log files if you don’t need long retention.
 
 Details: [Logging](/gateway/logging)
 
@@ -1152,7 +1152,7 @@ If your AI does something bad:
 ### Collect for a report
 
 - Timestamp, gateway host OS + OpenClaw version
-- The session transcript(s) + a short log tail (after redacting)
+- The relevant session artifacts and a short log tail (after redacting)
 - What the attacker sent + what the agent did
 - Whether the Gateway was exposed beyond loopback (LAN/Tailscale Funnel/Serve)
 

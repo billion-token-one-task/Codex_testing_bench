@@ -168,6 +168,10 @@ import {
   NodePairVerifyParamsSchema,
   type NodeRenameParams,
   NodeRenameParamsSchema,
+  type OperatorRequestResolveParams,
+  OperatorRequestResolveParamsSchema,
+  type OperatorRequestWaitParams,
+  OperatorRequestWaitParamsSchema,
   type PollParams,
   PollParamsSchema,
   PROTOCOL_VERSION,
@@ -294,6 +298,12 @@ export const validateNodePairVerifyParams = ajv.compile<NodePairVerifyParams>(
   NodePairVerifyParamsSchema,
 );
 export const validateNodeRenameParams = ajv.compile<NodeRenameParams>(NodeRenameParamsSchema);
+export const validateOperatorRequestWaitParams = ajv.compile<OperatorRequestWaitParams>(
+  OperatorRequestWaitParamsSchema,
+);
+export const validateOperatorRequestResolveParams = ajv.compile<OperatorRequestResolveParams>(
+  OperatorRequestResolveParamsSchema,
+);
 export const validateNodeListParams = ajv.compile<NodeListParams>(NodeListParamsSchema);
 export const validateNodePendingAckParams = ajv.compile<NodePendingAckParams>(
   NodePendingAckParamsSchema,

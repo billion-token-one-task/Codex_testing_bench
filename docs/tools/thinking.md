@@ -1,5 +1,5 @@
 ---
-summary: "Directive syntax for /think + /verbose and how they affect model reasoning"
+summary: "Directive syntax for /think, /verbose, and /reasoning in CodexPlusClaw."
 read_when:
   - Adjusting thinking or verbose directive parsing or defaults
 title: "Thinking Levels"
@@ -11,68 +11,50 @@ title: "Thinking Levels"
 
 - Inline directive in any inbound body: `/t <level>`, `/think:<level>`, or `/thinking <level>`.
 - Levels (aliases): `off | minimal | low | medium | high | xhigh | adaptive`
-  - minimal → “think”
-  - low → “think hard”
-  - medium → “think harder”
-  - high → “ultrathink” (max budget)
-  - xhigh → “ultrathink+” (GPT-5.2 + Codex models only)
-  - adaptive → provider-managed adaptive reasoning budget (supported for Anthropic Claude 4.6 model family)
-  - `x-high`, `x_high`, `extra-high`, `extra high`, and `extra_high` map to `xhigh`.
-  - `highest`, `max` map to `high`.
-- Provider notes:
-  - Anthropic Claude 4.6 models default to `adaptive` when no explicit thinking level is set.
-  - Z.AI (`zai/*`) only supports binary thinking (`on`/`off`). Any non-`off` level is treated as `on` (mapped to `low`).
-  - Moonshot (`moonshot/*`) maps `/think off` to `thinking: { type: "disabled" }` and any non-`off` level to `thinking: { type: "enabled" }`. When thinking is enabled, Moonshot only accepts `tool_choice` `auto|none`; OpenClaw normalizes incompatible values to `auto`.
+  - minimal -> `think`
+  - low -> `think hard`
+  - medium -> `think harder`
+  - high -> `ultrathink`
+  - xhigh -> `ultrathink+`
+  - adaptive -> provider-managed adaptive reasoning budget when supported
 
 ## Resolution order
 
-1. Inline directive on the message (applies only to that message).
-2. Session override (set by sending a directive-only message).
-3. Global default (`agents.defaults.thinkingDefault` in config).
-4. Fallback: `adaptive` for Anthropic Claude 4.6 models, `low` for other reasoning-capable models, `off` otherwise.
+1. Inline directive on the message
+2. Session override
+3. Global default (`agents.defaults.thinkingDefault`)
+4. Model/provider fallback behavior
 
 ## Setting a session default
 
-- Send a message that is **only** the directive (whitespace allowed), e.g. `/think:medium` or `/t high`.
-- That sticks for the current session (per-sender by default); cleared by `/think:off` or session idle reset.
-- Confirmation reply is sent (`Thinking level set to high.` / `Thinking disabled.`). If the level is invalid (e.g. `/thinking big`), the command is rejected with a hint and the session state is left unchanged.
-- Send `/think` (or `/think:`) with no argument to see the current thinking level.
+- Send a directive-only message such as `/think:medium`.
+- That sticks for the current session until cleared or reset.
+- Send `/think` with no argument to inspect the current setting.
 
-## Application by agent
+## Application by runtime
 
-- **Embedded Pi**: the resolved level is passed to the in-process Pi agent runtime.
+- **Codex app-server**: the resolved level is forwarded through the Codex-backed agent path and stored in session metadata so the shell and Control UI stay in sync.
+- **ACP sessions**: OpenClaw forwards the directive to the ACP-managed harness when the target runtime supports it.
 
 ## Verbose directives (/verbose or /v)
 
-- Levels: `on` (minimal) | `full` | `off` (default).
-- Directive-only message toggles session verbose and replies `Verbose logging enabled.` / `Verbose logging disabled.`; invalid levels return a hint without changing state.
-- `/verbose off` stores an explicit session override; clear it via the Sessions UI by choosing `inherit`.
-- Inline directive affects only that message; session/global defaults apply otherwise.
-- Send `/verbose` (or `/verbose:`) with no argument to see the current verbose level.
-- When verbose is on, agents that emit structured tool results (Pi, other JSON agents) send each tool call back as its own metadata-only message, prefixed with `<emoji> <tool-name>: <arg>` when available (path/command). These tool summaries are sent as soon as each tool starts (separate bubbles), not as streaming deltas.
-- Tool failure summaries remain visible in normal mode, but raw error detail suffixes are hidden unless verbose is `on` or `full`.
-- When verbose is `full`, tool outputs are also forwarded after completion (separate bubble, truncated to a safe length). If you toggle `/verbose on|full|off` while a run is in-flight, subsequent tool bubbles honor the new setting.
+- Levels: `on | full | off`.
+- Directive-only messages toggle the session default.
+- Inline directives affect only that message.
+- When verbose is enabled, OpenClaw surfaces structured tool and runtime events as separate UI/chat summaries when the target runtime emits them.
+
+For Codex-backed runs, that includes dynamic tool lifecycle, command output, file-change output, plan deltas, and other structured item events when available.
 
 ## Reasoning visibility (/reasoning)
 
-- Levels: `on|off|stream`.
-- Directive-only message toggles whether thinking blocks are shown in replies.
-- When enabled, reasoning is sent as a **separate message** prefixed with `Reasoning:`.
-- `stream` (Telegram only): streams reasoning into the Telegram draft bubble while the reply is generating, then sends the final answer without reasoning.
-- Alias: `/reason`.
-- Send `/reasoning` (or `/reasoning:`) with no argument to see the current reasoning level.
+- Levels: `on | off | stream`.
+- Directive-only message toggles whether reasoning is shown.
+- When enabled, reasoning is emitted separately from the final answer.
+- `stream` is channel-dependent; some surfaces support draft-style incremental reasoning display while others fall back to non-streamed visibility.
 
 ## Related
 
-- Elevated mode docs live in [Elevated mode](/tools/elevated).
-
-## Heartbeats
-
-- Heartbeat probe body is the configured heartbeat prompt (default: `Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.`). Inline directives in a heartbeat message apply as usual (but avoid changing session defaults from heartbeats).
-- Heartbeat delivery defaults to the final payload only. To also send the separate `Reasoning:` message (when available), set `agents.defaults.heartbeat.includeReasoning: true` or per-agent `agents.list[].heartbeat.includeReasoning: true`.
-
-## Web chat UI
-
-- The web chat thinking selector mirrors the session's stored level from the inbound session store/config when the page loads.
-- Picking another level applies only to the next message (`thinkingOnce`); after sending, the selector snaps back to the stored session level.
-- To change the session default, send a `/think:<level>` directive (as before); the selector will reflect it after the next reload.
+- [Compaction](/concepts/compaction)
+- [Session management](/concepts/session)
+- [Token use](/reference/token-use)
+- [Elevated mode](/tools/elevated)

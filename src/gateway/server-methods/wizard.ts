@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { setupCommand } from "../../commands/setup.js";
 import { defaultRuntime } from "../../runtime.js";
 import { WizardSession } from "../../wizard/session.js";
 import {
@@ -44,6 +45,32 @@ export const wizardHandlers: GatewayRequestHandlers = {
       return;
     }
     const sessionId = randomUUID();
+    if (params.oneClick === true) {
+      await setupCommand(
+        {
+          workspace: typeof params.workspace === "string" ? params.workspace : undefined,
+          oneClick: true,
+          authChoice:
+            params.authChoice === "openai-codex" ||
+            params.authChoice === "openai-api-key" ||
+            params.authChoice === "skip"
+              ? params.authChoice
+              : undefined,
+          noOpenDashboard: true,
+        },
+        defaultRuntime,
+      );
+      respond(
+        true,
+        {
+          sessionId,
+          done: true,
+          status: "done",
+        },
+        undefined,
+      );
+      return;
+    }
     const opts = {
       mode: params.mode,
       workspace: typeof params.workspace === "string" ? params.workspace : undefined,
