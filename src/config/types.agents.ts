@@ -16,9 +16,22 @@ export type AgentRuntimeAcpConfig = {
   cwd?: string;
 };
 
+export type AgentRuntimeCodexConfig = {
+  /** Optional Codex executable override for this agent. */
+  command?: string;
+  /** Optional model override for this agent's Codex thread. */
+  model?: string;
+  /** Optional provider override for this agent's Codex thread. */
+  provider?: string;
+};
+
 export type AgentRuntimeConfig =
   | {
       type: "embedded";
+    }
+  | {
+      type: "codex";
+      codex?: AgentRuntimeCodexConfig;
     }
   | {
       type: "acp";

@@ -167,6 +167,27 @@ export type AgentDefaultsConfig = {
   contextTokens?: number;
   /** Optional CLI backends for text-only fallback (claude-cli, etc.). */
   cliBackends?: Record<string, CliBackendConfig>;
+  /** Codex app-server runtime defaults. */
+  codex?: {
+    /** Codex executable path (defaults to `codex`). */
+    command?: string;
+    /** Full argument list for the Codex app-server process. */
+    args?: string[];
+    /** Listen URL for default args (defaults to `stdio://`). */
+    listen?: string;
+    /** Default Codex model (defaults to `gpt-5.4`). */
+    defaultModel?: string;
+    /** Default model provider passed to Codex (defaults to `openai`). */
+    provider?: string;
+    /** Codex approval policy (defaults to `never`). */
+    approvalPolicy?: "untrusted" | "on-failure" | "on-request" | "never";
+    /** Codex sandbox mode (defaults to `workspace-write`). */
+    sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+    /** Minimum compatible Codex version for startup checks. */
+    minimumVersion?: string;
+    /** Opt into Codex experimental API fields (defaults to true). */
+    experimentalApi?: boolean;
+  };
   /** Opt-in: prune old tool results from the LLM context to reduce token usage. */
   contextPruning?: AgentContextPruningConfig;
   /** Compaction tuning and pre-compaction memory flush behavior. */

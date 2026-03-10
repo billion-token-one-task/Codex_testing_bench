@@ -18,6 +18,7 @@ import {
 import { ensureAuthProfileStore } from "../agents/auth-profiles.js";
 import { clearSessionAuthProfileOverride } from "../agents/auth-profiles/session-override.js";
 import { resolveBootstrapWarningSignaturesSeen } from "../agents/bootstrap-budget.js";
+import { runCodexAgent } from "../agents/codex-engine.js";
 import { runCliAgent } from "../agents/cli-runner.js";
 import { getCliSessionId, setCliSessionId } from "../agents/cli-session.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
@@ -345,6 +346,12 @@ function runAgentAttempt(params: {
   storePath?: string;
   allowTransientCooldownProbe?: boolean;
 }) {
+  const normalizedProvider = normalizeProviderId(params.providerOverride);
+  const agentRuntime = params.cfg.agents?.list?.find((entry) => entry.id === params.sessionAgentId)?.runtime;
+  const shouldUseCodexEngine =
+    normalizedProvider === "codex-cli" ||
+    normalizedProvider === "codex" ||
+    agentRuntime?.type === "codex";
   const effectivePrompt = resolveFallbackRetryPrompt({
     body: params.body,
     isFallbackRetry: params.isFallbackRetry,
@@ -354,6 +361,47 @@ function runAgentAttempt(params: {
   );
   const bootstrapPromptWarningSignature =
     bootstrapPromptWarningSignaturesSeen[bootstrapPromptWarningSignaturesSeen.length - 1];
+  if (shouldUseCodexEngine) {
+    const runtimeCodex = agentRuntime?.type === "codex" ? agentRuntime.codex : undefined;
+    const groupId = params.runContext.groupId ?? undefined;
+    const groupChannel = params.runContext.groupChannel ?? undefined;
+    const groupSpace = params.runContext.groupSpace ?? undefined;
+    return runCodexAgent({
+      sessionId: params.sessionId,
+      sessionKey: params.sessionKey,
+      sessionFile: params.sessionFile,
+      sessionEngine: params.sessionEntry?.engine,
+      agentId: params.sessionAgentId,
+      workspaceDir: params.workspaceDir,
+      prompt: effectivePrompt,
+      config: params.cfg,
+      provider: runtimeCodex?.provider ?? params.providerOverride,
+      model: runtimeCodex?.model ?? params.modelOverride,
+      thinkLevel: params.resolvedThinkLevel,
+      verboseLevel: params.resolvedVerboseLevel,
+      timeoutMs: params.timeoutMs,
+      runId: params.runId,
+      extraSystemPrompt: params.opts.extraSystemPrompt,
+      images: params.isFallbackRetry ? undefined : params.opts.images,
+      senderIsOwner: params.opts.senderIsOwner,
+      messageChannel: params.messageChannel,
+      agentAccountId: params.runContext.accountId,
+      messageTo: params.opts.replyTo ?? params.opts.to,
+      messageThreadId: params.opts.threadId,
+      groupId,
+      groupChannel,
+      groupSpace,
+      currentChannelId: params.runContext.currentChannelId,
+      currentThreadTs: params.runContext.currentThreadTs,
+      replyToMode: params.runContext.replyToMode,
+      hasRepliedRef: params.runContext.hasRepliedRef,
+      spawnedBy: params.spawnedBy,
+      bootstrapPromptWarningSignaturesSeen,
+      bootstrapPromptWarningSignature,
+      onAgentEvent: params.onAgentEvent,
+      abortSignal: params.opts.abortSignal,
+    });
+  }
   if (isCliProvider(params.providerOverride, params.cfg)) {
     const cliSessionId = getCliSessionId(params.sessionEntry, params.providerOverride);
     const runCliWithSession = (nextCliSessionId: string | undefined) =>
@@ -1068,6 +1116,7 @@ async function agentCommandInternal(
         sessionId,
         sessionKey: sessionKey ?? sessionId,
         sessionEntry,
+        storePath,
         agentId: sessionAgentId,
         threadId: opts.threadId,
       });

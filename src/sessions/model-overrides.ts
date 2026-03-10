@@ -72,6 +72,11 @@ export function applyModelOverrideToSessionEntry(params: {
     updated = true;
   }
 
+  if (entry.engine && (selectionUpdated || (runtimePresent && !runtimeAligned))) {
+    delete entry.engine;
+    updated = true;
+  }
+
   if (profileOverride) {
     if (entry.authProfileOverride !== profileOverride) {
       entry.authProfileOverride = profileOverride;

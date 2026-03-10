@@ -1,10 +1,21 @@
 import type { SessionSystemPromptReport } from "../../config/sessions/types.js";
 import type { MessagingToolSend } from "../pi-embedded-messaging.js";
 
+export type EmbeddedSessionEngineMeta = {
+  kind: "codex";
+  threadId: string;
+  lastTurnId?: string;
+  threadStatus?: string;
+  runtimeOrigin?: string;
+  protocolVersion?: string;
+  compatibilityVersion?: string;
+};
+
 export type EmbeddedPiAgentMeta = {
   sessionId: string;
   provider: string;
   model: string;
+  engine?: EmbeddedSessionEngineMeta;
   compactionCount?: number;
   promptTokens?: number;
   usage?: {

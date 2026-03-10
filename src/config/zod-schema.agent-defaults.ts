@@ -50,6 +50,33 @@ export const AgentDefaultsSchema = z
     envelopeElapsed: z.union([z.literal("on"), z.literal("off")]).optional(),
     contextTokens: z.number().int().positive().optional(),
     cliBackends: z.record(z.string(), CliBackendSchema).optional(),
+    codex: z
+      .object({
+        command: z.string().optional(),
+        args: z.array(z.string()).optional(),
+        listen: z.string().optional(),
+        defaultModel: z.string().optional(),
+        provider: z.string().optional(),
+        approvalPolicy: z
+          .union([
+            z.literal("untrusted"),
+            z.literal("on-failure"),
+            z.literal("on-request"),
+            z.literal("never"),
+          ])
+          .optional(),
+        sandbox: z
+          .union([
+            z.literal("read-only"),
+            z.literal("workspace-write"),
+            z.literal("danger-full-access"),
+          ])
+          .optional(),
+        minimumVersion: z.string().optional(),
+        experimentalApi: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     memorySearch: MemorySearchSchema,
     contextPruning: z
       .object({

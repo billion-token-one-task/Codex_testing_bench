@@ -124,4 +124,60 @@ describe("updateSessionStoreAfterAgentRun", () => {
       "once",
     );
   });
+
+  it("persists Codex engine thread metadata for future thread resume", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-session-store-"));
+    const storePath = path.join(dir, "sessions.json");
+    const sessionKey = `agent:codex:thread:${randomUUID()}`;
+    const sessionId = randomUUID();
+
+    const sessionStore: Record<string, SessionEntry> = {
+      [sessionKey]: {
+        sessionId,
+        updatedAt: Date.now(),
+      },
+    };
+    await fs.writeFile(storePath, JSON.stringify(sessionStore, null, 2), "utf8");
+
+    await updateSessionStoreAfterAgentRun({
+      cfg: {} as never,
+      sessionId,
+      sessionKey,
+      storePath,
+      sessionStore,
+      defaultProvider: "codex-cli",
+      defaultModel: "gpt-5.4",
+      result: {
+        payloads: [],
+        meta: {
+          aborted: false,
+          agentMeta: {
+            provider: "codex-cli",
+            model: "gpt-5.4",
+            engine: {
+              kind: "codex",
+              threadId: "thr_123",
+              lastTurnId: "turn_456",
+              threadStatus: "completed",
+              runtimeOrigin: "codex app-server",
+              protocolVersion: "v2",
+              compatibilityVersion: "0.0.0-test",
+            },
+          },
+        },
+      } as never,
+    });
+
+    const persisted = loadSessionStore(storePath, { skipCache: true })[sessionKey];
+    expect(persisted?.engine).toEqual({
+      kind: "codex",
+      threadId: "thr_123",
+      lastTurnId: "turn_456",
+      threadStatus: "completed",
+      runtimeOrigin: "codex app-server",
+      protocolVersion: "v2",
+      compatibilityVersion: "0.0.0-test",
+    });
+    expect(sessionStore[sessionKey]?.engine?.threadId).toBe("thr_123");
+  });
 });

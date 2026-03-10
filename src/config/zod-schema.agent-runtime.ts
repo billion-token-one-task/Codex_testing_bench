@@ -696,11 +696,26 @@ const AgentRuntimeAcpSchema = z
   .strict()
   .optional();
 
+const AgentRuntimeCodexSchema = z
+  .object({
+    command: z.string().optional(),
+    model: z.string().optional(),
+    provider: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
 const AgentRuntimeSchema = z
   .union([
     z
       .object({
         type: z.literal("embedded"),
+      })
+      .strict(),
+    z
+      .object({
+        type: z.literal("codex"),
+        codex: AgentRuntimeCodexSchema,
       })
       .strict(),
     z

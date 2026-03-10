@@ -48,6 +48,16 @@ export type SessionAcpMeta = {
   lastError?: string;
 };
 
+export type SessionCodexEngineMeta = {
+  kind: "codex";
+  threadId: string;
+  lastTurnId?: string;
+  threadStatus?: string;
+  runtimeOrigin?: string;
+  protocolVersion?: string;
+  compatibilityVersion?: string;
+};
+
 export type AcpSessionRuntimeOptions = {
   /**
    * ACP runtime mode set via session/set_mode (for example: "plan", "normal", "auto").
@@ -164,11 +174,41 @@ export type SessionEntry = {
   skillsSnapshot?: SessionSkillSnapshot;
   systemPromptReport?: SessionSystemPromptReport;
   acp?: SessionAcpMeta;
+  engine?: SessionCodexEngineMeta;
 };
 
 function normalizeRuntimeField(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function normalizeSessionEngineMeta(
+  value: SessionCodexEngineMeta | undefined,
+): SessionCodexEngineMeta | undefined {
+  if (!value || value.kind !== "codex") {
+    return undefined;
+  }
+  const threadId = normalizeRuntimeField(value.threadId);
+  if (!threadId) {
+    return undefined;
+  }
+  return {
+    kind: "codex",
+    threadId,
+    ...(normalizeRuntimeField(value.lastTurnId) ? { lastTurnId: normalizeRuntimeField(value.lastTurnId) } : {}),
+    ...(normalizeRuntimeField(value.threadStatus)
+      ? { threadStatus: normalizeRuntimeField(value.threadStatus) }
+      : {}),
+    ...(normalizeRuntimeField(value.runtimeOrigin)
+      ? { runtimeOrigin: normalizeRuntimeField(value.runtimeOrigin) }
+      : {}),
+    ...(normalizeRuntimeField(value.protocolVersion)
+      ? { protocolVersion: normalizeRuntimeField(value.protocolVersion) }
+      : {}),
+    ...(normalizeRuntimeField(value.compatibilityVersion)
+      ? { compatibilityVersion: normalizeRuntimeField(value.compatibilityVersion) }
+      : {}),
+  };
 }
 
 export function normalizeSessionRuntimeModelFields(entry: SessionEntry): SessionEntry {
@@ -207,6 +247,18 @@ export function normalizeSessionRuntimeModelFields(entry: SessionEntry): Session
       next = { ...next };
     }
     next.modelProvider = normalizedProvider;
+  }
+  const normalizedEngine = normalizeSessionEngineMeta(entry.engine);
+  if (normalizedEngine) {
+    if (next === entry) {
+      next = { ...next };
+    }
+    next.engine = normalizedEngine;
+  } else if (entry.engine !== undefined) {
+    if (next === entry) {
+      next = { ...next };
+    }
+    delete next.engine;
   }
   return next;
 }

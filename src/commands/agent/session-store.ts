@@ -75,6 +75,27 @@ export async function updateSessionStoreAfterAgentRun(params: {
       setCliSessionId(next, providerUsed, cliSessionId);
     }
   }
+  if (result.meta.agentMeta?.engine?.kind === "codex") {
+    next.engine = {
+      kind: "codex",
+      threadId: result.meta.agentMeta.engine.threadId,
+      ...(result.meta.agentMeta.engine.lastTurnId
+        ? { lastTurnId: result.meta.agentMeta.engine.lastTurnId }
+        : {}),
+      ...(result.meta.agentMeta.engine.threadStatus
+        ? { threadStatus: result.meta.agentMeta.engine.threadStatus }
+        : {}),
+      ...(result.meta.agentMeta.engine.runtimeOrigin
+        ? { runtimeOrigin: result.meta.agentMeta.engine.runtimeOrigin }
+        : {}),
+      ...(result.meta.agentMeta.engine.protocolVersion
+        ? { protocolVersion: result.meta.agentMeta.engine.protocolVersion }
+        : {}),
+      ...(result.meta.agentMeta.engine.compatibilityVersion
+        ? { compatibilityVersion: result.meta.agentMeta.engine.compatibilityVersion }
+        : {}),
+    };
+  }
   next.abortedLastRun = result.meta.aborted ?? false;
   if (result.meta.systemPromptReport) {
     next.systemPromptReport = result.meta.systemPromptReport;
