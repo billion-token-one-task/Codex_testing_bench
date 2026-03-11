@@ -1448,7 +1448,11 @@ name = "codex-bench-report"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codex-app-server-protocol",
+ "codex-bench-codex",
  "codex-bench-core",
+ "codex-bench-probes",
+ "codex-protocol",
  "serde_json",
 ]
 

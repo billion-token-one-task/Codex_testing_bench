@@ -1,0 +1,217 @@
+[
+  {
+    "id": "session_config_freeze",
+    "purpose": "Resolve requested model/runtime settings into the effective session configuration that all later turns inherit.",
+    "files": [
+      "repos/codex/codex-rs/core/src/codex.rs",
+      "repos/codex/codex-rs/core/src/thread_manager.rs",
+      "repos/codex/codex-rs/app-server/src/codex_message_processor.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/unlocking-the-codex-harness/"
+    ],
+    "visible_events": [
+      "session_configured",
+      "study_probe(config_freeze.*)"
+    ],
+    "hidden_state": [
+      "config precedence winners",
+      "base instruction provenance",
+      "already-running-thread override suppression"
+    ],
+    "probes": [
+      "config_freeze",
+      "session_freeze_drift",
+      "effective_runtime_divergence"
+    ]
+  },
+  {
+    "id": "instruction_prompt_assembly",
+    "purpose": "Assemble the model-visible instruction stack for each turn, including base, developer, reconstructed, and update-derived context.",
+    "files": [
+      "repos/codex/codex-rs/core/src/codex.rs",
+      "repos/codex/codex-rs/core/src/context_manager/updates.rs",
+      "repos/codex/codex-rs/core/src/config/instructions.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/introducing-upgrades-to-codex/"
+    ],
+    "visible_events": [
+      "user_message",
+      "study_probe(instruction_channel.*)"
+    ],
+    "hidden_state": [
+      "instruction layering decisions",
+      "implicit context injection"
+    ],
+    "probes": [
+      "instruction_channel",
+      "instruction_stratification",
+      "ambient_state_leakage"
+    ]
+  },
+  {
+    "id": "turn_lifecycle_dispatch",
+    "purpose": "Create turn contexts, dispatch work into tasks, and handle interruptions, failovers, and completions.",
+    "files": [
+      "repos/codex/codex-rs/core/src/codex.rs",
+      "repos/codex/codex-rs/core/src/tasks/regular.rs",
+      "repos/codex/codex-rs/core/src/tasks/review.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/introducing-codex/"
+    ],
+    "visible_events": [
+      "turn_started",
+      "turn_complete",
+      "turn_aborted",
+      "study_probe(turn_lifecycle.*)"
+    ],
+    "hidden_state": [
+      "pending input drain behavior",
+      "task dispatch category"
+    ],
+    "probes": [
+      "turn_lifecycle",
+      "activation_threshold",
+      "chain_reaction_cycles"
+    ]
+  },
+  {
+    "id": "context_compaction",
+    "purpose": "Compact and rebuild session history under context pressure, preserving some state while potentially losing detail.",
+    "files": [
+      "repos/codex/codex-rs/core/src/compact.rs",
+      "repos/codex/codex-rs/core/src/codex.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/unlocking-the-codex-harness/"
+    ],
+    "visible_events": [
+      "context_compacted",
+      "study_probe(context_compaction.*)"
+    ],
+    "hidden_state": [
+      "history loss vs preserved actionable state",
+      "replacement-history shape"
+    ],
+    "probes": [
+      "compaction_continuity",
+      "context_pressure",
+      "rediscovery_after_compaction"
+    ]
+  },
+  {
+    "id": "tool_mediation",
+    "purpose": "Route shell, patch, MCP, and other tools through Codex mediation instead of exposing a single raw shell channel.",
+    "files": [
+      "repos/codex/codex-rs/core/src/tools/events.rs",
+      "repos/codex/codex-rs/core/src/mcp_tool_call.rs",
+      "repos/codex/codex-rs/core/src/tools/mod.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/unlocking-the-codex-harness/"
+    ],
+    "visible_events": [
+      "exec_command_begin",
+      "exec_command_end",
+      "mcp_tool_call_begin",
+      "mcp_tool_call_end",
+      "patch_apply_begin",
+      "patch_apply_end"
+    ],
+    "hidden_state": [
+      "tool routing decisions",
+      "approval path",
+      "structured output mediation"
+    ],
+    "probes": [
+      "tool_mediation",
+      "tool_mediation_tax"
+    ]
+  },
+  {
+    "id": "persistence_resume",
+    "purpose": "Persist rollout state, reconstruct prior sessions, and maintain continuity across resume and listener attachment.",
+    "files": [
+      "repos/codex/codex-rs/core/src/rollout",
+      "repos/codex/codex-rs/core/src/state_db.rs",
+      "repos/codex/codex-rs/app-server/src/codex_message_processor.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/unlocking-the-codex-harness/"
+    ],
+    "visible_events": [
+      "session_configured",
+      "study_probe(persistence_reconstruction.*)"
+    ],
+    "hidden_state": [
+      "state DB contention",
+      "baseline invalidation",
+      "listener generation behavior"
+    ],
+    "probes": [
+      "persistence_continuity",
+      "resume_staleness",
+      "listener_attach_friction"
+    ]
+  },
+  {
+    "id": "app_server_translation",
+    "purpose": "Translate between typed client requests, app-server notifications, and the legacy core event bridge.",
+    "files": [
+      "repos/codex/codex-rs/app-server/src/codex_message_processor.rs",
+      "repos/codex/codex-rs/app-server/src/bespoke_event_handling.rs",
+      "repos/codex/codex-rs/app-server-client/src/lib.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex",
+      "https://openai.com/index/unlocking-the-codex-harness/"
+    ],
+    "visible_events": [
+      "codex/event/*",
+      "turn/* notifications"
+    ],
+    "hidden_state": [
+      "event fanout drop behavior",
+      "typed-vs-legacy visibility gaps"
+    ],
+    "probes": [
+      "event_architecture_discontinuity",
+      "listener_backpressure"
+    ]
+  },
+  {
+    "id": "reliability_surfaces",
+    "purpose": "Capture friction introduced by Codex’s own harness machinery rather than the underlying coding task.",
+    "files": [
+      "repos/codex/codex-rs/core/src/state_db.rs",
+      "repos/codex/codex-rs/app-server/src/in_process.rs",
+      "repos/codex/codex-rs/core/src/error.rs"
+    ],
+    "reference_docs": [
+      "https://deepwiki.com/openai/codex"
+    ],
+    "visible_events": [
+      "warning",
+      "error",
+      "stream_error",
+      "study_probe(harness_friction.*)"
+    ],
+    "hidden_state": [
+      "DB lock contention",
+      "listener attach failures",
+      "auth/MCP/runtime mismatch leakage"
+    ],
+    "probes": [
+      "harness_friction",
+      "containment_integrity"
+    ]
+  }
+]

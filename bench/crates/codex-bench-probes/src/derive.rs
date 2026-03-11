@@ -13,6 +13,31 @@ use codex_protocol::protocol::{
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+#[derive(Debug, Clone, Default)]
+struct TurnAccumulator {
+    turn_id: String,
+    status: String,
+    start_seq: usize,
+    end_seq: Option<usize>,
+    start_input_tokens: i64,
+    start_output_tokens: i64,
+    start_cache_read_tokens: i64,
+    start_total_tokens: i64,
+    end_input_tokens: i64,
+    end_output_tokens: i64,
+    end_cache_read_tokens: i64,
+    end_total_tokens: i64,
+    model_context_window: Option<i64>,
+    token_snapshot_count: usize,
+    command_count: usize,
+    shell_command_count: usize,
+    mcp_tool_count: usize,
+    patch_apply_count: usize,
+    skill_event_count: usize,
+    first_command: Option<String>,
+    last_command: Option<String>,
+}
+
 pub fn derive_run_outputs(
     attempt_dir: &Path,
     run_id: &str,
@@ -24,8 +49,10 @@ pub fn derive_run_outputs(
     patch_text: &[u8],
 ) -> Result<RunSummary> {
     let mut token_rows = Vec::<Value>::new();
+    let mut turn_rows = Vec::<Value>::new();
     let mut command_rows = Vec::<Value>::new();
     let mut tool_rows = Vec::<Value>::new();
+    let mut skill_rows = Vec::<Value>::new();
     let mut patch_rows = Vec::<Value>::new();
     let mut lifecycle_rows = Vec::<Value>::new();
     let mut anomaly_rows = Vec::<Value>::new();
@@ -41,6 +68,11 @@ pub fn derive_run_outputs(
     let mut last_patch_seq = None::<usize>;
     let mut last_write_seq = None::<usize>;
     let mut command_seq = 0usize;
+    let mut current_turn_id = None::<String>;
+    let mut turn_accumulators = BTreeMap::<String, TurnAccumulator>::new();
+    let mut tool_kind_counts = BTreeMap::<String, usize>::new();
+    let mut tool_name_counts = BTreeMap::<String, usize>::new();
+    let mut skill_name_counts = BTreeMap::<String, usize>::new();
 
     let mut seen_read_commands_since_write = BTreeSet::<String>::new();
     let mut seen_verification_commands_since_write = BTreeSet::<String>::new();
@@ -66,6 +98,25 @@ pub fn derive_run_outputs(
                 }));
             }
             EventMsg::TurnStarted(ev) => {
+                current_turn_id = Some(ev.turn_id.clone());
+                let mut acc = TurnAccumulator {
+                    turn_id: ev.turn_id.clone(),
+                    status: "running".to_string(),
+                    start_seq: seq,
+                    model_context_window: ev.model_context_window,
+                    ..Default::default()
+                };
+                if let Some(info) = &last_token_info {
+                    acc.start_input_tokens = info.total_token_usage.input_tokens;
+                    acc.start_output_tokens = info.total_token_usage.output_tokens;
+                    acc.start_cache_read_tokens = info.total_token_usage.cached_input_tokens;
+                    acc.start_total_tokens = info.total_token_usage.total_tokens;
+                    acc.end_input_tokens = acc.start_input_tokens;
+                    acc.end_output_tokens = acc.start_output_tokens;
+                    acc.end_cache_read_tokens = acc.start_cache_read_tokens;
+                    acc.end_total_tokens = acc.start_total_tokens;
+                }
+                turn_accumulators.insert(ev.turn_id.clone(), acc);
                 lifecycle_rows.push(json!({
                     "seq": seq,
                     "kind": "turn_started",
@@ -74,6 +125,17 @@ pub fn derive_run_outputs(
                 }));
             }
             EventMsg::TurnComplete(ev) => {
+                if let Some(acc) = turn_accumulators.get_mut(&ev.turn_id) {
+                    acc.status = "completed".to_string();
+                    acc.end_seq = Some(seq);
+                    if let Some(info) = &last_token_info {
+                        update_turn_token_state(acc, info);
+                    }
+                    turn_rows.push(turn_row(acc));
+                }
+                if current_turn_id.as_deref() == Some(ev.turn_id.as_str()) {
+                    current_turn_id = None;
+                }
                 lifecycle_rows.push(json!({
                     "seq": seq,
                     "kind": "turn_complete",
@@ -82,6 +144,19 @@ pub fn derive_run_outputs(
                 }));
             }
             EventMsg::TurnAborted(ev) => {
+                if let Some(turn_id) = ev.turn_id.as_ref() {
+                    if let Some(acc) = turn_accumulators.get_mut(turn_id) {
+                        acc.status = "aborted".to_string();
+                        acc.end_seq = Some(seq);
+                        if let Some(info) = &last_token_info {
+                            update_turn_token_state(acc, info);
+                        }
+                        turn_rows.push(turn_row(acc));
+                    }
+                }
+                if current_turn_id.as_deref() == ev.turn_id.as_deref() {
+                    current_turn_id = None;
+                }
                 lifecycle_rows.push(json!({
                     "seq": seq,
                     "kind": "turn_aborted",
@@ -99,6 +174,12 @@ pub fn derive_run_outputs(
             EventMsg::TokenCount(ev) => {
                 if let Some(info) = &ev.info {
                     last_token_info = Some(info.clone());
+                    if let Some(turn_id) = current_turn_id.as_ref()
+                        && let Some(acc) = turn_accumulators.get_mut(turn_id)
+                    {
+                        acc.token_snapshot_count += 1;
+                        update_turn_token_state(acc, info);
+                    }
                     token_rows.push(json!({
                         "seq": seq,
                         "classification": "exact",
@@ -118,6 +199,41 @@ pub fn derive_run_outputs(
             }
             EventMsg::ExecCommandBegin(ev) => {
                 command_seq += 1;
+                *tool_kind_counts.entry("shell".to_string()).or_default() += 1;
+                tool_rows.push(json!({
+                    "seq": seq,
+                    "phase": "begin",
+                    "classification": "exact",
+                    "kind": "shell",
+                    "name": "shell",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "command": join_command(&ev.command),
+                    "cwd": ev.cwd,
+                }));
+                if let Some(acc) = turn_accumulators.get_mut(&ev.turn_id) {
+                    acc.command_count += 1;
+                    acc.shell_command_count += 1;
+                    let command_text = join_command(&ev.command);
+                    if acc.first_command.is_none() {
+                        acc.first_command = Some(command_text.clone());
+                    }
+                    acc.last_command = Some(command_text.clone());
+                    let detected_skills = detect_skills_from_command(&command_text);
+                    for skill_name in detected_skills {
+                        acc.skill_event_count += 1;
+                        *skill_name_counts.entry(skill_name.clone()).or_default() += 1;
+                        skill_rows.push(json!({
+                            "seq": seq,
+                            "turnId": ev.turn_id,
+                            "classification": "inferred",
+                            "kind": "command_skill_access",
+                            "skillName": skill_name,
+                            "command": command_text,
+                            "cwd": ev.cwd,
+                        }));
+                    }
+                }
                 handle_command_begin(
                     seq,
                     run_id,
@@ -135,6 +251,20 @@ pub fn derive_run_outputs(
                 );
             }
             EventMsg::ExecCommandEnd(ev) => {
+                tool_rows.push(json!({
+                    "seq": seq,
+                    "phase": "end",
+                    "classification": "exact",
+                    "kind": "shell",
+                    "name": "shell",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "command": join_command(&ev.command),
+                    "cwd": ev.cwd,
+                    "exitCode": ev.exit_code,
+                    "durationMs": duration_to_ms_i64(ev.duration),
+                    "success": ev.exit_code == 0,
+                }));
                 handle_command_end(
                     seq,
                     run_id,
@@ -149,6 +279,15 @@ pub fn derive_run_outputs(
                 );
             }
             EventMsg::McpToolCallBegin(ev) => {
+                *tool_kind_counts.entry("mcp".to_string()).or_default() += 1;
+                *tool_name_counts
+                    .entry(format!("{}::{}", ev.invocation.server, ev.invocation.tool))
+                    .or_default() += 1;
+                if let Some(turn_id) = current_turn_id.as_ref()
+                    && let Some(acc) = turn_accumulators.get_mut(turn_id)
+                {
+                    acc.mcp_tool_count += 1;
+                }
                 if probe_summary.first_controlled_change_tokens.is_none() {
                     probe_summary.first_controlled_change_tokens =
                         last_token_total(&last_token_info);
@@ -194,6 +333,22 @@ pub fn derive_run_outputs(
                 probe_summary.tool_mediation_tax_count += 1;
             }
             EventMsg::PatchApplyBegin(ev) => {
+                *tool_kind_counts.entry("apply_patch".to_string()).or_default() += 1;
+                *tool_name_counts.entry("apply_patch".to_string()).or_default() += 1;
+                tool_rows.push(json!({
+                    "seq": seq,
+                    "phase": "begin",
+                    "classification": "exact",
+                    "kind": "apply_patch",
+                    "name": "apply_patch",
+                    "callId": ev.call_id,
+                    "autoApproved": ev.auto_approved,
+                }));
+                if let Some(turn_id) = current_turn_id.as_ref()
+                    && let Some(acc) = turn_accumulators.get_mut(turn_id)
+                {
+                    acc.patch_apply_count += 1;
+                }
                 if probe_summary.first_controlled_change_tokens.is_none() {
                     probe_summary.first_controlled_change_tokens =
                         last_token_total(&last_token_info);
@@ -224,6 +379,18 @@ pub fn derive_run_outputs(
             EventMsg::PatchApplyEnd(ev) => {
                 last_write_seq = Some(seq);
                 last_patch_seq = Some(seq);
+                tool_rows.push(json!({
+                    "seq": seq,
+                    "phase": "end",
+                    "classification": "exact",
+                    "kind": "apply_patch",
+                    "name": "apply_patch",
+                    "callId": ev.call_id,
+                    "status": format!("{:?}", ev.status),
+                    "stdoutChars": ev.stdout.chars().count(),
+                    "stderrChars": ev.stderr.chars().count(),
+                    "success": format!("{:?}", ev.status).eq_ignore_ascii_case("success"),
+                }));
                 patch_rows.push(json!({
                     "seq": seq,
                     "phase": "end",
@@ -249,6 +416,36 @@ pub fn derive_run_outputs(
                     &mut probe_summary,
                     &mut anomaly_rows,
                 );
+            }
+            EventMsg::ListSkillsResponse(ev) => {
+                for entry in &ev.skills {
+                    for skill in &entry.skills {
+                        *skill_name_counts.entry(skill.name.clone()).or_default() += 1;
+                        skill_rows.push(json!({
+                            "seq": seq,
+                            "classification": "exact",
+                            "kind": "listed",
+                            "skillName": skill.name,
+                            "path": skill.path,
+                            "scope": format!("{:?}", skill.scope),
+                            "enabled": skill.enabled,
+                            "cwd": entry.cwd,
+                        }));
+                    }
+                }
+            }
+            EventMsg::ListRemoteSkillsResponse(ev) => {
+                for skill in &ev.skills {
+                    *skill_name_counts.entry(skill.name.clone()).or_default() += 1;
+                    skill_rows.push(json!({
+                        "seq": seq,
+                        "classification": "exact",
+                        "kind": "remote_listed",
+                        "skillName": skill.name,
+                        "remoteSkillId": skill.id,
+                        "description": skill.description,
+                    }));
+                }
             }
             EventMsg::Warning(ev) => {
                 anomaly_rows.push(json!({
@@ -315,6 +512,14 @@ pub fn derive_run_outputs(
                 "event delivery lag suggests orchestration heat leakage rather than direct task progress".to_string(),
                 vec!["raw-diagnostics.jsonl".to_string()],
             ));
+        }
+    }
+
+    for acc in turn_accumulators.values() {
+        if acc.end_seq.is_none() {
+            let mut running = acc.clone();
+            running.status = "running".to_string();
+            turn_rows.push(turn_row(&running));
         }
     }
 
@@ -405,8 +610,10 @@ pub fn derive_run_outputs(
 
     write_jsonl(&attempt_dir.join("lifecycle-events.jsonl"), &lifecycle_rows)?;
     write_jsonl(&attempt_dir.join("token-snapshots.jsonl"), &token_rows)?;
+    write_jsonl(&attempt_dir.join("turn-metrics.jsonl"), &turn_rows)?;
     write_jsonl(&attempt_dir.join("command-events.jsonl"), &command_rows)?;
     write_jsonl(&attempt_dir.join("tool-events.jsonl"), &tool_rows)?;
+    write_jsonl(&attempt_dir.join("skill-events.jsonl"), &skill_rows)?;
     write_jsonl(&attempt_dir.join("patch-events.jsonl"), &patch_rows)?;
     write_jsonl(&attempt_dir.join("anomalies.jsonl"), &anomaly_rows)?;
     write_jsonl(&attempt_dir.join("probe-events.jsonl"), &derived_probes)?;
@@ -444,9 +651,11 @@ pub fn derive_run_outputs(
         raw_event_count: decoded_events.len(),
         raw_probe_count: raw_probe_events.len(),
         raw_diagnostic_count: raw_diagnostics.len(),
+        turn_count: turn_rows.len(),
         token_snapshot_count: token_rows.len(),
         command_count: command_rows.len(),
         tool_count: tool_rows.len(),
+        skill_event_count: skill_rows.len(),
         patch_event_count: patch_rows.len(),
         patch_file_count: patch_file_count(patch_text),
         patch_sha256,
@@ -468,6 +677,9 @@ pub fn derive_run_outputs(
         probe_code_counts,
         probe_subsystem_counts,
         diagnostic_type_counts,
+        tool_kind_counts,
+        tool_name_counts,
+        skill_name_counts,
         artifact_inventory: artifact_inventory_for_attempt(attempt_dir),
     };
     write_json_pretty(&attempt_dir.join("run-summary.json"), &summary)?;
@@ -1261,12 +1473,67 @@ fn last_token_total(info: &Option<TokenUsageInfo>) -> Option<i64> {
     info.as_ref().map(|info| info.total_token_usage.total_tokens)
 }
 
+fn update_turn_token_state(acc: &mut TurnAccumulator, info: &TokenUsageInfo) {
+    acc.end_input_tokens = info.total_token_usage.input_tokens;
+    acc.end_output_tokens = info.total_token_usage.output_tokens;
+    acc.end_cache_read_tokens = info.total_token_usage.cached_input_tokens;
+    acc.end_total_tokens = info.total_token_usage.total_tokens;
+    acc.model_context_window = info.model_context_window;
+}
+
+fn turn_row(acc: &TurnAccumulator) -> Value {
+    json!({
+        "turnId": acc.turn_id,
+        "classification": "exact",
+        "status": acc.status,
+        "startSeq": acc.start_seq,
+        "endSeq": acc.end_seq,
+        "inputTokensStart": acc.start_input_tokens,
+        "inputTokensEnd": acc.end_input_tokens,
+        "inputTokensDelta": acc.end_input_tokens - acc.start_input_tokens,
+        "outputTokensStart": acc.start_output_tokens,
+        "outputTokensEnd": acc.end_output_tokens,
+        "outputTokensDelta": acc.end_output_tokens - acc.start_output_tokens,
+        "cacheReadTokensStart": acc.start_cache_read_tokens,
+        "cacheReadTokensEnd": acc.end_cache_read_tokens,
+        "cacheReadTokensDelta": acc.end_cache_read_tokens - acc.start_cache_read_tokens,
+        "totalTokensStart": acc.start_total_tokens,
+        "totalTokensEnd": acc.end_total_tokens,
+        "totalTokensDelta": acc.end_total_tokens - acc.start_total_tokens,
+        "modelContextWindow": acc.model_context_window,
+        "tokenSnapshotCount": acc.token_snapshot_count,
+        "commandCount": acc.command_count,
+        "shellCommandCount": acc.shell_command_count,
+        "mcpToolCount": acc.mcp_tool_count,
+        "patchApplyCount": acc.patch_apply_count,
+        "skillEventCount": acc.skill_event_count,
+        "firstCommand": acc.first_command,
+        "lastCommand": acc.last_command,
+    })
+}
+
 fn duration_to_ms_i64(duration: Duration) -> i64 {
     duration.as_millis().try_into().unwrap_or(i64::MAX)
 }
 
 fn join_command(parts: &[String]) -> String {
     parts.join(" ")
+}
+
+fn detect_skills_from_command(command: &str) -> Vec<String> {
+    let mut names = BTreeSet::new();
+    for token in command.split_whitespace() {
+        if token.ends_with("SKILL.md") {
+            let normalized = token.trim_matches(|ch| ch == '"' || ch == '\'' || ch == '`');
+            let path = Path::new(normalized);
+            if let Some(parent) = path.parent()
+                && let Some(name) = parent.file_name().and_then(|name| name.to_str())
+            {
+                names.insert(name.to_string());
+            }
+        }
+    }
+    names.into_iter().collect()
 }
 
 fn is_meaningful_edit_command(command: &str) -> bool {
@@ -1361,6 +1628,8 @@ fn event_type_name(msg: &EventMsg) -> &'static str {
         EventMsg::McpToolCallEnd(_) => "mcp_tool_call_end",
         EventMsg::PatchApplyBegin(_) => "patch_apply_begin",
         EventMsg::PatchApplyEnd(_) => "patch_apply_end",
+        EventMsg::ListSkillsResponse(_) => "list_skills_response",
+        EventMsg::ListRemoteSkillsResponse(_) => "list_remote_skills_response",
         EventMsg::StudyProbe(_) => "study_probe",
         EventMsg::Warning(_) => "warning",
         EventMsg::Error(_) => "error",

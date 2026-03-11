@@ -1,0 +1,38 @@
+{
+  "schema_version": "codex-bench.v1",
+  "campaign_id": "swebench-study-2026-03-11T12-08-23Z-35c32d69",
+  "created_at": "2026-03-11T12:08:23.810703+00:00",
+  "campaign_root": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-08-23Z-35c32d69",
+  "repo_cache_root": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../.local-cache/repos/swebench",
+  "benchmark_name": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "preset_name": "swebench-v1",
+  "preset_path": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../studies/task-presets/swebench-v1.json",
+  "stage_name": null,
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "model": "gpt-5.4",
+  "provider": "openai",
+  "seed": "no-web-smoke",
+  "sample_size": 1,
+  "study_mode": "codex_live_observation",
+  "required_task_classes": [],
+  "preferred_task_classes": [],
+  "future_benchmarks": [],
+  "grounding_documents": [
+    "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md"
+  ],
+  "reference_documents": [
+    "https://deepwiki.com/openai/codex",
+    "https://openai.com/index/unlocking-the-codex-harness/"
+  ],
+  "selected_instances": [
+    {
+      "instance_id": "pytest-dev__pytest-7324",
+      "repo": "pytest-dev/pytest",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-08-23Z-35c32d69/runs/pytest-dev__pytest-7324"
+    }
+  ]
+}

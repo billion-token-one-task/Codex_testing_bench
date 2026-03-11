@@ -1,16 +1,5 @@
 {
-  "schema_version": "codex-bench.v1",
-  "campaign_id": "swebench-study-2026-03-11T11-47-07Z-f9e12677",
-  "run_id": "astropy__astropy-13453-attempt-01",
-  "instance_id": "astropy__astropy-13453",
-  "repo": "astropy/astropy",
-  "task_class": "bootstrap-heavy",
-  "base_commit": "19cc80471739bcb67b7e8099246b391c355023ee",
-  "worktree_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/workspace",
-  "attempt": 1,
-  "status": "completed",
-  "grading_status": "pending",
-  "artifact_paths": {
+  "artifactPaths": {
     "anomalies": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/anomalies.jsonl",
     "claimEvidence": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/claim-evidence.json",
     "codexProbeEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/codex-probe-events.jsonl",
@@ -30,5 +19,6 @@
     "runSummary": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/run-summary.json",
     "tokenSnapshots": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/token-snapshots.jsonl",
     "toolEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/attempt-01/tool-events.jsonl"
-  }
+  },
+  "recordPath": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453/record.json"
 }

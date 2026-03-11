@@ -1,0 +1,62 @@
+{
+  "schema_version": "codex-bench.v1",
+  "campaign_id": "swebench-study-2026-03-11T12-35-02Z-ac52427a",
+  "created_at": "2026-03-11T12:35:03.084294+00:00",
+  "campaign_root": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a",
+  "repo_cache_root": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../.local-cache/repos/swebench",
+  "benchmark_name": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "preset_name": "swebench-v1",
+  "preset_path": "/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets/swebench-v1.json",
+  "stage_name": "behavior-pilot",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "model": "gpt-5.4",
+  "provider": "openai",
+  "seed": "swebench-5-20260311-203456",
+  "sample_size": 5,
+  "study_mode": "codex_live_observation",
+  "required_task_classes": [],
+  "preferred_task_classes": [],
+  "future_benchmarks": [],
+  "grounding_documents": [
+    "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md"
+  ],
+  "reference_documents": [
+    "https://deepwiki.com/openai/codex",
+    "https://openai.com/index/unlocking-the-codex-harness/"
+  ],
+  "selected_instances": [
+    {
+      "instance_id": "matplotlib__matplotlib-25122",
+      "repo": "matplotlib/matplotlib",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/matplotlib__matplotlib-25122"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-10844",
+      "repo": "scikit-learn/scikit-learn",
+      "task_class": "compaction-likely",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844"
+    },
+    {
+      "instance_id": "django__django-13401",
+      "repo": "django/django",
+      "task_class": "patch-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-13401"
+    },
+    {
+      "instance_id": "django__django-16454",
+      "repo": "django/django",
+      "task_class": "search-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16454"
+    },
+    {
+      "instance_id": "django__django-16938",
+      "repo": "django/django",
+      "task_class": "verification-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16938"
+    }
+  ]
+}

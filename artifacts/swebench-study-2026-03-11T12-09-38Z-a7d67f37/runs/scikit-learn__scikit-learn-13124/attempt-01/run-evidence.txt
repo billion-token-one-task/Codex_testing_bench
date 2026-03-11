@@ -1,0 +1,862 @@
+Run Summary
+===========
+Instance: scikit-learn__scikit-learn-13124
+Repo: scikit-learn/scikit-learn
+Task class: compaction-likely
+Status: completed
+Grading status: pending
+Turns observed: 1
+Tokens: input=1226901 output=11271 cache_read=1179136 total=1238172
+Patch SHA256: c33d79e7fc31febd02173ded9482974c54fd44de309145f6af35ba1ed904ff5c
+
+Human-Oriented Overview
+=======================
+Commands=72 | Tools=74 | SkillEvents=5 | TokenSnapshots=29 | Anomalies=0
+Tool kinds: apply_patch=1, shell=36
+Observed skills: brainstorming=1, systematic-debugging=1, using-superpowers=1, verification-before-completion=1, writing-plans=1
+
+Probe Summary
+=============
+first_controlled_change_tokens=Some(325240)
+ignition_shell_search_count=0
+ignition_patch_apply_count=1
+ignition_tool_mediated_count=0
+control_rod_compaction_count=0
+control_rod_config_freeze_count=1
+control_rod_persistence_count=0
+persistence_continuity_count=0
+persistence_staleness_risk_count=0
+externalized_coordination_count=4
+event_discontinuity_count=0
+containment_heat_leak_count=0
+verification_closure_count=0
+useful_token_proxy_bps=Some(0)
+friction_token_proxy_bps=Some(49)
+harness_overhead_proxy_bps=Some(49)
+
+Turn Metrics
+============
+turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 status=completed total_delta=1238172 input_delta=1226901 output_delta=11271 cache_delta=1179136 cmds=36 mcp=0 patch=1 skills=5 first=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/brainstorming/SKILL.md last=/bin/zsh -lc git diff --stat
+
+Skill Usage
+===========
+seq=125 kind=command_skill_access skill=brainstorming scope=- enabled=- command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/brainstorming/SKILL.md
+seq=127 kind=command_skill_access skill=using-superpowers scope=- enabled=- command=/bin/zsh -lc sed -n '1,200p' /Users/kevinlin/.codex/skills/using-superpowers/SKILL.md
+seq=128 kind=command_skill_access skill=writing-plans scope=- enabled=- command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/writing-plans/SKILL.md
+seq=129 kind=command_skill_access skill=systematic-debugging scope=- enabled=- command=/bin/zsh -lc sed -n '1,240p' /Users/kevinlin/.codex/skills/systematic-debugging/SKILL.md
+seq=137 kind=command_skill_access skill=verification-before-completion scope=- enabled=- command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/verification-before-completion/SKILL.md
+
+Tool Usage
+==========
+seq=125 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=126 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=127 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=128 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=129 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=130 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=131 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=132 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=137 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=138 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=288 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=289 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=290 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=291 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=292 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=293 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=77
+seq=408 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=409 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=410 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=411 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=412 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=413 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=559 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=560 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=563 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=564 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=570 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=571 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=688 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=691 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=848
+seq=808 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=809 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=810 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=811 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=812 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=813 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=824 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=825 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=827 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=828 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=834 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=835 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=0
+seq=1087 phase=begin kind=apply_patch name=apply_patch server=- tool=- success=- duration_ms=0
+seq=1089 phase=end kind=apply_patch name=apply_patch server=- tool=- success=false duration_ms=0
+seq=1169 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1170 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=1178 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1179 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=1180 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1181 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=1284 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1327 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=1308
+seq=1340 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1341 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=1455 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1458 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=337
+seq=1466 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1471 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=2528
+seq=1484 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1490 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=1179
+seq=1503 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1504 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
+seq=1513 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1531 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=384
+seq=1538 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1539 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=0
+seq=1705 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1707 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=95
+seq=1715 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1718 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=101
+seq=1849 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1850 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
+seq=1852 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=55
+seq=1855 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=61
+
+Token Timeline
+==============
+seq=124 total=19070 input=18176 output=894 cache_read=0 last_total=19070 context_window=258400
+seq=294 total=44576 input=42955 output=1621 cache_read=18944 last_total=25506 context_window=258400
+seq=414 total=72098 input=70094 output=2004 cache_read=44288 last_total=27522 context_window=258400
+seq=561 total=102537 input=100158 output=2379 cache_read=71680 last_total=30439 context_window=258400
+seq=572 total=135335 input=132843 output=2492 cache_read=102016 last_total=32798 context_window=258400
+seq=692 total=169170 input=166460 output=2710 cache_read=134656 last_total=33835 context_window=258400
+seq=814 total=205200 input=201932 output=3268 cache_read=168320 last_total=36030 context_window=258400
+seq=823 total=243858 input=240202 output=3656 cache_read=204160 last_total=38658 context_window=258400
+seq=836 total=284008 input=280208 output=3800 cache_read=242688 last_total=40150 context_window=258400
+seq=995 total=325240 input=320467 output=4773 cache_read=282752 last_total=41232 context_window=258400
+seq=1090 total=366652 input=361709 output=4943 cache_read=323840 last_total=41412 context_window=258400
+seq=1168 total=408465 input=403181 output=5284 cache_read=365184 last_total=41813 context_window=258400
+seq=1182 total=450538 input=445040 output=5498 cache_read=406912 last_total=42073 context_window=258400
+seq=1288 total=493480 input=487690 output=5790 cache_read=448896 last_total=42942 context_window=258400
+seq=1333 total=536801 input=530965 output=5836 cache_read=491648 last_total=43321 context_window=258400
+seq=1342 total=581889 input=575868 output=6021 cache_read=534784 last_total=45088 context_window=258400
+seq=1459 total=628237 input=621807 output=6430 cache_read=579712 last_total=46348 context_window=258400
+seq=1467 total=675292 input=668509 output=6783 cache_read=625920 last_total=47055 context_window=258400
+seq=1477 total=722441 input=715613 output=6828 cache_read=672896 last_total=47149 context_window=258400
+seq=1485 total=769986 input=762839 output=7147 cache_read=719872 last_total=47545 context_window=258400
+seq=1496 total=817624 input=810431 output=7193 cache_read=767232 last_total=47638 context_window=258400
+seq=1505 total=865672 input=858310 output=7362 cache_read=814720 last_total=48048 context_window=258400
+seq=1512 total=915347 input=907581 output=7766 cache_read=862592 last_total=49675 context_window=258400
+seq=1540 total=966455 input=958553 output=7902 cache_read=912128 last_total=51108 context_window=258400
+seq=1708 total=1019434 input=1009719 output=9715 cache_read=963072 last_total=52979 context_window=258400
+seq=1716 total=1073542 input=1063020 output=10522 cache_read=1015936 last_total=54108 context_window=258400
+seq=1848 total=1128139 input=1117322 output=10817 cache_read=1069952 last_total=54597 context_window=258400
+seq=1863 total=1182986 input=1172041 output=10945 cache_read=1124480 last_total=54847 context_window=258400
+seq=2363 total=1238172 input=1226901 output=11271 cache_read=1179136 last_total=55186 context_window=258400
+
+Command Timeline
+================
+seq=125 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/brainstorming/SKILL.md exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=126 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/brainstorming/SKILL.md exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=127 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,200p' /Users/kevinlin/.codex/skills/using-superpowers/SKILL.md exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=128 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/writing-plans/SKILL.md exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=129 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,240p' /Users/kevinlin/.codex/skills/systematic-debugging/SKILL.md exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=130 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,200p' /Users/kevinlin/.codex/skills/using-superpowers/SKILL.md exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=131 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/writing-plans/SKILL.md exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=132 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,240p' /Users/kevinlin/.codex/skills/systematic-debugging/SKILL.md exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=137 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/verification-before-completion/SKILL.md exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=138 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,220p' /Users/kevinlin/.codex/skills/verification-before-completion/SKILL.md exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=288 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "class StratifiedKFold|shuffle_stratifiedkfold|StratifiedKFold" sklearn/model_selection/_split.py sklearn/model_selection/tests/test_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=289 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "class StratifiedKFold|shuffle_stratifiedkfold|StratifiedKFold" sklearn/model_selection/_split.py sklearn/model_selection/tests/test_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=290 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git log --oneline --grep='7823\|StratifiedKFold\|shuffle' -- sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=291 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git log --oneline --grep='7823\|StratifiedKFold\|shuffle' -- sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=292 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git status --short exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=293 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git status --short exit=0 duration_ms=77 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=408 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '559,700p' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=409 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '470,520p' sklearn/model_selection/tests/test_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=410 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '559,700p' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=411 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '470,520p' sklearn/model_selection/tests/test_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=412 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '520,555p' sklearn/model_selection/tests/test_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=413 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '520,555p' sklearn/model_selection/tests/test_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=559 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '267,420p' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=560 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '267,420p' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=563 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=564 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=570 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '420,500p' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=571 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '420,500p' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=688 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python -m pytest sklearn/model_selection/tests/test_split.py::test_shuffle_stratifiedkfold -q exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=691 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python -m pytest sklearn/model_selection/tests/test_split.py::test_shuffle_stratifiedkfold -q exit=4 duration_ms=848 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=808 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/__check_build/__init__.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=809 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/__check_build/__init__.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=810 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,200p' setup.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=811 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,200p' setup.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=812 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "SKLEARN_SKIP_CHECK_BUILD|__check_build|build_ext -i|python setup.py build_ext" -S setup.py sklearn | head -n 80 exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=813 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "SKLEARN_SKIP_CHECK_BUILD|__check_build|build_ext -i|python setup.py build_ext" -S setup.py sklearn | head -n 80 exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=824 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '440,490p' sklearn/model_selection/tests/test_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=825 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '440,490p' sklearn/model_selection/tests/test_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=827 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "reproduc|random_state=0|shuffle=True" sklearn/model_selection/tests/test_split.py | sed -n '1,80p' exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=828 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc rg -n "reproduc|random_state=0|shuffle=True" sklearn/model_selection/tests/test_split.py | sed -n '1,80p' exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=834 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git blame -L 640,675 sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=835 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git blame -L 640,675 sklearn/model_selection/_split.py exit=128 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1169 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc perl -0pi -e 's/rng = self\.random_state\n/rng = check_random_state(self.random_state) if self.shuffle else None\n/' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1170 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc perl -0pi -e 's/rng = self\.random_state\n/rng = check_random_state(self.random_state) if self.shuffle else None\n/' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1178 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '620,650p' sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1179 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '620,650p' sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1180 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git diff -- sklearn/model_selection/_split.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1181 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git diff -- sklearn/model_selection/_split.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1284 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python setup.py build_ext -i exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1327 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python setup.py build_ext -i exit=1 duration_ms=1308 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1340 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/__init__.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1341 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,120p' sklearn/__init__.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1455 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import builtins
+builtins.__SKLEARN_SETUP__ = True
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1458 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import builtins
+builtins.__SKLEARN_SETUP__ = True
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY exit=1 duration_ms=337 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1466 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import sys
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn
+print(sklearn.__version__)
+print(sklearn.__file__)
+PY exit=- duration_ms=0 cwd=/tmp
+seq=1471 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import sys
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn
+print(sklearn.__version__)
+print(sklearn.__file__)
+PY exit=0 duration_ms=2528 cwd=/tmp
+seq=1484 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import sys, importlib.util
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn.model_selection  # ensure installed package context
+path = '/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace/sklearn/model_selection/_split.py'
+spec = importlib.util.spec_from_file_location('sklearn.model_selection._split_local', path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(mod.StratifiedKFold)
+PY exit=- duration_ms=0 cwd=/tmp
+seq=1490 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import sys, importlib.util
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn.model_selection  # ensure installed package context
+path = '/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace/sklearn/model_selection/_split.py'
+spec = importlib.util.spec_from_file_location('sklearn.model_selection._split_local', path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(mod.StratifiedKFold)
+PY exit=1 duration_ms=1179 cwd=/tmp
+seq=1503 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,160p' sklearn/utils/__init__.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1504 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc sed -n '1,160p' sklearn/utils/__init__.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1513 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import builtins, sys, types
+builtins.__SKLEARN_SETUP__ = True
+m = types.ModuleType('sklearn.utils.murmurhash')
+m.murmurhash3_32 = lambda *args, **kwargs: None
+sys.modules['sklearn.utils.murmurhash'] = m
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1531 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import builtins, sys, types
+builtins.__SKLEARN_SETUP__ = True
+m = types.ModuleType('sklearn.utils.murmurhash')
+m.murmurhash3_32 = lambda *args, **kwargs: None
+sys.modules['sklearn.utils.murmurhash'] = m
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY exit=1 duration_ms=384 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1538 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python3.7 --version exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1539 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python3.7 --version exit=127 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1705 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds_old(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, random_state))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def make_test_folds_new(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if shuffle else None
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def fold_sets(test_folds, n_splits):
+    return [set(np.where(test_folds == i)[0]) for i in range(n_splits)]
+
+
+y = [0] * 20 + [1] * 20
+old0 = fold_sets(make_test_folds_old(5, y, True, 0), 5)
+old1 = fold_sets(make_test_folds_old(5, y, True, 1), 5)
+new0 = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+new1 = fold_sets(make_test_folds_new(5, y, True, 1), 5)
+repro = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+
+print('old differs across seeds:', any(a != b for a, b in zip(old0, old1)))
+print('new differs across seeds:', any(a != b for a, b in zip(new0, new1)))
+print('new reproducible for same seed:', new0 == repro)
+print('example new seed0 folds:', [sorted(s) for s in new0])
+print('example new seed1 folds:', [sorted(s) for s in new1])
+PY exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1707 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds_old(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, random_state))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def make_test_folds_new(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if shuffle else None
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def fold_sets(test_folds, n_splits):
+    return [set(np.where(test_folds == i)[0]) for i in range(n_splits)]
+
+
+y = [0] * 20 + [1] * 20
+old0 = fold_sets(make_test_folds_old(5, y, True, 0), 5)
+old1 = fold_sets(make_test_folds_old(5, y, True, 1), 5)
+new0 = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+new1 = fold_sets(make_test_folds_new(5, y, True, 1), 5)
+repro = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+
+print('old differs across seeds:', any(a != b for a, b in zip(old0, old1)))
+print('new differs across seeds:', any(a != b for a, b in zip(new0, new1)))
+print('new reproducible for same seed:', new0 == repro)
+print('example new seed0 folds:', [sorted(s) for s in new0])
+print('example new seed1 folds:', [sorted(s) for s in new1])
+PY exit=0 duration_ms=95 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1715 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds(n_splits, y, shuffle, random_state, shared_rng):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if (shuffle and shared_rng) else random_state
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+y = [1] * 10 + [0] * 10
+old = make_test_folds(10, y, True, 1, shared_rng=False)
+new = make_test_folds(10, y, True, 1, shared_rng=True)
+old_paired = all(old[i] == old[i + 10] for i in range(10))
+new_paired = all(new[i] == new[i + 10] for i in range(10))
+print('old keeps i paired with i+10:', old_paired)
+print('new keeps i paired with i+10:', new_paired)
+print('old fold ids:', old.tolist())
+print('new fold ids:', new.tolist())
+PY exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1718 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds(n_splits, y, shuffle, random_state, shared_rng):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if (shuffle and shared_rng) else random_state
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+y = [1] * 10 + [0] * 10
+old = make_test_folds(10, y, True, 1, shared_rng=False)
+new = make_test_folds(10, y, True, 1, shared_rng=True)
+old_paired = all(old[i] == old[i + 10] for i in range(10))
+new_paired = all(new[i] == new[i + 10] for i in range(10))
+print('old keeps i paired with i+10:', old_paired)
+print('new keeps i paired with i+10:', new_paired)
+print('old fold ids:', old.tolist())
+print('new fold ids:', new.tolist())
+PY exit=0 duration_ms=101 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1849 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git status --short exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1850 phase=begin turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git diff --stat exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1852 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git diff --stat exit=0 duration_ms=55 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+seq=1855 phase=end turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 command=/bin/zsh -lc git status --short exit=0 duration_ms=61 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace
+
+Session / Config Probe Highlights
+=================================
+config_freeze_drift_count=1
+instruction_shift_count=3
+harness_friction_count=0
+
+Instruction Assembly Summary
+============================
+ConfigFreeze: 1
+InstructionChannel: 3
+TurnLifecycle: 3
+
+Turn and Phase Timeline
+=======================
+seq=18 kind=turn_started turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 model=- provider=- reason=-
+seq=2365 kind=turn_complete turn=019cdcd4-8d9e-7611-a379-32c33055a4d8 model=- provider=- reason=-
+
+Compaction / Reconstruction Timeline
+===================================
+compaction_count=0
+compaction_rediscovery_count=0
+peak_context_utilization_bps=Some(47916)
+
+Derived Probe Events
+====================
+seq=0 subsystem=ConfigFreeze code=config.requested_vs_effective class=inferred summary=effective model `gpt-5.4` frozen for study run `scikit-learn__scikit-learn-13124-attempt-01`
+seq=0 subsystem=ConfigFreeze code=control_rod.config_freeze class=inferred summary=session config froze model/runtime choices at `openai::gpt-5.4`
+seq=0 subsystem=PersistenceReconstruction code=persistence.externalized_state class=inferred summary=Codex session was configured to persist extended history, suggesting externalized continuity beyond the immediate turn
+seq=5 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=5 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=9 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=9 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=11 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=11 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=688 subsystem=TurnLifecycle code=activation.first_verification class=inferred summary=first verification command observed: `/bin/zsh -lc python -m pytest sklearn/model_selection/tests/test_split.py::test_shuffle_stratifiedkfold -q` at Some(135335) total tokens
+seq=688 subsystem=TurnLifecycle code=chain_reaction.cycle class=inferred summary=productive reaction cycle advanced through verification command `/bin/zsh -lc python -m pytest sklearn/model_selection/tests/test_split.py::test_shuffle_stratifiedkfold -q`
+seq=1087 subsystem=ToolMediation code=fission.ignition.patch_apply class=exact summary=first controlled change appears to happen via patch application
+seq=1169 subsystem=TurnLifecycle code=activation.first_meaningful_edit class=inferred summary=first likely meaningful edit command observed: `/bin/zsh -lc perl -0pi -e 's/rng = self\.random_state\n/rng = check_random_state(self.random_state) if self.shuffle else None\n/' sklearn/model_selection/_split.py` at Some(408465) total tokens
+seq=1169 subsystem=TurnLifecycle code=fission.first_controlled_change class=inferred summary=first controlled code-change path appears to begin via `/bin/zsh -lc perl -0pi -e 's/rng = self\.random_state\n/rng = check_random_state(self.random_state) if self.shuffle else None\n/' sklearn/model_selection/_split.py`
+seq=1170 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc perl -0pi -e 's/rng = self\.random_state\n/rng = check_random_state(self.random_state) if self.shuffle else None\n/' sklearn/model_selection/_split.py`
+seq=1179 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '620,650p' sklearn/model_selection/_split.py`
+seq=1181 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc git diff -- sklearn/model_selection/_split.py`
+seq=1327 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python setup.py build_ext -i`
+seq=1341 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '1,120p' sklearn/__init__.py`
+seq=1458 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import builtins
+builtins.__SKLEARN_SETUP__ = True
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY`
+seq=1471 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import sys
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn
+print(sklearn.__version__)
+print(sklearn.__file__)
+PY`
+seq=1490 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import sys, importlib.util
+sys.path = [p for p in sys.path if 'scikit-learn__scikit-learn-13124/workspace' not in p and p != '']
+import sklearn.model_selection  # ensure installed package context
+path = '/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/workspace/sklearn/model_selection/_split.py'
+spec = importlib.util.spec_from_file_location('sklearn.model_selection._split_local', path)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+print(mod.StratifiedKFold)
+PY`
+seq=1504 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '1,160p' sklearn/utils/__init__.py`
+seq=1531 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import builtins, sys, types
+builtins.__SKLEARN_SETUP__ = True
+m = types.ModuleType('sklearn.utils.murmurhash')
+m.murmurhash3_32 = lambda *args, **kwargs: None
+sys.modules['sklearn.utils.murmurhash'] = m
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+X = np.ones(40)
+y = [0] * 20 + [1] * 20
+kf0 = StratifiedKFold(5, shuffle=True, random_state=0)
+kf1 = StratifiedKFold(5, shuffle=True, random_state=1)
+print([sorted(test.tolist()) for _, test in kf0.split(X, y)])
+print([sorted(test.tolist()) for _, test in kf1.split(X, y)])
+print(any(set(t0) != set(t1) for (_, t0), (_, t1) in zip(kf0.split(X, y), kf1.split(X, y))))
+PY`
+seq=1539 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python3.7 --version`
+seq=1707 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds_old(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, random_state))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def make_test_folds_new(n_splits, y, shuffle, random_state):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if shuffle else None
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+def fold_sets(test_folds, n_splits):
+    return [set(np.where(test_folds == i)[0]) for i in range(n_splits)]
+
+
+y = [0] * 20 + [1] * 20
+old0 = fold_sets(make_test_folds_old(5, y, True, 0), 5)
+old1 = fold_sets(make_test_folds_old(5, y, True, 1), 5)
+new0 = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+new1 = fold_sets(make_test_folds_new(5, y, True, 1), 5)
+repro = fold_sets(make_test_folds_new(5, y, True, 0), 5)
+
+print('old differs across seeds:', any(a != b for a, b in zip(old0, old1)))
+print('new differs across seeds:', any(a != b for a, b in zip(new0, new1)))
+print('new reproducible for same seed:', new0 == repro)
+print('example new seed0 folds:', [sorted(s) for s in new0])
+print('example new seed1 folds:', [sorted(s) for s in new1])
+PY`
+seq=1718 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python - <<'PY'
+import numpy as np
+
+
+def kfold_splits(n_splits, n_samples, shuffle, random_state):
+    indices = np.arange(n_samples)
+    if shuffle:
+        rng = random_state if hasattr(random_state, 'shuffle') else np.random.RandomState(random_state)
+        rng.shuffle(indices)
+    fold_sizes = np.full(n_splits, n_samples // n_splits, dtype=int)
+    fold_sizes[:n_samples % n_splits] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        yield indices[start:stop]
+        current = stop
+
+
+def make_test_folds(n_splits, y, shuffle, random_state, shared_rng):
+    y = np.asarray(y)
+    classes, y_inv = np.unique(y, return_inverse=True)
+    counts = np.bincount(y_inv)
+    rng = np.random.RandomState(random_state) if (shuffle and shared_rng) else random_state
+    per_cls_cvs = [
+        list(kfold_splits(n_splits, max(count, n_splits), shuffle, rng))
+        for count in counts
+    ]
+    test_folds = np.zeros(len(y), dtype=int)
+    for test_fold_idx, per_cls_splits in enumerate(zip(*per_cls_cvs)):
+        for cls, test_split in zip(classes, per_cls_splits):
+            cls_test_folds = test_folds[y == cls]
+            test_split = test_split[test_split < len(cls_test_folds)]
+            cls_test_folds[test_split] = test_fold_idx
+            test_folds[y == cls] = cls_test_folds
+    return test_folds
+
+
+y = [1] * 10 + [0] * 10
+old = make_test_folds(10, y, True, 1, shared_rng=False)
+new = make_test_folds(10, y, True, 1, shared_rng=True)
+old_paired = all(old[i] == old[i + 10] for i in range(10))
+new_paired = all(new[i] == new[i + 10] for i in range(10))
+print('old keeps i paired with i+10:', old_paired)
+print('new keeps i paired with i+10:', new_paired)
+print('old fold ids:', old.tolist())
+print('new fold ids:', new.tolist())
+PY`
+seq=1852 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc git diff --stat`
+seq=1855 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc git status --short`
+seq=2366 subsystem=ContextCompaction code=context.cache_read_ratio class=exact summary=cache-read ratio observed as 1179136/1226901 input tokens
+
+Redundancy Incidents
+====================
+repeated_read_count=0
+repeated_verification_count=0
+repeated_git_inspection_count=0
+post_submit_activity_count=15
+
+Verification Chain
+==================
+first_meaningful_edit_tokens=Some(408465)
+first_verification_tokens=Some(135335)
+first_patch_tokens=Some(325240)
+final_patch_tokens=Some(1238172)
+useful_step_proxy=0/36
+useful_token_proxy=0/1238172
+
+Anomalies
+=========
+<none>
+
+Failure Or Success Narrative
+============================
+anomaly_count=0 raw_event_count=2366 raw_probe_count=7 raw_diagnostic_count=1376
+chain_reaction_cycle_count=1 containment_breach_count=0
+
+Claim Evidence
+==============
+grounding.activation_threshold | evidence_consistent
+  support: first meaningful edit observed at total tokens=408465; first verification observed at total tokens=135335
+  caveats: Single-run evidence does not establish a full sigmoid curve.
+grounding.flat_history_tax | evidence_consistent
+  support: repeated_read_count=0; compaction_count=0; cache_read_ratio=1179136/1226901
+  caveats: Repeated-read evidence is inferred from shell-level telemetry.
+grounding.verification_pressure | evidence_inconclusive
+  support: first_verification_tokens=Some(135335); useful_step_proxy=0/36; verification_closure_count=0
+  caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+grounding.externalized_coordination | evidence_consistent
+  support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+  caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+grounding.control_regulation | evidence_consistent
+  support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+  caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+codex.compaction_rebuild | not_observable_with_current_probes
+  support: compaction_count=0; compaction_rediscovery_count=0
+  caveats: Needs compaction-heavy tasks for strong evidence.
+codex.config_freeze | evidence_consistent
+  support: config_freeze_drift_count=1
+  caveats: Some apparent drift may reflect intentional provider normalization.
+codex.instruction_stratification | evidence_consistent
+  support: instruction_stratification_count=3
+  caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+codex.persistence_continuity | not_observable_with_current_probes
+  support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+  caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+codex.control_rods | evidence_consistent
+  support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+  caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+codex.tool_mediation | evidence_inconclusive
+  support: tool_mediation_tax_count=0
+  caveats: A given run may not exercise MCP and patch pathways equally.
+codex.event_architecture | evidence_inconclusive
+  support: event_discontinuity_count=0
+  caveats: A quiet run may not exercise listener lag or translation discontinuities.
+codex.harness_overhead_tax | evidence_consistent
+  support: harness_friction_count=0; friction_token_proxy=6149/1238172; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(49)
+  caveats: Friction-token estimates are inferred from event sequencing and command duration.
+
+Artifact Paths
+==============
+anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/anomalies.jsonl
+attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/attempt-log.txt
+claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/claim-evidence.json
+codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/codex-probe-events.jsonl
+commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/command-events.jsonl
+environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/environment-plan.json
+gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/grade-events.jsonl
+lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/lifecycle-events.jsonl
+patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/patch.diff
+patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/patch-events.jsonl
+probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/probe-events.jsonl
+probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/probe-summary.json
+prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/prompt.txt
+rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/raw-agent-events.jsonl
+rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/raw-diagnostics.jsonl
+replay: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/replay.json
+runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/run-evidence.txt
+runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/run-summary.json
+skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/skill-events.jsonl
+tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/token-snapshots.jsonl
+toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/tool-events.jsonl
+turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-09-38Z-a7d67f37/runs/scikit-learn__scikit-learn-13124/attempt-01/turn-metrics.jsonl

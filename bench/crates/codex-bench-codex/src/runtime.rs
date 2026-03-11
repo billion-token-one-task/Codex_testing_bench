@@ -27,6 +27,13 @@ pub struct CodexRuntimeCapture {
     pub raw_diagnostics: Vec<Value>,
 }
 
+fn benchmark_cli_overrides() -> Vec<(String, TomlValue)> {
+    vec![(
+        "web_search".to_string(),
+        TomlValue::String("disabled".to_string()),
+    )]
+}
+
 pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapture> {
     let worktree_dir = request
         .worktree_dir
@@ -37,9 +44,11 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
         .canonicalize()
         .unwrap_or_else(|_| request.attempt_dir.clone());
 
+    let cli_overrides = benchmark_cli_overrides();
+
     let config = Arc::new(
         ConfigBuilder::default()
-            .cli_overrides(Vec::<(String, TomlValue)>::new())
+            .cli_overrides(cli_overrides.clone())
             .harness_overrides(ConfigOverrides {
                 cwd: Some(worktree_dir.clone()),
                 model: Some(request.model.clone()),
@@ -58,7 +67,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
     let mut client = InProcessAppServerClient::start(InProcessClientStartArgs {
         arg0_paths: Arg0DispatchPaths::default(),
         config,
-        cli_overrides: Vec::new(),
+        cli_overrides,
         loader_overrides: LoaderOverrides::default(),
         cloud_requirements: CloudRequirementsLoader::default(),
         feedback: CodexFeedback::new(),
@@ -146,6 +155,11 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
                     .write_all(&(serde_json::to_string(&notification)? + "\n").into_bytes())
                     .await?;
                 if let Some(decoded) = decode_legacy_notification(notification)? {
+                    if matches!(decoded.msg, EventMsg::WebSearchBegin(_)) {
+                        bail!(
+                            "benchmark run emitted web_search_begin even though web_search was forced disabled"
+                        );
+                    }
                     if let EventMsg::StudyProbe(probe) = &decoded.msg {
                         probe_file
                             .write_all(&(serde_json::to_string(probe)? + "\n").into_bytes())

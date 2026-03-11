@@ -1,0 +1,85 @@
+{
+  "instance_id": "matplotlib__matplotlib-25122",
+  "repo": "matplotlib/matplotlib",
+  "task_class": "bootstrap-heavy",
+  "status": "completed",
+  "grading_status": "pending",
+  "raw_event_count": 2353,
+  "raw_probe_count": 7,
+  "raw_diagnostic_count": 1312,
+  "turn_count": 1,
+  "token_snapshot_count": 22,
+  "command_count": 62,
+  "tool_count": 66,
+  "skill_event_count": 4,
+  "patch_event_count": 4,
+  "patch_file_count": 2,
+  "patch_sha256": "5aac233471a9ec93aabf82fbd10992b615545d3ac66821a46c4db818d9549701",
+  "total_input_tokens": 2534575,
+  "total_output_tokens": 9899,
+  "total_cache_read_tokens": 2294400,
+  "total_tokens": 2544474,
+  "model_context_window": 258400,
+  "anomaly_count": 0,
+  "event_type_counts": {
+    "exec_command_begin": 31,
+    "exec_command_end": 31,
+    "other": 2256,
+    "patch_apply_begin": 2,
+    "patch_apply_end": 2,
+    "study_probe": 7,
+    "token_count": 22,
+    "turn_complete": 1,
+    "turn_started": 1
+  },
+  "probe_code_counts": {
+    "session_configured": 1,
+    "turn_context_built": 3,
+    "turn_context_ready": 3
+  },
+  "probe_subsystem_counts": {
+    "ConfigFreeze": 1,
+    "InstructionChannel": 3,
+    "TurnLifecycle": 3
+  },
+  "diagnostic_type_counts": {
+    "server_notification": 1312
+  },
+  "tool_kind_counts": {
+    "apply_patch": 2,
+    "shell": 31
+  },
+  "tool_name_counts": {
+    "apply_patch": 2
+  },
+  "skill_name_counts": {
+    "brainstorming": 1,
+    "systematic-debugging": 1,
+    "using-superpowers": 1,
+    "verification-before-completion": 1
+  },
+  "artifact_inventory": {
+    "anomalies": true,
+    "attemptLog": true,
+    "claimEvidence": true,
+    "codexProbeEvents": true,
+    "commandEvents": true,
+    "environmentPlan": true,
+    "gradeEvents": false,
+    "lifecycleEvents": true,
+    "patch": true,
+    "patchEvents": true,
+    "probeEvents": true,
+    "probeSummary": true,
+    "prompt": true,
+    "rawAgentEvents": true,
+    "rawDiagnostics": true,
+    "replay": true,
+    "runEvidence": true,
+    "runSummary": true,
+    "skillEvents": true,
+    "tokenSnapshots": true,
+    "toolEvents": true,
+    "turnMetrics": true
+  }
+}

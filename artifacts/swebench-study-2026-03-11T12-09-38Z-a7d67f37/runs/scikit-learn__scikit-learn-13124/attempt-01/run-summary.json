@@ -1,0 +1,86 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-13124",
+  "repo": "scikit-learn/scikit-learn",
+  "task_class": "compaction-likely",
+  "status": "completed",
+  "grading_status": "pending",
+  "raw_event_count": 2366,
+  "raw_probe_count": 7,
+  "raw_diagnostic_count": 1376,
+  "turn_count": 1,
+  "token_snapshot_count": 29,
+  "command_count": 72,
+  "tool_count": 74,
+  "skill_event_count": 5,
+  "patch_event_count": 2,
+  "patch_file_count": 1,
+  "patch_sha256": "c33d79e7fc31febd02173ded9482974c54fd44de309145f6af35ba1ed904ff5c",
+  "total_input_tokens": 1226901,
+  "total_output_tokens": 11271,
+  "total_cache_read_tokens": 1179136,
+  "total_tokens": 1238172,
+  "model_context_window": 258400,
+  "anomaly_count": 0,
+  "event_type_counts": {
+    "exec_command_begin": 36,
+    "exec_command_end": 36,
+    "other": 2254,
+    "patch_apply_begin": 1,
+    "patch_apply_end": 1,
+    "study_probe": 7,
+    "token_count": 29,
+    "turn_complete": 1,
+    "turn_started": 1
+  },
+  "probe_code_counts": {
+    "session_configured": 1,
+    "turn_context_built": 3,
+    "turn_context_ready": 3
+  },
+  "probe_subsystem_counts": {
+    "ConfigFreeze": 1,
+    "InstructionChannel": 3,
+    "TurnLifecycle": 3
+  },
+  "diagnostic_type_counts": {
+    "server_notification": 1376
+  },
+  "tool_kind_counts": {
+    "apply_patch": 1,
+    "shell": 36
+  },
+  "tool_name_counts": {
+    "apply_patch": 1
+  },
+  "skill_name_counts": {
+    "brainstorming": 1,
+    "systematic-debugging": 1,
+    "using-superpowers": 1,
+    "verification-before-completion": 1,
+    "writing-plans": 1
+  },
+  "artifact_inventory": {
+    "anomalies": true,
+    "attemptLog": true,
+    "claimEvidence": true,
+    "codexProbeEvents": true,
+    "commandEvents": true,
+    "environmentPlan": true,
+    "gradeEvents": false,
+    "lifecycleEvents": true,
+    "patch": true,
+    "patchEvents": true,
+    "probeEvents": true,
+    "probeSummary": true,
+    "prompt": true,
+    "rawAgentEvents": true,
+    "rawDiagnostics": true,
+    "replay": true,
+    "runEvidence": true,
+    "runSummary": true,
+    "skillEvents": true,
+    "tokenSnapshots": true,
+    "toolEvents": true,
+    "turnMetrics": true
+  }
+}

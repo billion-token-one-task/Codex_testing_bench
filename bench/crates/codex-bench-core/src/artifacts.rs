@@ -29,10 +29,15 @@ pub fn attempt_artifact_paths(attempt_dir: &Path) -> BTreeMap<String, PathBuf> {
             attempt_dir.join("token-snapshots.jsonl"),
         ),
         (
+            "turnMetrics".to_string(),
+            attempt_dir.join("turn-metrics.jsonl"),
+        ),
+        (
             "commandEvents".to_string(),
             attempt_dir.join("command-events.jsonl"),
         ),
         ("toolEvents".to_string(), attempt_dir.join("tool-events.jsonl")),
+        ("skillEvents".to_string(), attempt_dir.join("skill-events.jsonl")),
         ("patchEvents".to_string(), attempt_dir.join("patch-events.jsonl")),
         ("gradeEvents".to_string(), attempt_dir.join("grade-events.jsonl")),
         ("anomalies".to_string(), attempt_dir.join("anomalies.jsonl")),
@@ -42,6 +47,7 @@ pub fn attempt_artifact_paths(attempt_dir: &Path) -> BTreeMap<String, PathBuf> {
         ("patch".to_string(), attempt_dir.join("patch.diff")),
         ("runSummary".to_string(), attempt_dir.join("run-summary.json")),
         ("runEvidence".to_string(), attempt_dir.join("run-evidence.txt")),
+        ("attemptLog".to_string(), attempt_dir.join("attempt-log.txt")),
         ("replay".to_string(), attempt_dir.join("replay.json")),
     ])
 }

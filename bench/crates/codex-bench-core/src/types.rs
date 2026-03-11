@@ -211,25 +211,55 @@ pub struct RunSummary {
     pub task_class: String,
     pub status: String,
     pub grading_status: String,
+    #[serde(default)]
     pub raw_event_count: usize,
+    #[serde(default)]
     pub raw_probe_count: usize,
+    #[serde(default)]
     pub raw_diagnostic_count: usize,
+    #[serde(default)]
+    pub turn_count: usize,
+    #[serde(default)]
     pub token_snapshot_count: usize,
+    #[serde(default)]
     pub command_count: usize,
+    #[serde(default)]
     pub tool_count: usize,
+    #[serde(default)]
+    pub skill_event_count: usize,
+    #[serde(default)]
     pub patch_event_count: usize,
+    #[serde(default)]
     pub patch_file_count: usize,
+    #[serde(default)]
     pub patch_sha256: Option<String>,
+    #[serde(default)]
     pub total_input_tokens: Option<i64>,
+    #[serde(default)]
     pub total_output_tokens: Option<i64>,
+    #[serde(default)]
     pub total_cache_read_tokens: Option<i64>,
+    #[serde(default)]
     pub total_tokens: Option<i64>,
+    #[serde(default)]
     pub model_context_window: Option<i64>,
+    #[serde(default)]
     pub anomaly_count: usize,
+    #[serde(default)]
     pub event_type_counts: BTreeMap<String, usize>,
+    #[serde(default)]
     pub probe_code_counts: BTreeMap<String, usize>,
+    #[serde(default)]
     pub probe_subsystem_counts: BTreeMap<String, usize>,
+    #[serde(default)]
     pub diagnostic_type_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub tool_kind_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub tool_name_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub skill_name_counts: BTreeMap<String, usize>,
+    #[serde(default)]
     pub artifact_inventory: BTreeMap<String, bool>,
 }
 
