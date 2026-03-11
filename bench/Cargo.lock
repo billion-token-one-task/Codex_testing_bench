@@ -1364,6 +1364,7 @@ dependencies = [
  "codex-bench-nl2repo",
  "codex-bench-report",
  "codex-bench-swebench",
+ "serde_json",
  "tokio",
 ]
 

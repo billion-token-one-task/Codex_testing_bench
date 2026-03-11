@@ -7,7 +7,7 @@ use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance,
-    attempt_artifact_paths, default_swebench_preset_path, load_study_preset, read_json,
+    attempt_artifact_paths, default_swebench_preset_path, load_study_preset, preferred_python, read_json,
     write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
@@ -45,7 +45,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     fs::create_dir_all(campaign_dir.join("runs"))?;
     let repo_cache_root = args
         .repo_cache_root
-        .unwrap_or_else(|| campaign_dir.join("_repo-cache"));
+        .unwrap_or_else(|| default_shared_repo_cache_root(&repo_root));
     fs::create_dir_all(&repo_cache_root)?;
 
     if args.dataset_jsonl.is_none() && preset.benchmark_adapter != "swebench" {
@@ -57,6 +57,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     }
 
     let mut dataset = load_dataset_records(
+        &repo_root,
         args.dataset_jsonl.as_deref(),
         preset.benchmark_adapter == "swebench",
     )
@@ -127,6 +128,77 @@ pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Resu
     }
     write_predictions_jsonl(&manifest, campaign_dir).await?;
     Ok(())
+}
+
+pub async fn warm_repo_cache(campaign_dir: &Path, refresh_repo_cache: bool) -> Result<()> {
+    let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    for selected in &manifest.selected_instances {
+        let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
+        ensure_repo_commit_cached(&manifest.repo_cache_root, &record, refresh_repo_cache).await?;
+    }
+    Ok(())
+}
+
+pub async fn bootstrap_local_assets(
+    repo_root: &Path,
+    campaign_dir: Option<&Path>,
+    refresh_repo_cache: bool,
+) -> Result<Value> {
+    let dataset_snapshot_path = hydrate_local_dataset_snapshot(repo_root).await?;
+    let shared_repo_cache_root = default_shared_repo_cache_root(repo_root);
+    fs::create_dir_all(&shared_repo_cache_root)?;
+
+    let mut warmed_instances = 0usize;
+    let mut warmed_repos = Vec::new();
+    if let Some(campaign_dir) = campaign_dir {
+        let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+        let mut repos = BTreeSet::new();
+        for selected in &manifest.selected_instances {
+            let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
+            ensure_repo_commit_cached(&manifest.repo_cache_root, &record, refresh_repo_cache).await?;
+            warmed_instances += 1;
+            repos.insert(record.repo);
+        }
+        warmed_repos.extend(repos);
+    }
+
+    Ok(json!({
+        "datasetSnapshotPath": dataset_snapshot_path,
+        "sharedRepoCacheRoot": shared_repo_cache_root,
+        "warmedInstances": warmed_instances,
+        "warmedRepos": warmed_repos,
+    }))
+}
+
+pub async fn hydrate_local_dataset_snapshot(repo_root: &Path) -> Result<PathBuf> {
+    let snapshot_path = default_local_dataset_snapshot_path(repo_root);
+    if snapshot_path.exists() {
+        return Ok(snapshot_path);
+    }
+    if let Some(parent) = snapshot_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let script = r#"
+import json
+from datasets import load_dataset
+dataset = load_dataset("princeton-nlp/SWE-bench_Verified", split="test")
+for row in dataset:
+    print(json.dumps(row, ensure_ascii=False))
+"#;
+    let output = Command::new(preferred_python())
+        .arg("-c")
+        .arg(script)
+        .output()
+        .await
+        .context("failed to invoke configured python for SWE-bench dataset snapshot hydration")?;
+    if !output.status.success() {
+        bail!(
+            "dataset snapshot fetch failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    fs::write(&snapshot_path, &output.stdout)?;
+    Ok(snapshot_path)
 }
 
 pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Result<()> {
@@ -273,28 +345,7 @@ async fn prepare_repo_workspace(
     worktree_dir: &Path,
     refresh: bool,
 ) -> Result<()> {
-    let repo_cache = repo_cache_root.join(record.repo.replace('/', "__"));
-    if !repo_cache.exists() {
-        run_command(
-            Command::new("git")
-                .arg("clone")
-                .arg(format!("https://github.com/{}.git", record.repo))
-                .arg(&repo_cache),
-        )
-        .await
-        .with_context(|| format!("failed to clone {}", record.repo))?;
-    } else if refresh {
-        run_command(
-            Command::new("git")
-                .arg("-C")
-                .arg(&repo_cache)
-                .arg("fetch")
-                .arg("--all")
-                .arg("--tags")
-                .arg("--prune"),
-        )
-        .await?;
-    }
+    let repo_cache = ensure_repo_commit_cached(repo_cache_root, record, refresh).await?;
 
     if worktree_dir.exists() {
         let _ = Command::new("git")
@@ -321,10 +372,88 @@ async fn prepare_repo_workspace(
             .arg("--force")
             .arg("--detach")
             .arg(worktree_dir)
-            .arg(&record.base_commit),
+            .arg(format!("refs/codex-bench/{}", record.base_commit)),
     )
     .await?;
     Ok(())
+}
+
+async fn ensure_repo_commit_cached(
+    repo_cache_root: &Path,
+    record: &DatasetRecord,
+    refresh: bool,
+) -> Result<PathBuf> {
+    let repo_cache = repo_cache_root.join(record.repo.replace('/', "__"));
+    if !repo_cache.exists() {
+        fs::create_dir_all(&repo_cache)?;
+        run_command(Command::new("git").arg("init").arg(&repo_cache))
+            .await
+            .with_context(|| format!("failed to initialize repo cache for {}", record.repo))?;
+        run_command(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo_cache)
+                .arg("remote")
+                .arg("add")
+                .arg("origin")
+                .arg(format!("https://github.com/{}.git", record.repo)),
+        )
+        .await?;
+    } else if refresh {
+        run_command(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo_cache)
+                .arg("remote")
+                .arg("set-url")
+                .arg("origin")
+                .arg(format!("https://github.com/{}.git", record.repo)),
+        )
+        .await?;
+    }
+
+    if !has_commit(&repo_cache, &record.base_commit).await? {
+        run_command(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo_cache)
+                .arg("fetch")
+                .arg("--filter=blob:none")
+                .arg("--depth")
+                .arg("1")
+                .arg("origin")
+                .arg(&record.base_commit),
+        )
+        .await
+        .with_context(|| {
+            format!(
+                "failed to fetch commit {} for {}",
+                record.base_commit, record.repo
+            )
+        })?;
+        run_command(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo_cache)
+                .arg("update-ref")
+                .arg(format!("refs/codex-bench/{}", record.base_commit))
+                .arg("FETCH_HEAD"),
+        )
+        .await?;
+    }
+    Ok(repo_cache)
+}
+
+async fn has_commit(repo_cache: &Path, commit: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo_cache)
+        .arg("cat-file")
+        .arg("-e")
+        .arg(format!("{commit}^{{commit}}"))
+        .output()
+        .await?;
+    Ok(output.status.success())
 }
 
 fn build_prompt(record: &DatasetRecord) -> String {
@@ -366,6 +495,7 @@ fn build_prompt(record: &DatasetRecord) -> String {
 }
 
 async fn load_dataset_records(
+    repo_root: &Path,
     dataset_jsonl: Option<&Path>,
     allow_hf_swebench_fetch: bool,
 ) -> Result<Vec<DatasetRecord>> {
@@ -375,23 +505,24 @@ async fn load_dataset_records(
     if !allow_hf_swebench_fetch {
         bail!("dataset_jsonl is required for non-SWE-bench adapters");
     }
-    let script = r#"
-import json
-from datasets import load_dataset
-dataset = load_dataset("princeton-nlp/SWE-bench_Verified", split="test")
-for row in dataset:
-    print(json.dumps(row, ensure_ascii=False))
-"#;
-    let output = Command::new("python3")
-        .arg("-c")
-        .arg(script)
-        .output()
-        .await
-        .context("failed to invoke python3 for SWE-bench dataset download")?;
-    if !output.status.success() {
-        bail!("dataset fetch failed: {}", String::from_utf8_lossy(&output.stderr));
-    }
-    parse_dataset_bytes(&output.stdout)
+    let snapshot_path = default_local_dataset_snapshot_path(repo_root);
+    let path = if snapshot_path.exists() {
+        snapshot_path
+    } else {
+        hydrate_local_dataset_snapshot(repo_root).await?
+    };
+    parse_dataset_jsonl(&path)
+}
+
+pub fn default_shared_repo_cache_root(repo_root: &Path) -> PathBuf {
+    repo_root.join(".local-cache").join("repos").join("swebench")
+}
+
+pub fn default_local_dataset_snapshot_path(repo_root: &Path) -> PathBuf {
+    repo_root
+        .join("vendor-benchmarks")
+        .join("swebench-verified")
+        .join("verified-test.jsonl")
 }
 
 fn parse_dataset_jsonl(path: &Path) -> Result<Vec<DatasetRecord>> {

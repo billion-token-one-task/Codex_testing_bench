@@ -73,6 +73,9 @@ That gives the same Codex runtime, probe stack, and evidence reporting a reusabl
 From [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads/CodexPlusClaw/bench):
 
 ```bash
+cargo run -p codex-bench-cli -- bootstrap-local \
+  --campaign-dir ../.artifacts/<campaign-id>
+
 cargo run -p codex-bench-cli -- prepare \
   --campaign-root ../.artifacts \
   --preset-path ../studies/task-presets/swebench-v1.json \
@@ -87,6 +90,18 @@ cargo run -p codex-bench-cli -- grade ../.artifacts/<campaign-id> \
 cargo run -p codex-bench-cli -- report ../.artifacts/<campaign-id>
 
 cargo run -p codex-bench-cli -- list-presets
+```
+
+`bootstrap-local` is the preferred way to reduce end-to-end runtime before a real campaign. It:
+
+- builds `codex-bench-cli` into the repo-local Cargo target directory
+- hydrates a local SWE-bench Verified JSONL snapshot under [`/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/swebench-verified`](/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/swebench-verified)
+- warms the shared repo object cache under [`/Users/kevinlin/Downloads/CodexPlusClaw/.local-cache/repos/swebench`](/Users/kevinlin/Downloads/CodexPlusClaw/.local-cache/repos/swebench) for the selected campaign
+
+If you already have a prepared campaign and only want the git object cache warmed:
+
+```bash
+cargo run -p codex-bench-cli -- warm-cache ../.artifacts/<campaign-id>
 ```
 
 For the new benchmark families:

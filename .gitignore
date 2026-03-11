@@ -1,3 +1,4 @@
 .artifacts/
 bench/target/
-
+.local-cache/
+vendor-benchmarks/swebench-verified/

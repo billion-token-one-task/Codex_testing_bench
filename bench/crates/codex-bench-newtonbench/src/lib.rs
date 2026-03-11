@@ -8,7 +8,7 @@ use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest,
     SelectedInstance, attempt_artifact_paths, command_capture, git_commit_all,
-    init_git_workspace, read_json, reset_dir, write_json_pretty,
+    init_git_workspace, preferred_python, read_json, reset_dir, write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::render_run_evidence;
@@ -129,7 +129,7 @@ pub async fn grade_campaign(campaign_dir: &Path) -> Result<()> {
         let attempt_dir = run_dir.join("attempt-01");
         let workspace_dir = run_dir.join("workspace");
 
-        let output = Command::new("python3")
+        let output = Command::new(preferred_python())
             .arg("tools/newton_lab.py")
             .arg("eval")
             .arg("--submission-file")
@@ -354,6 +354,7 @@ async fn prepare_workspace(record: &DatasetRecord, workspace_dir: &Path) -> Resu
 
 fn build_prompt(record: &DatasetRecord) -> String {
     let mut prompt = String::new();
+    let python_cmd = preferred_python().display().to_string();
     prompt.push_str("You are solving a NewtonBench scientific law discovery task.\n");
     prompt.push_str("Read ./task.md first. Use the local Newton lab helper to run experiments and validate your candidate law.\n");
     prompt.push_str("Write your final answer into ./submission.py as a valid discovered_law function.\n");
@@ -362,7 +363,9 @@ fn build_prompt(record: &DatasetRecord) -> String {
     prompt.push_str(&format!("- Module: {}\n", raw_string(record, "moduleName").unwrap_or_default()));
     prompt.push_str(&format!("- Difficulty: {}\n", raw_string(record, "difficulty").unwrap_or_default()));
     prompt.push_str(&format!("- System: {}\n", raw_string(record, "system").unwrap_or_default()));
-    prompt.push_str("\nUse `python3 tools/newton_lab.py show-task` to inspect the full benchmark task and `python3 tools/newton_lab.py run --params-json ...` to perform experiments.\n");
+    prompt.push_str(&format!(
+        "\nUse `{python_cmd} tools/newton_lab.py show-task` to inspect the full benchmark task and `{python_cmd} tools/newton_lab.py run --params-json ...` to perform experiments.\n"
+    ));
     prompt
 }
 
@@ -523,7 +526,7 @@ print(json.dumps({
     "lawVersion": law_version or None,
 }, ensure_ascii=False))
 "#;
-    let output = Command::new("python3")
+    let output = Command::new(preferred_python())
         .arg("-c")
         .arg(script)
         .arg(vendor_root)

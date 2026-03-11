@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
+use tokio::process::Command as TokioCommand;
 
 use codex_bench_codex::write_architecture_map;
 use codex_bench_core::{CampaignManifest, PrepareCampaignArgs, default_swebench_preset_path, load_study_preset, read_json};
@@ -16,8 +17,10 @@ use codex_bench_nl2repo::{
 };
 use codex_bench_report::{render_campaign_report, render_single_run_replay};
 use codex_bench_swebench::{
+    bootstrap_local_assets as bootstrap_local_swebench_assets,
+    default_local_dataset_snapshot_path,
     grade_campaign as grade_swebench_campaign, prepare_campaign as prepare_swebench_campaign,
-    run_campaign as run_swebench_campaign,
+    run_campaign as run_swebench_campaign, warm_repo_cache as warm_swebench_cache,
 };
 
 #[derive(Parser, Debug)]
@@ -51,6 +54,19 @@ enum Command {
         stage: Option<String>,
     },
     Run {
+        campaign_dir: PathBuf,
+        #[arg(long, default_value_t = false)]
+        refresh_repo_cache: bool,
+    },
+    BootstrapLocal {
+        #[arg(long)]
+        campaign_dir: Option<PathBuf>,
+        #[arg(long, default_value_t = false)]
+        refresh_repo_cache: bool,
+        #[arg(long, default_value_t = false)]
+        release: bool,
+    },
+    WarmCache {
         campaign_dir: PathBuf,
         #[arg(long, default_value_t = false)]
         refresh_repo_cache: bool,
@@ -130,6 +146,37 @@ async fn main() -> Result<()> {
             }
             println!("{}", campaign_dir.display());
         }
+        Command::BootstrapLocal {
+            campaign_dir,
+            refresh_repo_cache,
+            release,
+        } => {
+            let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+            build_local_bench_binary(&repo_root, release).await?;
+            let cache_summary = bootstrap_local_swebench_assets(
+                &repo_root,
+                campaign_dir.as_deref(),
+                refresh_repo_cache,
+            )
+            .await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "status": "ok",
+                    "builtProfile": if release { "release" } else { "dev" },
+                    "binaryPath": built_binary_path(&repo_root, release),
+                    "datasetSnapshotPath": default_local_dataset_snapshot_path(&repo_root),
+                    "cacheSummary": cache_summary,
+                }))?
+            );
+        }
+        Command::WarmCache {
+            campaign_dir,
+            refresh_repo_cache,
+        } => {
+            warm_swebench_cache(&campaign_dir, refresh_repo_cache).await?;
+            println!("{}", campaign_dir.display());
+        }
         Command::Grade {
             campaign_dir,
             command,
@@ -189,6 +236,39 @@ async fn main() -> Result<()> {
                 );
             }
         }
+    }
+    Ok(())
+}
+
+fn built_binary_path(repo_root: &std::path::Path, release: bool) -> PathBuf {
+    let profile = if release { "release" } else { "debug" };
+    repo_root.join("bench").join("target").join(profile).join("codex-bench-cli")
+}
+
+async fn build_local_bench_binary(repo_root: &std::path::Path, release: bool) -> Result<()> {
+    let expected_binary = built_binary_path(repo_root, release);
+    if std::env::current_exe()
+        .ok()
+        .as_ref()
+        .is_some_and(|current| current == &expected_binary)
+    {
+        return Ok(());
+    }
+    let mut command = TokioCommand::new("cargo");
+    command.arg("build").arg("-p").arg("codex-bench-cli");
+    if release {
+        command.arg("--release");
+    }
+    let output = command
+        .current_dir(repo_root.join("bench"))
+        .output()
+        .await
+        .context("failed to build codex-bench-cli locally")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "local bench build failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
     Ok(())
 }
