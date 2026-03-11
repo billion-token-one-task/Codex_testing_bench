@@ -1,0 +1,36 @@
+{
+  "name": "nl2repo-v0",
+  "benchmark": "NL2RepoBench",
+  "benchmark_adapter": "nl2repo",
+  "probe_profile": "codex-harness-maximal",
+  "report_profile": "evidence-dossier-maximal",
+  "requiredTaskClasses": [
+    "bootstrap-heavy",
+    "verification-heavy"
+  ],
+  "preferredTaskClasses": [
+    "compaction-likely",
+    "repo-generation"
+  ],
+  "futureBenchmarks": [
+    "swebench-verified",
+    "newtonbench"
+  ],
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sample_size": 1,
+      "description": "Single NL2Repo task to validate from-scratch workspace materialization, Codex execution, and local grading."
+    },
+    {
+      "name": "behavior-pilot",
+      "sample_size": 4,
+      "description": "Mixed 0-to-1 repository generation tasks for studying ignition, dependency setup, and verification closure."
+    },
+    {
+      "name": "evidence-batch",
+      "sample_size": 12,
+      "description": "Broader NL2Repo evidence batch for end-to-end software engineering delivery analysis."
+    }
+  ]
+}

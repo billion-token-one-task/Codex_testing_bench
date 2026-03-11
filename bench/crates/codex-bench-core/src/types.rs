@@ -5,6 +5,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrepareCampaignArgs {
+    pub campaign_root: PathBuf,
+    pub sample_size: Option<usize>,
+    pub seed: String,
+    pub dataset_jsonl: Option<PathBuf>,
+    pub model: String,
+    pub provider: String,
+    pub repo_cache_root: Option<PathBuf>,
+    pub preset_path: Option<PathBuf>,
+    pub stage: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatasetRecord {
     pub instance_id: String,
     pub repo: String,

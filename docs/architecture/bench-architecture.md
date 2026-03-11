@@ -20,6 +20,8 @@ Keep the bench readable and extensible outside the vendored Codex runtime.
 - The current active adapters are:
   - `swebench`
   - `repo-patch-jsonl`
+  - `nl2repo`
+  - `newtonbench`
 - `repo-patch-jsonl` is the generic bridge for future benchmarks that can be normalized into repository patch tasks while still reusing the same Codex runtime, probe, and report stack.
 
 ## Outer Crates
@@ -41,6 +43,14 @@ Keep the bench readable and extensible outside the vendored Codex runtime.
   - prompt construction
   - patch extraction
   - predictions and grading wrapper
+- `codex-bench-nl2repo`
+  - NL2Repo task discovery from vendored benchmark assets
+  - blank-repository workspace materialization
+  - local command-based grading from benchmark task bundles
+- `codex-bench-newtonbench`
+  - NewtonBench task generation from vendored physics modules
+  - local experiment-lab materialization
+  - local evaluator wrapping for discovered-law submissions
 - `codex-bench-probes`
   - raw-to-derived probe derivation
   - claim catalogs

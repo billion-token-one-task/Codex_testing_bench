@@ -1,0 +1,36 @@
+{
+  "name": "newtonbench-v0",
+  "benchmark": "NewtonBench",
+  "benchmark_adapter": "newtonbench",
+  "probe_profile": "codex-harness-maximal",
+  "report_profile": "evidence-dossier-maximal",
+  "requiredTaskClasses": [
+    "scientific-equation",
+    "experimentation-heavy"
+  ],
+  "preferredTaskClasses": [
+    "compaction-likely",
+    "failure-prone"
+  ],
+  "futureBenchmarks": [
+    "swebench-verified",
+    "nl2repo"
+  ],
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sample_size": 1,
+      "description": "Single NewtonBench task to validate local lab generation, Codex interaction, and evaluator wiring."
+    },
+    {
+      "name": "behavior-pilot",
+      "sample_size": 5,
+      "description": "Mixed scientific-discovery tasks spanning symbolic, experimentation-heavy, and complex-system conditions."
+    },
+    {
+      "name": "evidence-batch",
+      "sample_size": 15,
+      "description": "Broader NewtonBench batch for studying Codex under scientific law discovery and interactive experimentation."
+    }
+  ]
+}

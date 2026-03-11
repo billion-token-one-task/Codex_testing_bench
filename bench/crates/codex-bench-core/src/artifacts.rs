@@ -34,6 +34,7 @@ pub fn attempt_artifact_paths(attempt_dir: &Path) -> BTreeMap<String, PathBuf> {
         ),
         ("toolEvents".to_string(), attempt_dir.join("tool-events.jsonl")),
         ("patchEvents".to_string(), attempt_dir.join("patch-events.jsonl")),
+        ("gradeEvents".to_string(), attempt_dir.join("grade-events.jsonl")),
         ("anomalies".to_string(), attempt_dir.join("anomalies.jsonl")),
         ("probeEvents".to_string(), attempt_dir.join("probe-events.jsonl")),
         ("probeSummary".to_string(), attempt_dir.join("probe-summary.json")),
@@ -62,4 +63,3 @@ pub fn patch_file_count(patch_text: &[u8]) -> usize {
         .filter(|line| line.starts_with("diff --git "))
         .count()
 }
-

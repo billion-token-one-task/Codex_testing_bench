@@ -1360,6 +1360,8 @@ dependencies = [
  "clap",
  "codex-bench-codex",
  "codex-bench-core",
+ "codex-bench-newtonbench",
+ "codex-bench-nl2repo",
  "codex-bench-report",
  "codex-bench-swebench",
  "tokio",
@@ -1393,6 +1395,39 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codex-bench-newtonbench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codex-bench-codex",
+ "codex-bench-core",
+ "codex-bench-probes",
+ "codex-bench-report",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
+name = "codex-bench-nl2repo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codex-bench-codex",
+ "codex-bench-core",
+ "codex-bench-probes",
+ "codex-bench-report",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
 ]
 
 [[package]]

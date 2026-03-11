@@ -14,6 +14,38 @@
     ]
   },
   {
+    "id": "nl2repo",
+    "name": "NL2RepoBench",
+    "status": "active",
+    "adapter": "nl2repo",
+    "vendorPath": "/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/NL2RepoBench",
+    "upstreamUrl": "https://github.com/THUDM/NL2RepoBench",
+    "benchmarkType": "end-to-end repository generation benchmark",
+    "whyItMatters": "Observes Codex on zero-to-one software delivery where the harness must coordinate repository construction, dependency setup, and test closure from scratch.",
+    "probeAngles": [
+      "ignition mode",
+      "verification closure",
+      "containment heat leakage",
+      "tool mediation tax"
+    ]
+  },
+  {
+    "id": "newtonbench",
+    "name": "NewtonBench",
+    "status": "active",
+    "adapter": "newtonbench",
+    "vendorPath": "/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/NewtonBench",
+    "upstreamUrl": "https://github.com/HKUST-KnowComp/NewtonBench",
+    "benchmarkType": "interactive scientific discovery benchmark",
+    "whyItMatters": "Observes Codex as an exploratory agent in a controlled scientific experimentation loop, which is ideal for studying layered state, externalized coordination, and regulation behavior.",
+    "probeAngles": [
+      "externalized coordination",
+      "instruction stratification",
+      "control-rod regulation",
+      "compaction continuity"
+    ]
+  },
+  {
     "id": "terminal-bench",
     "name": "Terminal-Bench",
     "status": "planned",

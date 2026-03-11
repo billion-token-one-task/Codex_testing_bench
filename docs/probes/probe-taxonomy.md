@@ -44,6 +44,12 @@ The probe program is intentionally shaped by the long-horizon token-scheduling t
 - `verification structure`, `chain reaction`, and `useful work vs friction` probe whether verification closes loops or merely adds heat.
 - `control rod`, `containment`, and `event-architecture discontinuity` probe how Codex’s own harness machinery regulates or distorts the run.
 
+## Benchmark-Specific Observation Lanes
+
+- SWE-bench emphasizes repository debugging, patch extraction, and verification closure under real repo constraints.
+- NL2Repo emphasizes from-scratch ignition, dependency/bootstrap behavior, and whether Codex can sustain a constructive software delivery chain reaction.
+- NewtonBench emphasizes exploratory experimentation, externalized coordination, and whether Codex behaves like a layered scientific reasoning harness rather than a flat transcript consumer.
+
 ## Evidence Labels
 
 - `exact`

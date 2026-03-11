@@ -5,9 +5,20 @@ use clap::{Parser, Subcommand};
 use std::fs;
 
 use codex_bench_codex::write_architecture_map;
-use codex_bench_core::{default_swebench_preset_path, load_study_preset};
+use codex_bench_core::{CampaignManifest, PrepareCampaignArgs, default_swebench_preset_path, load_study_preset, read_json};
+use codex_bench_newtonbench::{
+    grade_campaign as grade_newtonbench_campaign, prepare_campaign as prepare_newtonbench_campaign,
+    run_campaign as run_newtonbench_campaign,
+};
+use codex_bench_nl2repo::{
+    grade_campaign as grade_nl2repo_campaign, prepare_campaign as prepare_nl2repo_campaign,
+    run_campaign as run_nl2repo_campaign,
+};
 use codex_bench_report::{render_campaign_report, render_single_run_replay};
-use codex_bench_swebench::{PrepareArgs, grade_campaign, prepare_campaign, run_campaign};
+use codex_bench_swebench::{
+    grade_campaign as grade_swebench_campaign, prepare_campaign as prepare_swebench_campaign,
+    run_campaign as run_swebench_campaign,
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "codex-bench")]
@@ -79,7 +90,7 @@ async fn main() -> Result<()> {
             preset_path,
             stage,
         } => {
-            let campaign_dir = prepare_campaign(PrepareArgs {
+            let args = PrepareCampaignArgs {
                 campaign_root,
                 sample_size,
                 seed,
@@ -89,22 +100,47 @@ async fn main() -> Result<()> {
                 repo_cache_root,
                 preset_path,
                 stage,
-            })
-            .await?;
+            };
+            let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+            let resolved_preset_path = args
+                .preset_path
+                .clone()
+                .unwrap_or_else(|| default_swebench_preset_path(&repo_root));
+            let preset = load_study_preset(&resolved_preset_path)?;
+            let campaign_dir = match preset.benchmark_adapter.as_str() {
+                "swebench" | "repo-patch-jsonl" => prepare_swebench_campaign(args).await?,
+                "nl2repo" => prepare_nl2repo_campaign(args).await?,
+                "newtonbench" => prepare_newtonbench_campaign(args).await?,
+                other => anyhow::bail!("unsupported benchmark adapter `{other}`"),
+            };
             println!("{}", campaign_dir.display());
         }
         Command::Run {
             campaign_dir,
             refresh_repo_cache,
         } => {
-            run_campaign(&campaign_dir, refresh_repo_cache).await?;
+            let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+            match manifest.benchmark_adapter.as_str() {
+                "swebench" | "repo-patch-jsonl" => {
+                    run_swebench_campaign(&campaign_dir, refresh_repo_cache).await?
+                }
+                "nl2repo" => run_nl2repo_campaign(&campaign_dir).await?,
+                "newtonbench" => run_newtonbench_campaign(&campaign_dir).await?,
+                other => anyhow::bail!("unsupported benchmark adapter `{other}`"),
+            }
             println!("{}", campaign_dir.display());
         }
         Command::Grade {
             campaign_dir,
             command,
         } => {
-            grade_campaign(&campaign_dir, command).await?;
+            let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+            match manifest.benchmark_adapter.as_str() {
+                "swebench" | "repo-patch-jsonl" => grade_swebench_campaign(&campaign_dir, command).await?,
+                "nl2repo" => grade_nl2repo_campaign(&campaign_dir).await?,
+                "newtonbench" => grade_newtonbench_campaign(&campaign_dir).await?,
+                other => anyhow::bail!("unsupported benchmark adapter `{other}`"),
+            }
             println!("{}", campaign_dir.display());
         }
         Command::Report { campaign_dir } => {

@@ -6,7 +6,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
-    CampaignManifest, CodexRunRequest, DatasetRecord, RunManifest, SelectedInstance,
+    CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance,
     attempt_artifact_paths, default_swebench_preset_path, load_study_preset, read_json,
     write_json_pretty,
 };
@@ -24,20 +24,7 @@ pub const SCHEDULER_DOC: &str =
 pub const DEEPWIKI_DOC: &str = "https://deepwiki.com/openai/codex";
 pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-codex-harness/";
 
-#[derive(Debug, Clone)]
-pub struct PrepareArgs {
-    pub campaign_root: PathBuf,
-    pub sample_size: Option<usize>,
-    pub seed: String,
-    pub dataset_jsonl: Option<PathBuf>,
-    pub model: String,
-    pub provider: String,
-    pub repo_cache_root: Option<PathBuf>,
-    pub preset_path: Option<PathBuf>,
-    pub stage: Option<String>,
-}
-
-pub async fn prepare_campaign(args: PrepareArgs) -> Result<PathBuf> {
+pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let preset_path = args
         .preset_path

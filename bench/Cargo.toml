@@ -3,6 +3,8 @@ members = [
     "crates/codex-bench-cli",
     "crates/codex-bench-core",
     "crates/codex-bench-codex",
+    "crates/codex-bench-newtonbench",
+    "crates/codex-bench-nl2repo",
     "crates/codex-bench-probes",
     "crates/codex-bench-report",
     "crates/codex-bench-swebench",
@@ -27,6 +29,8 @@ toml = "0.9"
 
 codex-bench-core = { path = "crates/codex-bench-core" }
 codex-bench-codex = { path = "crates/codex-bench-codex" }
+codex-bench-newtonbench = { path = "crates/codex-bench-newtonbench" }
+codex-bench-nl2repo = { path = "crates/codex-bench-nl2repo" }
 codex-bench-probes = { path = "crates/codex-bench-probes" }
 codex-bench-report = { path = "crates/codex-bench-report" }
 codex-bench-swebench = { path = "crates/codex-bench-swebench" }
