@@ -1,10 +1,25 @@
 {
   "name": "swebench-v1",
   "benchmark": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
   "stages": [
-    { "name": "architecture-validation", "sampleSize": 1 },
-    { "name": "behavior-pilot", "sampleSize": 5 },
-    { "name": "evidence-batch", "sampleSize": 15 }
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Single-task validation that raw Codex probes, derived probes, and run-evidence output are meaningful."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Mixed-task pilot across task classes to reveal compaction, verification, search, and reliability differences."
+    },
+    {
+      "name": "evidence-batch",
+      "sampleSize": 15,
+      "description": "First serious evidence batch intended to populate a rich report.txt with task-class-aware Codex behavior evidence."
+    }
   ],
   "requiredTaskClasses": [
     "bootstrap-heavy",
@@ -12,5 +27,20 @@
     "patch-heavy",
     "verification-heavy",
     "search-heavy"
+  ],
+  "preferredTaskClasses": [
+    "bootstrap-heavy",
+    "verification-heavy",
+    "compaction-likely"
+  ],
+  "futureBenchmarks": [
+    "Terminal-Bench",
+    "RepoBench",
+    "Aider Polyglot Benchmark",
+    "long-context synthetic patch tasks"
+  ],
+  "notes": [
+    "SWE-bench Verified is the v1 live task source because it exercises real repositories and concrete patch production.",
+    "The research bench should remain adapter-oriented so later benchmark families can reuse the same Codex probe and report stack."
   ]
 }

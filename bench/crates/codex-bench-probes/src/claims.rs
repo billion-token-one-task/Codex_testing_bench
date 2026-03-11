@@ -104,6 +104,18 @@ pub fn grounding_claims(token_budget_doc: &Path, scheduler_doc: &Path) -> Vec<Cl
             ],
             caveats: vec!["This study observes Codex behavior; it does not test multi-session schedulers directly.".to_string()],
         },
+        ClaimCatalogEntry {
+            id: "grounding.control_regulation".to_string(),
+            source: scheduler_doc.display().to_string(),
+            text: "Long-horizon systems need explicit regulation layers that stabilize search and bound loss, rather than relying on unconstrained continuation.".to_string(),
+            operationalization: "Inspect compaction, config freeze, persistence, approval, and listener behaviors as control-rod-like regulation mechanisms.".to_string(),
+            required_evidence: vec![
+                "control_rod.compaction_regulation".to_string(),
+                "control_rod.config_freeze".to_string(),
+                "control_rod.persistence".to_string(),
+            ],
+            caveats: vec!["Some regulation layers may stabilize runs while also introducing distortion or suppression.".to_string()],
+        },
     ]
 }
 
@@ -180,6 +192,31 @@ pub fn codex_unique_claims() -> Vec<ClaimCatalogEntry> {
             ],
             caveats: vec!["Overhead estimates are partly inferred rather than exact.".to_string()],
         },
+        ClaimCatalogEntry {
+            id: "codex.instruction_stratification".to_string(),
+            source: "Codex instruction assembly path".to_string(),
+            text: "Codex behaves more like a layered instruction stack than a single undifferentiated transcript.".to_string(),
+            operationalization: "Track instruction-channel probe events, model-native instruction preservation, and reconstructed-context shifts after compaction or resume.".to_string(),
+            required_evidence: vec![
+                "instruction.channel_mix".to_string(),
+                "instruction.stratification".to_string(),
+                "persistence.externalized_state".to_string(),
+            ],
+            caveats: vec!["The exact effect of each layer remains partly hidden because internal reasoning is not exposed.".to_string()],
+        },
+        ClaimCatalogEntry {
+            id: "codex.control_rods".to_string(),
+            source: "Codex runtime control surfaces".to_string(),
+            text: "Codex contains harness-native regulation layers that act like control rods, sometimes stabilizing and sometimes throttling the reaction.".to_string(),
+            operationalization: "Track control-rod probe families across compaction, config freeze, persistence, and listener/approval boundaries.".to_string(),
+            required_evidence: vec![
+                "control_rod.compaction_regulation".to_string(),
+                "control_rod.config_freeze".to_string(),
+                "control_rod.persistence".to_string(),
+                "containment.heat_leak".to_string(),
+            ],
+            caveats: vec!["This is a harness-level interpretation grounded in observable behavior, not an implementation claim from upstream docs.".to_string()],
+        },
     ]
 }
 
@@ -196,4 +233,3 @@ pub fn write_claim_catalog_assets(
     write_json_pretty(&codex_path, &codex_unique)?;
     Ok((grounding_path, codex_path))
 }
-

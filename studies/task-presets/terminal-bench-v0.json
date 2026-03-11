@@ -1,0 +1,35 @@
+{
+  "name": "terminal-bench-v0",
+  "benchmark": "Terminal-Bench",
+  "benchmark_adapter": "repo-patch-jsonl",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Validate terminal-heavy tasks with full Codex probe capture."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Observe shell ignition, command loops, and containment signals under terminal-centric tasks."
+    }
+  ],
+  "requiredTaskClasses": [
+    "search-heavy",
+    "verification-heavy"
+  ],
+  "preferredTaskClasses": [
+    "bootstrap-heavy",
+    "patch-heavy"
+  ],
+  "futureBenchmarks": [
+    "SWE-bench Verified",
+    "RepoBench"
+  ],
+  "notes": [
+    "Supply --dataset-jsonl containing Terminal-Bench tasks normalized into the repo-patch schema.",
+    "Supply a benchmark-specific local grade --command."
+  ]
+}

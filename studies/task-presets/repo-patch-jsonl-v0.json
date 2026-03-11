@@ -1,0 +1,36 @@
+{
+  "name": "repo-patch-jsonl-v0",
+  "benchmark": "Generic Repo Patch JSONL",
+  "benchmark_adapter": "repo-patch-jsonl",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Validate a normalized repo-patch dataset with one task."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Observe mixed tasks from any repo-patch benchmark that can be normalized into JSONL."
+    }
+  ],
+  "requiredTaskClasses": [
+    "patch-heavy"
+  ],
+  "preferredTaskClasses": [
+    "verification-heavy",
+    "search-heavy",
+    "compaction-likely"
+  ],
+  "futureBenchmarks": [
+    "Terminal-Bench",
+    "RepoBench",
+    "Aider Polyglot Benchmark"
+  ],
+  "notes": [
+    "Use this preset when a benchmark can be normalized into records with repo, base_commit, problem_statement, and optional tests.",
+    "Pair with --dataset-jsonl and a benchmark-specific --command for grading."
+  ]
+}

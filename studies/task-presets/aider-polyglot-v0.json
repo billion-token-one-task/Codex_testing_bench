@@ -1,0 +1,35 @@
+{
+  "name": "aider-polyglot-v0",
+  "benchmark": "Aider Polyglot Benchmark",
+  "benchmark_adapter": "repo-patch-jsonl",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Validate a multi-language edit-and-test task with full probe capture."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Compare Codex behavior across language ecosystems and verification styles."
+    }
+  ],
+  "requiredTaskClasses": [
+    "verification-heavy",
+    "patch-heavy"
+  ],
+  "preferredTaskClasses": [
+    "search-heavy",
+    "bootstrap-heavy"
+  ],
+  "futureBenchmarks": [
+    "SWE-bench Verified",
+    "Terminal-Bench"
+  ],
+  "notes": [
+    "Supply --dataset-jsonl containing Aider benchmark tasks normalized into the repo-patch schema.",
+    "This preset is useful for studying tool mediation tax and cross-ecosystem verification behavior."
+  ]
+}

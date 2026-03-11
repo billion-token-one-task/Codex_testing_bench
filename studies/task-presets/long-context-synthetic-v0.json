@@ -1,0 +1,34 @@
+{
+  "name": "long-context-synthetic-v0",
+  "benchmark": "Long-Context Synthetic Patch Tasks",
+  "benchmark_adapter": "repo-patch-jsonl",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Validate controlled long-context tasks designed to trigger compaction and persistence behavior."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Probe context pressure, persistence half-life, and control-rod effects under synthetic long-horizon stimuli."
+    }
+  ],
+  "requiredTaskClasses": [
+    "compaction-likely",
+    "search-heavy"
+  ],
+  "preferredTaskClasses": [
+    "verification-heavy"
+  ],
+  "futureBenchmarks": [
+    "SWE-bench Verified",
+    "RepoBench"
+  ],
+  "notes": [
+    "Supply --dataset-jsonl with synthetic tasks normalized into the repo-patch schema.",
+    "This preset is meant to isolate compaction continuity and externalized coordination behavior under controlled conditions."
+  ]
+}

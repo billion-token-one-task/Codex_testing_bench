@@ -161,6 +161,73 @@ pub fn render_run_evidence(
         summary.patch_sha256.clone().unwrap_or_else(|| "-".to_string())
     ));
     lines.push(String::new());
+    lines.push("Probe Summary".to_string());
+    lines.push("=============".to_string());
+    lines.push(format!(
+        "first_controlled_change_tokens={:?}",
+        probe_summary.first_controlled_change_tokens
+    ));
+    lines.push(format!(
+        "ignition_shell_search_count={}",
+        probe_summary.ignition_shell_search_count
+    ));
+    lines.push(format!(
+        "ignition_patch_apply_count={}",
+        probe_summary.ignition_patch_apply_count
+    ));
+    lines.push(format!(
+        "ignition_tool_mediated_count={}",
+        probe_summary.ignition_tool_mediated_count
+    ));
+    lines.push(format!(
+        "control_rod_compaction_count={}",
+        probe_summary.control_rod_compaction_count
+    ));
+    lines.push(format!(
+        "control_rod_config_freeze_count={}",
+        probe_summary.control_rod_config_freeze_count
+    ));
+    lines.push(format!(
+        "control_rod_persistence_count={}",
+        probe_summary.control_rod_persistence_count
+    ));
+    lines.push(format!(
+        "persistence_continuity_count={}",
+        probe_summary.persistence_continuity_count
+    ));
+    lines.push(format!(
+        "persistence_staleness_risk_count={}",
+        probe_summary.persistence_staleness_risk_count
+    ));
+    lines.push(format!(
+        "externalized_coordination_count={}",
+        probe_summary.externalized_coordination_count
+    ));
+    lines.push(format!(
+        "event_discontinuity_count={}",
+        probe_summary.event_discontinuity_count
+    ));
+    lines.push(format!(
+        "containment_heat_leak_count={}",
+        probe_summary.containment_heat_leak_count
+    ));
+    lines.push(format!(
+        "verification_closure_count={}",
+        probe_summary.verification_closure_count
+    ));
+    lines.push(format!(
+        "useful_token_proxy_bps={:?}",
+        probe_summary.useful_token_proxy_bps
+    ));
+    lines.push(format!(
+        "friction_token_proxy_bps={:?}",
+        probe_summary.friction_token_proxy_bps
+    ));
+    lines.push(format!(
+        "harness_overhead_proxy_bps={:?}",
+        probe_summary.harness_overhead_proxy_bps
+    ));
+    lines.push(String::new());
     lines.push("Session / Config Probe Highlights".to_string());
     lines.push("=================================".to_string());
     lines.push(format!("config_freeze_drift_count={}", probe_summary.config_freeze_drift_count));
@@ -177,6 +244,14 @@ pub fn render_run_evidence(
     lines.push("=======================".to_string());
     lines.extend(read_jsonl_lines(&attempt_dir.join("lifecycle-events.jsonl"))?);
     lines.push(String::new());
+    lines.push("Token Snapshots".to_string());
+    lines.push("===============".to_string());
+    lines.extend(read_jsonl_lines(&attempt_dir.join("token-snapshots.jsonl"))?);
+    lines.push(String::new());
+    lines.push("Command Chronology".to_string());
+    lines.push("==================".to_string());
+    lines.extend(read_jsonl_lines(&attempt_dir.join("command-events.jsonl"))?);
+    lines.push(String::new());
     lines.push("Compaction / Reconstruction Timeline".to_string());
     lines.push("===================================".to_string());
     lines.push(format!("compaction_count={}", probe_summary.compaction_count));
@@ -186,6 +261,10 @@ pub fn render_run_evidence(
     lines.push("Tool Orchestration Summary".to_string());
     lines.push("==========================".to_string());
     lines.extend(read_jsonl_lines(&attempt_dir.join("tool-events.jsonl"))?);
+    lines.push(String::new());
+    lines.push("Derived Probe Events".to_string());
+    lines.push("====================".to_string());
+    lines.extend(read_jsonl_lines(&attempt_dir.join("probe-events.jsonl"))?);
     lines.push(String::new());
     lines.push("Redundancy Incidents".to_string());
     lines.push("====================".to_string());
@@ -202,6 +281,10 @@ pub fn render_run_evidence(
     lines.push(format!("final_patch_tokens={:?}", probe_summary.final_patch_tokens));
     lines.push(format!("useful_step_proxy={}/{}", probe_summary.useful_step_proxy_num, probe_summary.useful_step_proxy_den));
     lines.push(format!("useful_token_proxy={}/{}", probe_summary.useful_token_proxy_num, probe_summary.useful_token_proxy_den));
+    lines.push(String::new());
+    lines.push("Anomalies".to_string());
+    lines.push("=========".to_string());
+    lines.extend(read_jsonl_lines(&attempt_dir.join("anomalies.jsonl"))?);
     lines.push(String::new());
     lines.push("Failure Or Success Narrative".to_string());
     lines.push("============================".to_string());
@@ -252,8 +335,22 @@ fn render_campaign_report_text(
     lines.push("============".to_string());
     lines.push(format!("Campaign: {}", manifest.campaign_id));
     lines.push(format!("Created: {}", manifest.created_at));
+    lines.push(format!(
+        "Benchmark: {} ({})",
+        manifest.benchmark_name, manifest.benchmark_adapter
+    ));
+    lines.push(format!(
+        "Preset: {} [{}]",
+        manifest.preset_name,
+        manifest
+            .stage_name
+            .clone()
+            .unwrap_or_else(|| "stage-unspecified".to_string())
+    ));
     lines.push(format!("Model: {} via {}", manifest.model, manifest.provider));
     lines.push(format!("Study mode: {}", manifest.study_mode));
+    lines.push(format!("Probe profile: {}", manifest.probe_profile));
+    lines.push(format!("Report profile: {}", manifest.report_profile));
     lines.push(format!("Artifact root: {}", campaign_dir.display()));
     lines.push("Grounding docs:".to_string());
     for doc in &manifest.grounding_documents {
@@ -281,6 +378,31 @@ fn render_campaign_report_text(
     lines.push("==================".to_string());
     lines.push(format!("Sample size: {}", manifest.sample_size));
     lines.push(format!("Seed: {}", manifest.seed));
+    lines.push(format!("Preset path: {}", manifest.preset_path.display()));
+    lines.push(format!(
+        "Required task classes: {}",
+        if manifest.required_task_classes.is_empty() {
+            "-".to_string()
+        } else {
+            manifest.required_task_classes.join(", ")
+        }
+    ));
+    lines.push(format!(
+        "Preferred task classes: {}",
+        if manifest.preferred_task_classes.is_empty() {
+            "-".to_string()
+        } else {
+            manifest.preferred_task_classes.join(", ")
+        }
+    ));
+    lines.push(format!(
+        "Future benchmark targets: {}",
+        if manifest.future_benchmarks.is_empty() {
+            "-".to_string()
+        } else {
+            manifest.future_benchmarks.join(", ")
+        }
+    ));
     lines.push(format!(
         "Task classes: {}",
         bundles
@@ -306,6 +428,12 @@ fn render_campaign_report_text(
     let mut aggregate_subsystems = BTreeMap::<String, usize>::new();
     let mut statuses = BTreeMap::<String, usize>::new();
     let mut task_classes = BTreeMap::<String, usize>::new();
+    let mut task_class_probe_rows = BTreeMap::<String, Vec<String>>::new();
+    let mut total_control_rods = 0usize;
+    let mut total_externalized_coordination = 0usize;
+    let mut total_event_discontinuities = 0usize;
+    let mut total_containment_heat = 0usize;
+    let mut total_persistence_staleness = 0usize;
 
     for bundle in bundles {
         total_input += bundle.summary.total_input_tokens.unwrap_or_default();
@@ -316,6 +444,26 @@ fn render_campaign_report_text(
         total_anomalies += bundle.summary.anomaly_count;
         *statuses.entry(bundle.summary.status.clone()).or_default() += 1;
         *task_classes.entry(bundle.summary.task_class.clone()).or_default() += 1;
+        total_control_rods += bundle.probe_summary.control_rod_compaction_count
+            + bundle.probe_summary.control_rod_config_freeze_count
+            + bundle.probe_summary.control_rod_persistence_count;
+        total_externalized_coordination += bundle.probe_summary.externalized_coordination_count;
+        total_event_discontinuities += bundle.probe_summary.event_discontinuity_count;
+        total_containment_heat += bundle.probe_summary.containment_heat_leak_count;
+        total_persistence_staleness += bundle.probe_summary.persistence_staleness_risk_count;
+        task_class_probe_rows
+            .entry(bundle.summary.task_class.clone())
+            .or_default()
+            .push(format!(
+                "{}: tokens={} compactions={} closures={} friction={} useful_bps={:?} friction_bps={:?}",
+                bundle.selected.instance_id,
+                bundle.summary.total_tokens.unwrap_or_default(),
+                bundle.probe_summary.compaction_count,
+                bundle.probe_summary.verification_closure_count,
+                bundle.probe_summary.harness_friction_count,
+                bundle.probe_summary.useful_token_proxy_bps,
+                bundle.probe_summary.friction_token_proxy_bps
+            ));
         for (name, present) in &bundle.summary.artifact_inventory {
             if !present {
                 *artifact_missing.entry(name.clone()).or_default() += 1;
@@ -350,6 +498,33 @@ fn render_campaign_report_text(
     lines.push(format!("Tool mediation evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "tools.")));
     lines.push(format!("Persistence/reconstruction evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "persistence.")));
     lines.push(format!("Reliability/contention evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "harness.")));
+    lines.push(format!("Subsystem totals: {}", render_count_map(&aggregate_subsystems)));
+    lines.push(String::new());
+
+    lines.push("Externalized Coordination Lens".to_string());
+    lines.push("=============================".to_string());
+    lines.push(format!(
+        "externalized_coordination_total={total_externalized_coordination}"
+    ));
+    lines.push(format!(
+        "persistence_staleness_risk_total={total_persistence_staleness}"
+    ));
+    lines.push("This lens asks whether Codex keeps useful continuity through persistence, compaction, and layered instruction channels rather than relying on a single flat transcript.".to_string());
+    lines.push(String::new());
+
+    lines.push("Regulation / Control-Rod Signals".to_string());
+    lines.push("===============================".to_string());
+    lines.push(format!("control_rod_intervention_total={total_control_rods}"));
+    lines.push("These are harness-native regulation surfaces: compaction, config freeze, persistence, approval/listener boundaries, and similar stabilizers.".to_string());
+    lines.push(String::new());
+
+    lines.push("Containment And Coherence".to_string());
+    lines.push("========================".to_string());
+    lines.push(format!(
+        "event_discontinuity_total={} | containment_heat_leak_total={}",
+        total_event_discontinuities, total_containment_heat
+    ));
+    lines.push("These counters estimate where the harness leaks effort into orchestration overhead or observability gaps rather than direct task progress.".to_string());
     lines.push(String::new());
 
     lines.push("Task-Behavior Evidence Across Live Tasks".to_string());
@@ -368,6 +543,16 @@ fn render_campaign_report_text(
             bundle.probe_summary.config_freeze_drift_count,
             bundle.probe_summary.harness_friction_count,
         ));
+    }
+    lines.push(String::new());
+
+    lines.push("Task-Class Evidence Matrix".to_string());
+    lines.push("==========================".to_string());
+    for (task_class, rows) in task_class_probe_rows {
+        lines.push(format!("{task_class}:"));
+        for row in rows {
+            lines.push(format!("  {row}"));
+        }
     }
     lines.push(String::new());
 
@@ -435,6 +620,10 @@ fn render_campaign_report_text(
     lines.push(format!(
         "Codex-native harness overhead evidence: {}",
         render_count_map_filtered(&aggregate_probe_codes, "harness.")
+    ));
+    lines.push(format!(
+        "Control-rod evidence: control_rod_total={} | externalized_coordination_total={}",
+        total_control_rods, total_externalized_coordination
     ));
     lines.push(String::new());
 
@@ -513,4 +702,3 @@ fn read_jsonl_lines(path: &Path) -> Result<Vec<String>> {
     let content = fs::read_to_string(path)?;
     Ok(content.lines().map(ToOwned::to_owned).collect())
 }
-

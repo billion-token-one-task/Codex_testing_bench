@@ -32,6 +32,17 @@ These are emitted inside vendored Codex only for study-tagged runs.
 - tool mediation tax
 - persistence half-life
 - event-architecture discontinuity
+- externalized coordination
+
+## Thesis Mapping
+
+The probe program is intentionally shaped by the long-horizon token-scheduling thesis:
+
+- `activation threshold` and `fission / ignition` probe whether useful work begins only after a non-trivial startup budget.
+- `context pressure`, `compaction`, and `persistence half-life` probe whether Codex loses actionable state across compression boundaries.
+- `instruction stratification` and `externalized coordination` probe whether Codex behaves more like a layered state machine than a flat transcript.
+- `verification structure`, `chain reaction`, and `useful work vs friction` probe whether verification closes loops or merely adds heat.
+- `control rod`, `containment`, and `event-architecture discontinuity` probe how Codex’s own harness machinery regulates or distorts the run.
 
 ## Evidence Labels
 
@@ -46,4 +57,3 @@ These are emitted inside vendored Codex only for study-tagged runs.
 - `evidence_inconclusive`
 - `evidence_against`
 - `not_observable_with_current_probes`
-

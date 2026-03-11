@@ -37,6 +37,28 @@ The active bench crates live under [`/Users/kevinlin/Downloads/CodexPlusClaw/ben
 - `codex-bench-report`: `report.txt`, `run-evidence.txt`, and replay rendering
 - `codex-bench-cli`: the user-facing CLI
 
+## Study Presets And Benchmark Growth
+
+The bench now has an explicit study-preset layer so campaigns can carry:
+
+- benchmark identity and adapter choice
+- staged sample sizes
+- task-class coverage targets
+- probe and report profiles
+- forward-looking benchmark catalog targets
+
+Preset assets live under [`/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets`](/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets), and the evolving benchmark catalog lives in [`/Users/kevinlin/Downloads/CodexPlusClaw/studies/benchmarks/2026-benchmark-catalog.json`](/Users/kevinlin/Downloads/CodexPlusClaw/studies/benchmarks/2026-benchmark-catalog.json).
+
+In addition to the built-in SWE-bench lane, the bench can run any benchmark that can be normalized into the repo-patch JSONL schema:
+
+- `instance_id`
+- `repo`
+- `base_commit`
+- `problem_statement`
+- optional hints/tests/metadata
+
+That gives the same Codex runtime, probe stack, and evidence reporting a reusable path for other benchmark families.
+
 ## Run The SWE-bench Study
 
 From [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads/CodexPlusClaw/bench):
@@ -44,7 +66,7 @@ From [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads
 ```bash
 cargo run -p codex-bench-cli -- prepare \
   --campaign-root ../.artifacts \
-  --sample-size 1 \
+  --stage architecture-validation \
   --seed codex-study
 
 cargo run -p codex-bench-cli -- run ../.artifacts/<campaign-id>
@@ -53,6 +75,8 @@ cargo run -p codex-bench-cli -- grade ../.artifacts/<campaign-id> \
   --command 'python -m swebench.harness.run_evaluation --predictions_path {predictions}'
 
 cargo run -p codex-bench-cli -- report ../.artifacts/<campaign-id>
+
+cargo run -p codex-bench-cli -- list-presets
 ```
 
 ## Reference Material
@@ -60,4 +84,3 @@ cargo run -p codex-bench-cli -- report ../.artifacts/<campaign-id>
 - [`docs/references/codex.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/codex.md)
 - [`docs/architecture/bench-architecture.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/architecture/bench-architecture.md)
 - [`docs/probes/probe-taxonomy.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
-

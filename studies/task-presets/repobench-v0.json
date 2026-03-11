@@ -1,0 +1,34 @@
+{
+  "name": "repobench-v0",
+  "benchmark": "RepoBench",
+  "benchmark_adapter": "repo-patch-jsonl",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "stages": [
+    {
+      "name": "architecture-validation",
+      "sampleSize": 1,
+      "description": "Validate repository-understanding tasks with Codex-internal probes enabled."
+    },
+    {
+      "name": "behavior-pilot",
+      "sampleSize": 5,
+      "description": "Stress search, retrieval, and long-context repository understanding behavior."
+    }
+  ],
+  "requiredTaskClasses": [
+    "search-heavy",
+    "compaction-likely"
+  ],
+  "preferredTaskClasses": [
+    "verification-heavy"
+  ],
+  "futureBenchmarks": [
+    "SWE-bench Verified",
+    "long-context synthetic patch tasks"
+  ],
+  "notes": [
+    "Supply --dataset-jsonl containing RepoBench tasks normalized into the repo-patch schema.",
+    "This preset is especially useful for flat-history reread and compaction studies."
+  ]
+}

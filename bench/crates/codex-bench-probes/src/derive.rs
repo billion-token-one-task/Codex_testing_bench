@@ -149,6 +149,25 @@ pub fn derive_run_outputs(
                 );
             }
             EventMsg::McpToolCallBegin(ev) => {
+                if probe_summary.first_controlled_change_tokens.is_none() {
+                    probe_summary.first_controlled_change_tokens =
+                        last_token_total(&last_token_info);
+                    probe_summary.ignition_tool_mediated_count += 1;
+                    derived_probes.push(make_probe(
+                        run_id,
+                        record,
+                        task_class,
+                        seq,
+                        "ToolMediation",
+                        "fission.ignition.tool_mediated",
+                        "inferred",
+                        format!(
+                            "first controlled tool-mediated action appears to begin through MCP tool `{}::{}`",
+                            ev.invocation.server, ev.invocation.tool
+                        ),
+                        vec!["tool-events.jsonl".to_string()],
+                    ));
+                }
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "begin",
@@ -175,6 +194,22 @@ pub fn derive_run_outputs(
                 probe_summary.tool_mediation_tax_count += 1;
             }
             EventMsg::PatchApplyBegin(ev) => {
+                if probe_summary.first_controlled_change_tokens.is_none() {
+                    probe_summary.first_controlled_change_tokens =
+                        last_token_total(&last_token_info);
+                    probe_summary.ignition_patch_apply_count += 1;
+                    derived_probes.push(make_probe(
+                        run_id,
+                        record,
+                        task_class,
+                        seq,
+                        "ToolMediation",
+                        "fission.ignition.patch_apply",
+                        "exact",
+                        "first controlled change appears to happen via patch application".to_string(),
+                        vec!["patch-events.jsonl".to_string()],
+                    ));
+                }
                 if probe_summary.first_patch_tokens.is_none() {
                     probe_summary.first_patch_tokens = last_token_total(&last_token_info);
                 }
@@ -256,6 +291,8 @@ pub fn derive_run_outputs(
             .to_string();
         *diagnostic_type_counts.entry(kind.clone()).or_default() += 1;
         if kind == "lagged" {
+            probe_summary.event_discontinuity_count += 1;
+            probe_summary.containment_heat_leak_count += 1;
             derived_probes.push(make_probe(
                 run_id,
                 record,
@@ -265,6 +302,17 @@ pub fn derive_run_outputs(
                 "events.backpressure",
                 "exact",
                 "the app-server client reported lagged event delivery".to_string(),
+                vec!["raw-diagnostics.jsonl".to_string()],
+            ));
+            derived_probes.push(make_probe(
+                run_id,
+                record,
+                task_class,
+                decoded_events.len(),
+                "HarnessFriction",
+                "containment.heat_leak",
+                "exact",
+                "event delivery lag suggests orchestration heat leakage rather than direct task progress".to_string(),
                 vec!["raw-diagnostics.jsonl".to_string()],
             ));
         }
@@ -314,6 +362,23 @@ pub fn derive_run_outputs(
     }
     if probe_summary.reverted_work_ratio_den == 0 {
         probe_summary.reverted_work_ratio_den = probe_summary.retained_edit_ratio_den;
+    }
+    if probe_summary.useful_token_proxy_den > 0 {
+        probe_summary.useful_token_proxy_bps = Some(
+            (probe_summary.useful_token_proxy_num * 10_000) / probe_summary.useful_token_proxy_den,
+        );
+    }
+    if probe_summary.friction_token_proxy_den > 0 {
+        probe_summary.friction_token_proxy_bps = Some(
+            (probe_summary.friction_token_proxy_num * 10_000)
+                / probe_summary.friction_token_proxy_den,
+        );
+    }
+    if let (Some(useful_bps), Some(friction_bps)) = (
+        probe_summary.useful_token_proxy_bps,
+        probe_summary.friction_token_proxy_bps,
+    ) {
+        probe_summary.harness_overhead_proxy_bps = Some(friction_bps.saturating_sub(useful_bps));
     }
 
     if raw_probe_events.is_empty() {
@@ -436,6 +501,7 @@ fn handle_raw_probe(
     }
     if probe.code == "compaction_started" || probe.code == "compaction_completed" {
         probe_summary.compaction_count += usize::from(probe.code == "compaction_completed");
+        probe_summary.control_rod_compaction_count += 1;
         derived_probes.push(make_probe(
             run_id,
             record,
@@ -447,9 +513,22 @@ fn handle_raw_probe(
             format!("raw compaction probe observed: {}", probe.code),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "ContextCompaction",
+            "control_rod.compaction_regulation",
+            "inferred",
+            format!("compaction acted as a regulation layer via `{}`", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
     }
     if probe.code.contains("instruction") || subsystem == "InstructionChannel" {
         probe_summary.instruction_shift_count += 1;
+        probe_summary.instruction_stratification_count += 1;
+        probe_summary.externalized_coordination_count += 1;
         derived_probes.push(make_probe(
             run_id,
             record,
@@ -461,15 +540,28 @@ fn handle_raw_probe(
             format!("instruction-layer event observed: {}", probe.code),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "InstructionChannel",
+            "instruction.stratification",
+            "inferred",
+            format!("Codex exposed layered instruction behavior via `{}`", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
     }
     if probe.code.contains("config") || subsystem == "ConfigFreeze" {
         probe_summary.config_freeze_drift_count += 1;
+        probe_summary.control_rod_config_freeze_count += 1;
     }
     if probe.code.contains("listener")
         || probe.code.contains("friction")
         || subsystem == "HarnessFriction"
     {
         probe_summary.harness_friction_count += 1;
+        probe_summary.containment_heat_leak_count += 1;
     }
     if probe.code == "session_configured"
         && let Some(payload) = &probe.payload
@@ -501,6 +593,42 @@ fn handle_raw_probe(
             source_refs: vec!["codex-probe-events.jsonl".to_string()],
             payload: Some(payload.clone()),
         });
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "ConfigFreeze",
+            "control_rod.config_freeze",
+            "inferred",
+            format!(
+                "session config froze model/runtime choices at `{}::{}`",
+                payload
+                    .get("provider")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default(),
+                effective_model
+            ),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
+        if payload
+            .get("persistExtendedHistory")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            probe_summary.externalized_coordination_count += 1;
+            derived_probes.push(make_probe(
+                run_id,
+                record,
+                task_class,
+                seq,
+                "PersistenceReconstruction",
+                "persistence.externalized_state",
+                "inferred",
+                "Codex session was configured to persist extended history, suggesting externalized continuity beyond the immediate turn".to_string(),
+                vec!["codex-probe-events.jsonl".to_string()],
+            ));
+        }
     }
     if probe.code == "compaction_completed"
         && let Some(payload) = &probe.payload
@@ -528,7 +656,48 @@ fn handle_raw_probe(
                 ),
                 vec!["codex-probe-events.jsonl".to_string()],
             ));
+            probe_summary.persistence_staleness_risk_count += 1;
+            derived_probes.push(make_probe(
+                run_id,
+                record,
+                task_class,
+                seq,
+                "PersistenceReconstruction",
+                "persistence.half_life",
+                "estimated",
+                format!(
+                    "compaction compressed history from {before} items to {replacement}, raising a state half-life / rediscovery risk"
+                ),
+                vec!["codex-probe-events.jsonl".to_string()],
+            ));
         }
+    }
+    if subsystem == "PersistenceReconstruction" {
+        probe_summary.control_rod_persistence_count += 1;
+        probe_summary.persistence_continuity_count += 1;
+        probe_summary.externalized_coordination_count += 1;
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "PersistenceReconstruction",
+            "persistence.resume_path",
+            classification.as_str(),
+            format!("persistence or reconstruction event observed: {}", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "PersistenceReconstruction",
+            "control_rod.persistence",
+            "inferred",
+            format!("persistence layer acted as a regulation/continuity mechanism via `{}`", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
     }
     if subsystem == "HarnessFriction" {
         anomalies.push(json!({
@@ -547,6 +716,31 @@ fn handle_raw_probe(
             "harness.friction",
             classification.as_str(),
             format!("harness friction event observed: {}", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "HarnessFriction",
+            "containment.heat_leak",
+            classification.as_str(),
+            format!("Codex harness leaked effort into orchestration via `{}`", probe.code),
+            vec!["codex-probe-events.jsonl".to_string()],
+        ));
+    }
+    if subsystem == "AppServerTranslation" {
+        probe_summary.event_discontinuity_count += 1;
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "AppServerTranslation",
+            "events.discontinuity",
+            classification.as_str(),
+            format!("observer-visible event architecture discontinuity: `{}`", probe.code),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -569,6 +763,7 @@ fn handle_command_begin(
     last_write_seq: &mut Option<usize>,
 ) {
     let command_text = join_command(&ev.command);
+    let search_like = is_search_command(&command_text);
     command_rows.push(json!({
         "seq": seq,
         "phase": "begin",
@@ -582,8 +777,28 @@ fn handle_command_begin(
         "source": format!("{:?}", ev.source),
     }));
 
+    if probe_summary.first_controlled_change_tokens.is_none()
+        && search_like
+        && !is_meaningful_edit_command(&command_text)
+    {
+        probe_summary.ignition_shell_search_count += 1;
+        derived_probes.push(make_probe(
+            run_id,
+            record,
+            task_class,
+            seq,
+            "TurnLifecycle",
+            "fission.search_ignition",
+            "inferred",
+            format!("run appears to approach ignition through exploratory search command `{command_text}`"),
+            vec!["command-events.jsonl".to_string()],
+        ));
+    }
     if probe_summary.first_meaningful_edit_tokens.is_none() && is_meaningful_edit_command(&command_text) {
         probe_summary.first_meaningful_edit_tokens = token_total;
+        if probe_summary.first_controlled_change_tokens.is_none() {
+            probe_summary.first_controlled_change_tokens = token_total;
+        }
         derived_probes.push(make_probe(
             run_id,
             record,
@@ -604,9 +819,9 @@ fn handle_command_begin(
             task_class,
             seq,
             "TurnLifecycle",
-            "fission.ignition",
+            "fission.first_controlled_change",
             "inferred",
-            format!("run ignition appears to happen via `{command_text}`"),
+            format!("first controlled code-change path appears to begin via `{command_text}`"),
             vec!["command-events.jsonl".to_string()],
         ));
     }
@@ -742,6 +957,7 @@ fn handle_command_end(
         && seq > write_seq
     {
         probe_summary.useful_step_proxy_num += 1;
+        probe_summary.verification_closure_count += 1;
         probe_summary.useful_token_proxy_num += 1.max(ev.duration.as_millis() as i64);
         derived_probes.push(make_probe(
             run_id,
@@ -757,6 +973,9 @@ fn handle_command_end(
     }
     if !is_verification_command(&command_text) && !is_meaningful_edit_command(&command_text) {
         probe_summary.friction_token_proxy_num += 1.max(ev.duration.as_millis() as i64);
+        if is_git_inspection_command(&command_text) || is_read_only_command(&command_text) {
+            probe_summary.containment_heat_leak_count += 1;
+        }
     }
 }
 
@@ -811,7 +1030,10 @@ fn build_claim_evidence(
         },
         ClaimEvidence {
             claim_id: "grounding.verification_pressure".to_string(),
-            label: if probe_summary.first_verification_tokens.is_some() && probe_summary.useful_step_proxy_num > 0 {
+            label: if probe_summary.first_verification_tokens.is_some()
+                && probe_summary.useful_step_proxy_num > 0
+                && probe_summary.verification_closure_count > 0
+            {
                 "evidence_consistent"
             } else {
                 "evidence_inconclusive"
@@ -820,10 +1042,70 @@ fn build_claim_evidence(
             supporting_evidence: vec![
                 format!("first_verification_tokens={:?}", probe_summary.first_verification_tokens),
                 format!("useful_step_proxy={}/{}", probe_summary.useful_step_proxy_num, probe_summary.useful_step_proxy_den),
+                format!("verification_closure_count={}", probe_summary.verification_closure_count),
             ],
             conflicting_evidence: Vec::new(),
             relevant_runs: vec![run_ref.clone()],
             caveats: vec!["Closure is inferred from command chronology rather than semantic proof graphs.".to_string()],
+        },
+        ClaimEvidence {
+            claim_id: "grounding.externalized_coordination".to_string(),
+            label: if probe_summary.externalized_coordination_count > 0
+                || probe_summary.persistence_continuity_count > 0
+            {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "externalized_coordination_count={}",
+                    probe_summary.externalized_coordination_count
+                ),
+                format!(
+                    "persistence_continuity_count={}",
+                    probe_summary.persistence_continuity_count
+                ),
+                format!(
+                    "instruction_stratification_count={}",
+                    probe_summary.instruction_stratification_count
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec![
+                "This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.".to_string(),
+            ],
+        },
+        ClaimEvidence {
+            claim_id: "grounding.control_regulation".to_string(),
+            label: if probe_summary.control_rod_compaction_count > 0
+                || probe_summary.control_rod_config_freeze_count > 0
+                || probe_summary.control_rod_persistence_count > 0
+            {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "control_rod_compaction_count={}",
+                    probe_summary.control_rod_compaction_count
+                ),
+                format!(
+                    "control_rod_config_freeze_count={}",
+                    probe_summary.control_rod_config_freeze_count
+                ),
+                format!(
+                    "control_rod_persistence_count={}",
+                    probe_summary.control_rod_persistence_count
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["A regulation mechanism can improve stability while also introducing some compression loss or overhead.".to_string()],
         },
         ClaimEvidence {
             claim_id: "codex.compaction_rebuild".to_string(),
@@ -855,6 +1137,77 @@ fn build_claim_evidence(
             caveats: vec!["Some apparent drift may reflect intentional provider normalization.".to_string()],
         },
         ClaimEvidence {
+            claim_id: "codex.instruction_stratification".to_string(),
+            label: if probe_summary.instruction_stratification_count > 0 {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![format!(
+                "instruction_stratification_count={}",
+                probe_summary.instruction_stratification_count
+            )],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.".to_string()],
+        },
+        ClaimEvidence {
+            claim_id: "codex.persistence_continuity".to_string(),
+            label: if probe_summary.persistence_continuity_count > 0 {
+                "evidence_consistent"
+            } else {
+                "not_observable_with_current_probes"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "persistence_continuity_count={}",
+                    probe_summary.persistence_continuity_count
+                ),
+                format!(
+                    "persistence_staleness_risk_count={}",
+                    probe_summary.persistence_staleness_risk_count
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["Strong evidence usually requires resume, compaction, or reconstruction heavy runs.".to_string()],
+        },
+        ClaimEvidence {
+            claim_id: "codex.control_rods".to_string(),
+            label: if probe_summary.control_rod_compaction_count > 0
+                || probe_summary.control_rod_config_freeze_count > 0
+                || probe_summary.control_rod_persistence_count > 0
+            {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "control_rod_compaction_count={}",
+                    probe_summary.control_rod_compaction_count
+                ),
+                format!(
+                    "control_rod_config_freeze_count={}",
+                    probe_summary.control_rod_config_freeze_count
+                ),
+                format!(
+                    "control_rod_persistence_count={}",
+                    probe_summary.control_rod_persistence_count
+                ),
+                format!(
+                    "containment_heat_leak_count={}",
+                    probe_summary.containment_heat_leak_count
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.".to_string()],
+        },
+        ClaimEvidence {
             claim_id: "codex.tool_mediation".to_string(),
             label: if probe_summary.tool_mediation_tax_count > 0 {
                 "evidence_consistent"
@@ -868,6 +1221,22 @@ fn build_claim_evidence(
             caveats: vec!["A given run may not exercise MCP and patch pathways equally.".to_string()],
         },
         ClaimEvidence {
+            claim_id: "codex.event_architecture".to_string(),
+            label: if probe_summary.event_discontinuity_count > 0 {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![format!(
+                "event_discontinuity_count={}",
+                probe_summary.event_discontinuity_count
+            )],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["A quiet run may not exercise listener lag or translation discontinuities.".to_string()],
+        },
+        ClaimEvidence {
             claim_id: "codex.harness_overhead_tax".to_string(),
             label: if probe_summary.harness_friction_count > 0 || probe_summary.friction_token_proxy_num > 0 {
                 "evidence_consistent"
@@ -878,6 +1247,8 @@ fn build_claim_evidence(
             supporting_evidence: vec![
                 format!("harness_friction_count={}", probe_summary.harness_friction_count),
                 format!("friction_token_proxy={}/{}", probe_summary.friction_token_proxy_num, probe_summary.friction_token_proxy_den),
+                format!("containment_heat_leak_count={}", probe_summary.containment_heat_leak_count),
+                format!("harness_overhead_proxy_bps={:?}", probe_summary.harness_overhead_proxy_bps),
             ],
             conflicting_evidence: Vec::new(),
             relevant_runs: vec![run_ref],
@@ -938,6 +1309,13 @@ fn is_git_inspection_command(command: &str) -> bool {
 fn is_read_only_command(command: &str) -> bool {
     let command = command.to_ascii_lowercase();
     ["rg ", "grep ", "find ", "ls ", "cat ", "sed -n", "git grep", "git show", "git diff"]
+        .iter()
+        .any(|needle| command.starts_with(needle))
+}
+
+fn is_search_command(command: &str) -> bool {
+    let command = command.to_ascii_lowercase();
+    ["rg ", "grep ", "find ", "git grep", "ls ", "sed -n", "cat "]
         .iter()
         .any(|needle| command.starts_with(needle))
 }

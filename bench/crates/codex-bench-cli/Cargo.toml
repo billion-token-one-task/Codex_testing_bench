@@ -10,6 +10,6 @@ clap.workspace = true
 tokio.workspace = true
 
 codex-bench-codex.workspace = true
+codex-bench-core.workspace = true
 codex-bench-report.workspace = true
 codex-bench-swebench.workspace = true
-

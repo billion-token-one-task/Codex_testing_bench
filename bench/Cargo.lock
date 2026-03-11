@@ -1359,6 +1359,7 @@ dependencies = [
  "anyhow",
  "clap",
  "codex-bench-codex",
+ "codex-bench-core",
  "codex-bench-report",
  "codex-bench-swebench",
  "tokio",

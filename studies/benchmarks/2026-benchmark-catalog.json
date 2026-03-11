@@ -1,0 +1,68 @@
+[
+  {
+    "id": "swebench-verified",
+    "name": "SWE-bench Verified",
+    "status": "active",
+    "adapter": "swebench",
+    "benchmarkType": "real-repo patch benchmark",
+    "whyItMatters": "Primary v1 live task source for real repository debugging and patch production.",
+    "probeAngles": [
+      "verification closure",
+      "compaction pressure",
+      "tool mediation",
+      "bootstrap and harness friction"
+    ]
+  },
+  {
+    "id": "terminal-bench",
+    "name": "Terminal-Bench",
+    "status": "planned",
+    "adapter": "future",
+    "benchmarkType": "terminal-native agent benchmark",
+    "whyItMatters": "Useful for observing command sequencing, environment manipulation, and shell-centric reasoning loops.",
+    "probeAngles": [
+      "event architecture discontinuity",
+      "command-loop redundancy",
+      "shell ignition patterns"
+    ]
+  },
+  {
+    "id": "repobench",
+    "name": "RepoBench",
+    "status": "planned",
+    "adapter": "future",
+    "benchmarkType": "repository understanding benchmark",
+    "whyItMatters": "Useful for studying search, retrieval, repository comprehension, and instruction stratification under codebase scale.",
+    "probeAngles": [
+      "search ignition",
+      "flat-history reread tax",
+      "context pressure"
+    ]
+  },
+  {
+    "id": "aider-polyglot",
+    "name": "Aider Polyglot Benchmark",
+    "status": "planned",
+    "adapter": "future",
+    "benchmarkType": "multi-language edit and test benchmark",
+    "whyItMatters": "Useful for comparing Codex behavior across ecosystems and tooling cultures.",
+    "probeAngles": [
+      "tool mediation tax",
+      "verification structure",
+      "cross-language harness overhead"
+    ]
+  },
+  {
+    "id": "long-context-synthetic",
+    "name": "Long-Context Synthetic Patch Tasks",
+    "status": "planned",
+    "adapter": "future",
+    "benchmarkType": "controlled synthetic long-horizon tasks",
+    "whyItMatters": "Useful for isolating compaction continuity, persistence half-life, and activation-threshold effects under controlled conditions.",
+    "probeAngles": [
+      "compaction continuity",
+      "persistence half-life",
+      "control-rod regulation"
+    ]
+  }
+]

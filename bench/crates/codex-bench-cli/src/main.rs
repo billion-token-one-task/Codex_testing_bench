@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::fs;
+
 use codex_bench_codex::write_architecture_map;
+use codex_bench_core::{default_swebench_preset_path, load_study_preset};
 use codex_bench_report::{render_campaign_report, render_single_run_replay};
 use codex_bench_swebench::{PrepareArgs, grade_campaign, prepare_campaign, run_campaign};
 
@@ -19,8 +22,8 @@ enum Command {
     Prepare {
         #[arg(long)]
         campaign_root: PathBuf,
-        #[arg(long, default_value_t = 15)]
-        sample_size: usize,
+        #[arg(long)]
+        sample_size: Option<usize>,
         #[arg(long, default_value = "codex-study")]
         seed: String,
         #[arg(long)]
@@ -31,6 +34,10 @@ enum Command {
         provider: String,
         #[arg(long)]
         repo_cache_root: Option<PathBuf>,
+        #[arg(long)]
+        preset_path: Option<PathBuf>,
+        #[arg(long)]
+        stage: Option<String>,
     },
     Run {
         campaign_dir: PathBuf,
@@ -51,6 +58,10 @@ enum Command {
     InspectCodex {
         campaign_dir: PathBuf,
     },
+    ListPresets {
+        #[arg(long)]
+        presets_dir: Option<PathBuf>,
+    },
 }
 
 #[tokio::main]
@@ -65,6 +76,8 @@ async fn main() -> Result<()> {
             model,
             provider,
             repo_cache_root,
+            preset_path,
+            stage,
         } => {
             let campaign_dir = prepare_campaign(PrepareArgs {
                 campaign_root,
@@ -74,6 +87,8 @@ async fn main() -> Result<()> {
                 model,
                 provider,
                 repo_cache_root,
+                preset_path,
+                stage,
             })
             .await?;
             println!("{}", campaign_dir.display());
@@ -103,6 +118,40 @@ async fn main() -> Result<()> {
         Command::InspectCodex { campaign_dir } => {
             let path = write_architecture_map(&campaign_dir)?;
             println!("{}", path.display());
+        }
+        Command::ListPresets { presets_dir } => {
+            let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+            let presets_dir = presets_dir.unwrap_or_else(|| {
+                default_swebench_preset_path(&repo_root)
+                    .parent()
+                    .expect("default preset path has parent")
+                    .to_path_buf()
+            });
+            for entry in fs::read_dir(&presets_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+                    continue;
+                }
+                let preset = load_study_preset(&path)?;
+                println!(
+                    "{} | benchmark={} | adapter={} | stages={} | required={}",
+                    path.display(),
+                    preset.benchmark,
+                    preset.benchmark_adapter,
+                    preset
+                        .stages
+                        .iter()
+                        .map(|stage| format!("{}:{}", stage.name, stage.sample_size))
+                        .collect::<Vec<_>>()
+                        .join(","),
+                    if preset.required_task_classes.is_empty() {
+                        "-".to_string()
+                    } else {
+                        preset.required_task_classes.join(",")
+                    }
+                );
+            }
         }
     }
     Ok(())

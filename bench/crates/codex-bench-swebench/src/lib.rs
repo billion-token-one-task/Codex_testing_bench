@@ -7,7 +7,8 @@ use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     CampaignManifest, CodexRunRequest, DatasetRecord, RunManifest, SelectedInstance,
-    attempt_artifact_paths, read_json, write_json_pretty,
+    attempt_artifact_paths, default_swebench_preset_path, load_study_preset, read_json,
+    write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::render_run_evidence;
@@ -26,20 +27,31 @@ pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-cod
 #[derive(Debug, Clone)]
 pub struct PrepareArgs {
     pub campaign_root: PathBuf,
-    pub sample_size: usize,
+    pub sample_size: Option<usize>,
     pub seed: String,
     pub dataset_jsonl: Option<PathBuf>,
     pub model: String,
     pub provider: String,
     pub repo_cache_root: Option<PathBuf>,
+    pub preset_path: Option<PathBuf>,
+    pub stage: Option<String>,
 }
 
 pub async fn prepare_campaign(args: PrepareArgs) -> Result<PathBuf> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let preset_path = args
+        .preset_path
+        .clone()
+        .unwrap_or_else(|| default_swebench_preset_path(&repo_root));
+    let preset = load_study_preset(&preset_path)?;
+    let (stage_name, sample_size) =
+        preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
+
     fs::create_dir_all(&args.campaign_root)?;
     let campaign_id = format!(
         "swebench-study-{}-{}",
         Utc::now().format("%Y-%m-%dT%H-%M-%SZ"),
-        short_hash(&format!("{}:{}", args.seed, args.sample_size))
+        short_hash(&format!("{}:{sample_size}", args.seed))
     );
     let campaign_dir = args.campaign_root.join(&campaign_id);
     fs::create_dir_all(campaign_dir.join("reports"))?;
@@ -49,9 +61,27 @@ pub async fn prepare_campaign(args: PrepareArgs) -> Result<PathBuf> {
         .unwrap_or_else(|| campaign_dir.join("_repo-cache"));
     fs::create_dir_all(&repo_cache_root)?;
 
-    let mut dataset = load_dataset_records(args.dataset_jsonl.as_deref()).await?;
+    if args.dataset_jsonl.is_none() && preset.benchmark_adapter != "swebench" {
+        bail!(
+            "preset `{}` uses adapter `{}` and therefore requires --dataset-jsonl with repo-patch task records",
+            preset.name,
+            preset.benchmark_adapter
+        );
+    }
+
+    let mut dataset = load_dataset_records(
+        args.dataset_jsonl.as_deref(),
+        preset.benchmark_adapter == "swebench",
+    )
+    .await?;
     dataset.sort_by(|a, b| a.instance_id.cmp(&b.instance_id));
-    let selected_records = select_records(&dataset, &args.seed, args.sample_size);
+    let selected_records = select_records(
+        &dataset,
+        &args.seed,
+        sample_size,
+        &preset.required_task_classes,
+        &preset.preferred_task_classes,
+    );
 
     let mut selected_instances = Vec::new();
     for record in &selected_records {
@@ -72,11 +102,21 @@ pub async fn prepare_campaign(args: PrepareArgs) -> Result<PathBuf> {
         created_at: Utc::now().to_rfc3339(),
         campaign_root: campaign_dir.clone(),
         repo_cache_root,
+        benchmark_name: preset.benchmark.clone(),
+        benchmark_adapter: preset.benchmark_adapter.clone(),
+        preset_name: preset.name.clone(),
+        preset_path,
+        stage_name,
+        probe_profile: preset.probe_profile.clone(),
+        report_profile: preset.report_profile.clone(),
         model: args.model,
         provider: args.provider,
         seed: args.seed,
         sample_size: selected_instances.len(),
         study_mode: STUDY_MODE.to_string(),
+        required_task_classes: preset.required_task_classes.clone(),
+        preferred_task_classes: preset.preferred_task_classes.clone(),
+        future_benchmarks: preset.future_benchmarks.clone(),
         grounding_documents: vec![TOKEN_BUDGET_DOC.to_string(), SCHEDULER_DOC.to_string()],
         reference_documents: vec![DEEPWIKI_DOC.to_string(), OPENAI_HARNESS_DOC.to_string()],
         selected_instances,
@@ -338,9 +378,15 @@ fn build_prompt(record: &DatasetRecord) -> String {
     prompt
 }
 
-async fn load_dataset_records(dataset_jsonl: Option<&Path>) -> Result<Vec<DatasetRecord>> {
+async fn load_dataset_records(
+    dataset_jsonl: Option<&Path>,
+    allow_hf_swebench_fetch: bool,
+) -> Result<Vec<DatasetRecord>> {
     if let Some(path) = dataset_jsonl {
         return parse_dataset_jsonl(path);
+    }
+    if !allow_hf_swebench_fetch {
+        bail!("dataset_jsonl is required for non-SWE-bench adapters");
     }
     let script = r#"
 import json
@@ -441,7 +487,13 @@ fn optional_string(object: &Map<String, Value>, key: &str) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
-fn select_records(dataset: &[DatasetRecord], seed: &str, sample_size: usize) -> Vec<DatasetRecord> {
+fn select_records(
+    dataset: &[DatasetRecord],
+    seed: &str,
+    sample_size: usize,
+    required_task_classes: &[String],
+    preferred_task_classes: &[String],
+) -> Vec<DatasetRecord> {
     let mut decorated = dataset
         .iter()
         .map(|record| {
@@ -458,6 +510,34 @@ fn select_records(dataset: &[DatasetRecord], seed: &str, sample_size: usize) -> 
 
     let mut picked = Vec::new();
     let mut seen_classes = BTreeSet::new();
+    for required in required_task_classes {
+        if picked.len() >= sample_size {
+            break;
+        }
+        if let Some((class, _, record)) = decorated.iter().find(|(class, _, record)| {
+            class == required
+                && !picked
+                    .iter()
+                    .any(|existing: &DatasetRecord| existing.instance_id == record.instance_id)
+        }) {
+            seen_classes.insert(class.clone());
+            picked.push(record.clone());
+        }
+    }
+    for preferred in preferred_task_classes {
+        if picked.len() >= sample_size {
+            break;
+        }
+        if let Some((class, _, record)) = decorated.iter().find(|(class, _, record)| {
+            class == preferred
+                && !picked
+                    .iter()
+                    .any(|existing: &DatasetRecord| existing.instance_id == record.instance_id)
+        }) {
+            seen_classes.insert(class.clone());
+            picked.push(record.clone());
+        }
+    }
     for (class, _, record) in &decorated {
         if picked.len() >= sample_size {
             break;
