@@ -1,0 +1,23 @@
+[package]
+name = "codex-swebench-study"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
+codex-app-server-client = { workspace = true }
+codex-app-server-protocol = { workspace = true }
+codex-arg0 = { workspace = true }
+codex-cloud-requirements = { workspace = true }
+codex-core = { workspace = true }
+codex-feedback = { workspace = true }
+codex-protocol = { workspace = true }
+tempfile = { workspace = true }
