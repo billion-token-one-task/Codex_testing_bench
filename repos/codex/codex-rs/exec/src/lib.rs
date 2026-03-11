@@ -1028,7 +1028,7 @@ fn session_configured_from_thread_response(
         initial_messages: None,
         network_proxy: None,
         rollout_path,
-    study_metadata: None,
+        study_metadata: None,
     })
 }
 

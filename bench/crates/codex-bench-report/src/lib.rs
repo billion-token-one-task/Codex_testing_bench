@@ -8,8 +8,8 @@ use codex_bench_codex::decode_legacy_notification;
 use codex_bench_core::{
     BenchmarkResearchProfile, CampaignManifest, ClaimCatalogEntry, ClaimEvidence, DatasetRecord,
     ProbeSummary, RunSummary, SelectedInstance, StudyArchitectureSubsystem,
-    artifact_inventory_for_attempt,
-    artifact_map_for_attempt, read_json, read_jsonl_values, write_json_pretty,
+    artifact_inventory_for_attempt, artifact_map_for_attempt, read_json, read_jsonl_values,
+    tokenize_research_terms, write_json_pretty,
 };
 use codex_bench_probes::derive_run_outputs;
 use codex_protocol::protocol::{Event, StudyProbeEvent};
@@ -133,7 +133,11 @@ fn ensure_attempt_derivations(
     let message_schema_outdated = message_rows
         .iter()
         .find(|value| value.get("messageId").is_some())
-        .map(|value| value.get("hedgingScoreBps").is_none())
+        .map(|value| {
+            value.get("bridgeLanguageScoreBps").is_none()
+                || value.get("topSurfaceTerms").is_none()
+                || value.get("stateExternalizationScoreBps").is_none()
+        })
         .unwrap_or(true);
     let tool_rows = read_jsonl_values(&attempt_dir.join("tool-events.jsonl")).unwrap_or_default();
     let tool_schema_outdated = tool_rows
@@ -141,9 +145,8 @@ fn ensure_attempt_derivations(
         .find(|value| value.get("phase").and_then(Value::as_str) == Some("begin"))
         .map(|value| value.get("toolRoute").is_none())
         .unwrap_or(true);
-    let observability_version_outdated =
-        current_summary.observability_contract_version.as_deref()
-            != Some(REPORT_OBSERVABILITY_CONTRACT_VERSION);
+    let observability_version_outdated = current_summary.observability_contract_version.as_deref()
+        != Some(REPORT_OBSERVABILITY_CONTRACT_VERSION);
 
     if !turn_metrics_missing
         && !skill_events_missing
@@ -165,12 +168,14 @@ fn ensure_attempt_derivations(
         }
     }
 
-    let raw_probe_rows = read_jsonl_values(&attempt_dir.join("codex-probe-events.jsonl")).unwrap_or_default();
+    let raw_probe_rows =
+        read_jsonl_values(&attempt_dir.join("codex-probe-events.jsonl")).unwrap_or_default();
     let probe_events = raw_probe_rows
         .into_iter()
         .map(serde_json::from_value::<StudyProbeEvent>)
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    let raw_diagnostics = read_jsonl_values(&attempt_dir.join("raw-diagnostics.jsonl")).unwrap_or_default();
+    let raw_diagnostics =
+        read_jsonl_values(&attempt_dir.join("raw-diagnostics.jsonl")).unwrap_or_default();
     let patch_text = fs::read(attempt_dir.join("patch.diff")).unwrap_or_default();
 
     derive_run_outputs(
@@ -215,7 +220,10 @@ pub fn render_single_run_replay(run_dir: &Path) -> Result<PathBuf> {
     ));
     lines.push(format!(
         "Patch SHA256: {}",
-        summary.patch_sha256.clone().unwrap_or_else(|| "-".to_string())
+        summary
+            .patch_sha256
+            .clone()
+            .unwrap_or_else(|| "-".to_string())
     ));
     lines.push(String::new());
     lines.push("Probe Highlights".to_string());
@@ -228,7 +236,10 @@ pub fn render_single_run_replay(run_dir: &Path) -> Result<PathBuf> {
         "first_verification_tokens={:?}",
         probe_summary.first_verification_tokens
     ));
-    lines.push(format!("compaction_count={}", probe_summary.compaction_count));
+    lines.push(format!(
+        "compaction_count={}",
+        probe_summary.compaction_count
+    ));
     lines.push(format!(
         "config_freeze_drift_count={}",
         probe_summary.config_freeze_drift_count
@@ -250,8 +261,10 @@ pub fn render_run_evidence(
 ) -> Result<PathBuf> {
     let probe_summary: ProbeSummary = read_json(&attempt_dir.join("probe-summary.json"))?;
     let claim_evidence: Vec<ClaimEvidence> = read_json(&attempt_dir.join("claim-evidence.json"))?;
-    let grade_events = read_jsonl_values(&attempt_dir.join("grade-events.jsonl")).unwrap_or_default();
-    let turn_metrics = read_jsonl_values(&attempt_dir.join("turn-metrics.jsonl")).unwrap_or_default();
+    let grade_events =
+        read_jsonl_values(&attempt_dir.join("grade-events.jsonl")).unwrap_or_default();
+    let turn_metrics =
+        read_jsonl_values(&attempt_dir.join("turn-metrics.jsonl")).unwrap_or_default();
     let message_metrics =
         read_jsonl_values(&attempt_dir.join("message-metrics.jsonl")).unwrap_or_default();
     let token_snapshots =
@@ -261,12 +274,19 @@ pub fn render_run_evidence(
     let tool_events = read_jsonl_values(&attempt_dir.join("tool-events.jsonl")).unwrap_or_default();
     let skill_events =
         read_jsonl_values(&attempt_dir.join("skill-events.jsonl")).unwrap_or_default();
-    let probe_events = read_jsonl_values(&attempt_dir.join("probe-events.jsonl")).unwrap_or_default();
+    let personality_events =
+        read_jsonl_values(&attempt_dir.join("personality-events.jsonl")).unwrap_or_default();
+    let skill_mechanism =
+        read_jsonl_values(&attempt_dir.join("skill-mechanism.jsonl")).unwrap_or_default();
+    let patch_chain = read_jsonl_values(&attempt_dir.join("patch-chain.jsonl")).unwrap_or_default();
+    let probe_events =
+        read_jsonl_values(&attempt_dir.join("probe-events.jsonl")).unwrap_or_default();
     let verbosity_tool_coupling =
         read_jsonl_values(&attempt_dir.join("verbosity-tool-coupling.jsonl")).unwrap_or_default();
     let lifecycle_events =
         read_jsonl_values(&attempt_dir.join("lifecycle-events.jsonl")).unwrap_or_default();
-    let anomaly_events = read_jsonl_values(&attempt_dir.join("anomalies.jsonl")).unwrap_or_default();
+    let anomaly_events =
+        read_jsonl_values(&attempt_dir.join("anomalies.jsonl")).unwrap_or_default();
     let mut lines = Vec::new();
     lines.push("Run Summary".to_string());
     lines.push("===========".to_string());
@@ -284,7 +304,10 @@ pub fn render_run_evidence(
             .personality_mode
             .clone()
             .unwrap_or_else(|| "-".to_string()),
-        summary.prompt_style.clone().unwrap_or_else(|| "-".to_string())
+        summary
+            .prompt_style
+            .clone()
+            .unwrap_or_else(|| "-".to_string())
     ));
     lines.push(format!("Task class: {}", summary.task_class));
     lines.push(format!("Status: {}", summary.status));
@@ -299,7 +322,10 @@ pub fn render_run_evidence(
     ));
     lines.push(format!(
         "Patch SHA256: {}",
-        summary.patch_sha256.clone().unwrap_or_else(|| "-".to_string())
+        summary
+            .patch_sha256
+            .clone()
+            .unwrap_or_else(|| "-".to_string())
     ));
     lines.push(String::new());
     lines.push("Human-Oriented Overview".to_string());
@@ -463,6 +489,36 @@ pub fn render_run_evidence(
         }
     }
     lines.push(String::new());
+    lines.push("Personality Mechanism".to_string());
+    lines.push("=====================".to_string());
+    if personality_events.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for row in &personality_events {
+            lines.push(format_generic_event_row(row));
+        }
+    }
+    lines.push(String::new());
+    lines.push("Skill Mechanism".to_string());
+    lines.push("===============".to_string());
+    if skill_mechanism.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for row in &skill_mechanism {
+            lines.push(format_generic_event_row(row));
+        }
+    }
+    lines.push(String::new());
+    lines.push("Patch Mechanism".to_string());
+    lines.push("===============".to_string());
+    if patch_chain.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for row in &patch_chain {
+            lines.push(format_generic_event_row(row));
+        }
+    }
+    lines.push(String::new());
     lines.push("Verbosity × Tool Coupling".to_string());
     lines.push("=========================".to_string());
     if verbosity_tool_coupling.is_empty() {
@@ -495,9 +551,18 @@ pub fn render_run_evidence(
     lines.push(String::new());
     lines.push("Session / Config Probe Highlights".to_string());
     lines.push("=================================".to_string());
-    lines.push(format!("config_freeze_drift_count={}", probe_summary.config_freeze_drift_count));
-    lines.push(format!("instruction_shift_count={}", probe_summary.instruction_shift_count));
-    lines.push(format!("harness_friction_count={}", probe_summary.harness_friction_count));
+    lines.push(format!(
+        "config_freeze_drift_count={}",
+        probe_summary.config_freeze_drift_count
+    ));
+    lines.push(format!(
+        "instruction_shift_count={}",
+        probe_summary.instruction_shift_count
+    ));
+    lines.push(format!(
+        "harness_friction_count={}",
+        probe_summary.harness_friction_count
+    ));
     lines.push(String::new());
     lines.push("Instruction Assembly Summary".to_string());
     lines.push("============================".to_string());
@@ -517,9 +582,18 @@ pub fn render_run_evidence(
     lines.push(String::new());
     lines.push("Compaction / Reconstruction Timeline".to_string());
     lines.push("===================================".to_string());
-    lines.push(format!("compaction_count={}", probe_summary.compaction_count));
-    lines.push(format!("compaction_rediscovery_count={}", probe_summary.compaction_rediscovery_count));
-    lines.push(format!("peak_context_utilization_bps={:?}", probe_summary.peak_context_utilization_bps));
+    lines.push(format!(
+        "compaction_count={}",
+        probe_summary.compaction_count
+    ));
+    lines.push(format!(
+        "compaction_rediscovery_count={}",
+        probe_summary.compaction_rediscovery_count
+    ));
+    lines.push(format!(
+        "peak_context_utilization_bps={:?}",
+        probe_summary.peak_context_utilization_bps
+    ));
     lines.push(String::new());
     lines.push("Derived Probe Events".to_string());
     lines.push("====================".to_string());
@@ -533,19 +607,49 @@ pub fn render_run_evidence(
     lines.push(String::new());
     lines.push("Redundancy Incidents".to_string());
     lines.push("====================".to_string());
-    lines.push(format!("repeated_read_count={}", probe_summary.repeated_read_count));
-    lines.push(format!("repeated_verification_count={}", probe_summary.repeated_verification_count));
-    lines.push(format!("repeated_git_inspection_count={}", probe_summary.repeated_git_inspection_count));
-    lines.push(format!("post_submit_activity_count={}", probe_summary.post_submit_activity_count));
+    lines.push(format!(
+        "repeated_read_count={}",
+        probe_summary.repeated_read_count
+    ));
+    lines.push(format!(
+        "repeated_verification_count={}",
+        probe_summary.repeated_verification_count
+    ));
+    lines.push(format!(
+        "repeated_git_inspection_count={}",
+        probe_summary.repeated_git_inspection_count
+    ));
+    lines.push(format!(
+        "post_submit_activity_count={}",
+        probe_summary.post_submit_activity_count
+    ));
     lines.push(String::new());
     lines.push("Verification Chain".to_string());
     lines.push("==================".to_string());
-    lines.push(format!("first_meaningful_edit_tokens={:?}", probe_summary.first_meaningful_edit_tokens));
-    lines.push(format!("first_verification_tokens={:?}", probe_summary.first_verification_tokens));
-    lines.push(format!("first_patch_tokens={:?}", probe_summary.first_patch_tokens));
-    lines.push(format!("final_patch_tokens={:?}", probe_summary.final_patch_tokens));
-    lines.push(format!("useful_step_proxy={}/{}", probe_summary.useful_step_proxy_num, probe_summary.useful_step_proxy_den));
-    lines.push(format!("useful_token_proxy={}/{}", probe_summary.useful_token_proxy_num, probe_summary.useful_token_proxy_den));
+    lines.push(format!(
+        "first_meaningful_edit_tokens={:?}",
+        probe_summary.first_meaningful_edit_tokens
+    ));
+    lines.push(format!(
+        "first_verification_tokens={:?}",
+        probe_summary.first_verification_tokens
+    ));
+    lines.push(format!(
+        "first_patch_tokens={:?}",
+        probe_summary.first_patch_tokens
+    ));
+    lines.push(format!(
+        "final_patch_tokens={:?}",
+        probe_summary.final_patch_tokens
+    ));
+    lines.push(format!(
+        "useful_step_proxy={}/{}",
+        probe_summary.useful_step_proxy_num, probe_summary.useful_step_proxy_den
+    ));
+    lines.push(format!(
+        "useful_token_proxy={}/{}",
+        probe_summary.useful_token_proxy_num, probe_summary.useful_token_proxy_den
+    ));
     lines.push(String::new());
     lines.push("Anomalies".to_string());
     lines.push("=========".to_string());
@@ -571,7 +675,10 @@ pub fn render_run_evidence(
     lines.push("============================".to_string());
     lines.push(format!(
         "anomaly_count={} raw_event_count={} raw_probe_count={} raw_diagnostic_count={}",
-        summary.anomaly_count, summary.raw_event_count, summary.raw_probe_count, summary.raw_diagnostic_count
+        summary.anomaly_count,
+        summary.raw_event_count,
+        summary.raw_probe_count,
+        summary.raw_diagnostic_count
     ));
     lines.push(format!(
         "chain_reaction_cycle_count={} containment_breach_count={}",
@@ -583,10 +690,16 @@ pub fn render_run_evidence(
     for claim in &claim_evidence {
         lines.push(format!("{} | {}", claim.claim_id, claim.label));
         if !claim.supporting_evidence.is_empty() {
-            lines.push(format!("  support: {}", claim.supporting_evidence.join("; ")));
+            lines.push(format!(
+                "  support: {}",
+                claim.supporting_evidence.join("; ")
+            ));
         }
         if !claim.conflicting_evidence.is_empty() {
-            lines.push(format!("  conflict: {}", claim.conflicting_evidence.join("; ")));
+            lines.push(format!(
+                "  conflict: {}",
+                claim.conflicting_evidence.join("; ")
+            ));
         }
         if !claim.caveats.is_empty() {
             lines.push(format!("  caveats: {}", claim.caveats.join("; ")));
@@ -658,7 +771,10 @@ fn render_campaign_report_text(
             .clone()
             .unwrap_or_else(|| "stage-unspecified".to_string())
     ));
-    lines.push(format!("Default model/provider: {} via {}", manifest.model, manifest.provider));
+    lines.push(format!(
+        "Default model/provider: {} via {}",
+        manifest.model, manifest.provider
+    ));
     lines.push(format!(
         "Comparison axes: {}",
         if manifest.comparison_axes.is_empty() {
@@ -679,7 +795,10 @@ fn render_campaign_report_text(
                 .personality_mode
                 .clone()
                 .unwrap_or_else(|| "-".to_string()),
-            cohort.prompt_style.clone().unwrap_or_else(|| "-".to_string())
+            cohort
+                .prompt_style
+                .clone()
+                .unwrap_or_else(|| "-".to_string())
         ));
     }
     lines.push(format!("Study mode: {}", manifest.study_mode));
@@ -712,9 +831,18 @@ fn render_campaign_report_text(
     for subsystem in architecture_map {
         lines.push(format!("{}: {}", subsystem.id, subsystem.purpose));
         lines.push(format!("  files: {}", subsystem.files.join(", ")));
-        lines.push(format!("  reference_docs: {}", subsystem.reference_docs.join(", ")));
-        lines.push(format!("  visible_events: {}", subsystem.visible_events.join(", ")));
-        lines.push(format!("  hidden_state: {}", subsystem.hidden_state.join(", ")));
+        lines.push(format!(
+            "  reference_docs: {}",
+            subsystem.reference_docs.join(", ")
+        ));
+        lines.push(format!(
+            "  visible_events: {}",
+            subsystem.visible_events.join(", ")
+        ));
+        lines.push(format!(
+            "  hidden_state: {}",
+            subsystem.hidden_state.join(", ")
+        ));
         lines.push(format!("  probes: {}", subsystem.probes.join(", ")));
     }
     lines.push(String::new());
@@ -808,7 +936,9 @@ fn render_campaign_report_text(
         total_visible_chars += bundle.summary.visible_output_total_chars;
         total_visible_tokens_est += bundle.summary.visible_output_total_tokens_est;
         *statuses.entry(bundle.summary.status.clone()).or_default() += 1;
-        *task_classes.entry(bundle.summary.task_class.clone()).or_default() += 1;
+        *task_classes
+            .entry(bundle.summary.task_class.clone())
+            .or_default() += 1;
         *aggregate_cohorts
             .entry(bundle.selected.cohort_id.clone())
             .or_default() += 1;
@@ -850,15 +980,26 @@ fn render_campaign_report_text(
             *aggregate_skill_names.entry(skill_name.clone()).or_default() += count;
         }
         for (category, count) in &bundle.summary.message_category_counts {
-            *aggregate_message_categories.entry(category.clone()).or_default() += count;
+            *aggregate_message_categories
+                .entry(category.clone())
+                .or_default() += count;
         }
     }
 
     lines.push("Telemetry And Artifact Coverage".to_string());
     lines.push("===============================".to_string());
-    lines.push(format!("Run status counts: {}", render_count_map(&statuses)));
-    lines.push(format!("Task class counts: {}", render_count_map(&task_classes)));
-    lines.push(format!("Token totals: input={} output={} cache_read={}", total_input, total_output, total_cache));
+    lines.push(format!(
+        "Run status counts: {}",
+        render_count_map(&statuses)
+    ));
+    lines.push(format!(
+        "Task class counts: {}",
+        render_count_map(&task_classes)
+    ));
+    lines.push(format!(
+        "Token totals: input={} output={} cache_read={}",
+        total_input, total_output, total_cache
+    ));
     lines.push(format!(
         "Turn totals: {} | Command totals: {} | Tool totals: {} | Skill events: {} | Message metrics: {} | Anomalies: {}",
         total_turns, total_commands, total_tools, total_skill_events, total_messages, total_anomalies
@@ -867,17 +1008,31 @@ fn render_campaign_report_text(
         "Visible output totals: chars={} tokens_est={}",
         total_visible_chars, total_visible_tokens_est
     ));
-    lines.push(format!("Cohort counts: {}", render_count_map(&aggregate_cohorts)));
-    lines.push(format!("Tool kind totals: {}", render_count_map(&aggregate_tool_kinds)));
-    lines.push(format!("Skill name totals: {}", render_count_map(&aggregate_skill_names)));
+    lines.push(format!(
+        "Cohort counts: {}",
+        render_count_map(&aggregate_cohorts)
+    ));
+    lines.push(format!(
+        "Tool kind totals: {}",
+        render_count_map(&aggregate_tool_kinds)
+    ));
+    lines.push(format!(
+        "Skill name totals: {}",
+        render_count_map(&aggregate_skill_names)
+    ));
     lines.push(format!(
         "Message category totals: {}",
         render_count_map(&aggregate_message_categories)
     ));
     if artifact_missing.is_empty() {
-        lines.push("Artifact coverage: all expected artifacts present in the latest attempts.".to_string());
+        lines.push(
+            "Artifact coverage: all expected artifacts present in the latest attempts.".to_string(),
+        );
     } else {
-        lines.push(format!("Artifact coverage gaps: {}", render_count_map(&artifact_missing)));
+        lines.push(format!(
+            "Artifact coverage gaps: {}",
+            render_count_map(&artifact_missing)
+        ));
     }
     lines.push(String::new());
 
@@ -903,13 +1058,34 @@ fn render_campaign_report_text(
 
     lines.push("Observed Codex Harness Behavior".to_string());
     lines.push("===============================".to_string());
-    lines.push(format!("Config/session freezing evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "config.")));
-    lines.push(format!("Instruction assembly evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "instruction.")));
-    lines.push(format!("Context and compaction evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "context.")));
-    lines.push(format!("Tool mediation evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "tools.")));
-    lines.push(format!("Persistence/reconstruction evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "persistence.")));
-    lines.push(format!("Reliability/contention evidence: {}", render_count_map_filtered(&aggregate_probe_codes, "harness.")));
-    lines.push(format!("Subsystem totals: {}", render_count_map(&aggregate_subsystems)));
+    lines.push(format!(
+        "Config/session freezing evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "config.")
+    ));
+    lines.push(format!(
+        "Instruction assembly evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "instruction.")
+    ));
+    lines.push(format!(
+        "Context and compaction evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "context.")
+    ));
+    lines.push(format!(
+        "Tool mediation evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "tools.")
+    ));
+    lines.push(format!(
+        "Persistence/reconstruction evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "persistence.")
+    ));
+    lines.push(format!(
+        "Reliability/contention evidence: {}",
+        render_count_map_filtered(&aggregate_probe_codes, "harness.")
+    ));
+    lines.push(format!(
+        "Subsystem totals: {}",
+        render_count_map(&aggregate_subsystems)
+    ));
     lines.push(String::new());
 
     lines.push("Externalized Coordination Lens".to_string());
@@ -925,7 +1101,9 @@ fn render_campaign_report_text(
 
     lines.push("Regulation / Control-Rod Signals".to_string());
     lines.push("===============================".to_string());
-    lines.push(format!("control_rod_intervention_total={total_control_rods}"));
+    lines.push(format!(
+        "control_rod_intervention_total={total_control_rods}"
+    ));
     lines.push("These are harness-native regulation surfaces: compaction, config freeze, persistence, approval/listener boundaries, and similar stabilizers.".to_string());
     lines.push(String::new());
 
@@ -1006,17 +1184,26 @@ fn render_campaign_report_text(
         lines.push(claim_id.clone());
         lines.push(format!("  source: {}", descriptor.source));
         lines.push(format!("  text: {}", descriptor.text));
-        lines.push(format!("  operationalization: {}", descriptor.operationalization));
+        lines.push(format!(
+            "  operationalization: {}",
+            descriptor.operationalization
+        ));
         if claim_rows.is_empty() {
             lines.push("  evidence: none captured yet".to_string());
         } else {
             for (instance_id, claim) in claim_rows {
                 lines.push(format!("  run: {instance_id} -> {}", claim.label));
                 if !claim.supporting_evidence.is_empty() {
-                    lines.push(format!("    support: {}", claim.supporting_evidence.join("; ")));
+                    lines.push(format!(
+                        "    support: {}",
+                        claim.supporting_evidence.join("; ")
+                    ));
                 }
                 if !claim.conflicting_evidence.is_empty() {
-                    lines.push(format!("    conflict: {}", claim.conflicting_evidence.join("; ")));
+                    lines.push(format!(
+                        "    conflict: {}",
+                        claim.conflicting_evidence.join("; ")
+                    ));
                 }
                 if !claim.caveats.is_empty() {
                     lines.push(format!("    caveats: {}", claim.caveats.join("; ")));
@@ -1050,12 +1237,21 @@ fn render_campaign_report_text(
 
     lines.push("Threats To Validity".to_string());
     lines.push("===================".to_string());
-    lines.push("macOS-only bias: the study currently assumes a local Mac-hosted Codex runtime.".to_string());
-    lines.push("SWE-bench-only bias: live tasks are real but not representative of every future workload.".to_string());
+    lines.push(
+        "macOS-only bias: the study currently assumes a local Mac-hosted Codex runtime."
+            .to_string(),
+    );
+    lines.push(
+        "SWE-bench-only bias: live tasks are real but not representative of every future workload."
+            .to_string(),
+    );
     lines.push("Hidden reasoning observability limits: internal chain-of-thought remains unavailable and some evidence is inferred.".to_string());
     lines.push("Harness noise: listener, DB, and translation events can affect observability in ways that are not identical to reasoning failures.".to_string());
     if !artifact_missing.is_empty() {
-        lines.push(format!("Current telemetry gaps: {}", render_count_map(&artifact_missing)));
+        lines.push(format!(
+            "Current telemetry gaps: {}",
+            render_count_map(&artifact_missing)
+        ));
     }
     lines.push(String::new());
 
@@ -1081,7 +1277,12 @@ fn render_campaign_report_text(
         ));
         lines.push(format!(
             "  attempt_log={}",
-            bundle.selected.run_dir.join("attempt-01").join("attempt-log.txt").display()
+            bundle
+                .selected
+                .run_dir
+                .join("attempt-01")
+                .join("attempt-log.txt")
+                .display()
         ));
     }
     lines.push(String::new());
@@ -1131,7 +1332,10 @@ fn write_supporting_reports(
             bundle.probe_summary.verification_closure_count
         ));
     }
-    fs::write(reports_dir.join("model-comparison.md"), model_comparison.join("\n"))?;
+    fs::write(
+        reports_dir.join("model-comparison.md"),
+        model_comparison.join("\n"),
+    )?;
 
     let mut verbosity = Vec::new();
     verbosity.push("# 可见输出与冗长度分析".to_string());
@@ -1144,9 +1348,16 @@ fn write_supporting_reports(
         verbosity.push(format!(
             "- model/personality: {}/{}",
             display_or(&bundle.selected.model, &manifest.model),
-            bundle.selected.personality_mode.clone().unwrap_or_else(|| "-".to_string())
+            bundle
+                .selected
+                .personality_mode
+                .clone()
+                .unwrap_or_else(|| "-".to_string())
         ));
-        verbosity.push(format!("- visible_output_total_tokens_est: {}", bundle.summary.visible_output_total_tokens_est));
+        verbosity.push(format!(
+            "- visible_output_total_tokens_est: {}",
+            bundle.summary.visible_output_total_tokens_est
+        ));
         verbosity.push(format!(
             "- actionable_commentary_ratio_bps: {:?}",
             bundle.probe_summary.actionable_commentary_ratio_bps
@@ -1157,7 +1368,9 @@ fn write_supporting_reports(
         ));
         verbosity.push(format!(
             "- verification_grounded_commentary_ratio_bps: {:?}",
-            bundle.probe_summary.verification_grounded_commentary_ratio_bps
+            bundle
+                .probe_summary
+                .verification_grounded_commentary_ratio_bps
         ));
         verbosity.push(format!(
             "- social_tone_ratio_bps: {:?}",
@@ -1165,7 +1378,10 @@ fn write_supporting_reports(
         ));
         verbosity.push(String::new());
     }
-    fs::write(reports_dir.join("verbosity-analysis.md"), verbosity.join("\n"))?;
+    fs::write(
+        reports_dir.join("verbosity-analysis.md"),
+        verbosity.join("\n"),
+    )?;
 
     let mut coupling = Vec::new();
     coupling.push("# 语言-工具耦合分析".to_string());
@@ -1181,7 +1397,10 @@ fn write_supporting_reports(
             bundle.probe_summary.tokens_before_first_tool
         ));
     }
-    fs::write(reports_dir.join("tool-language-coupling.md"), coupling.join("\n"))?;
+    fs::write(
+        reports_dir.join("tool-language-coupling.md"),
+        coupling.join("\n"),
+    )?;
 
     fs::write(
         reports_dir.join("personality-analysis.md"),
@@ -1222,6 +1441,14 @@ fn write_supporting_reports(
     fs::write(
         reports_dir.join("instruction-stratification-analysis.md"),
         render_instruction_stratification_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("patch-mechanism-analysis.md"),
+        render_patch_mechanism_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("skill-mechanism-analysis.md"),
+        render_skill_mechanism_report(bundles),
     )?;
     fs::write(
         reports_dir.join("cohort-pair-analysis.md"),
@@ -1269,7 +1496,8 @@ fn render_task_class_analysis(
     bundles: &[RunReportBundle],
     benchmark_research_profile: Option<&BenchmarkResearchProfile>,
 ) -> String {
-    let mut rollup = BTreeMap::<String, (usize, i64, usize, usize, usize, usize, usize, usize)>::new();
+    let mut rollup =
+        BTreeMap::<String, (usize, i64, usize, usize, usize, usize, usize, usize)>::new();
     for bundle in bundles {
         let entry = rollup
             .entry(bundle.summary.task_class.clone())
@@ -1308,15 +1536,31 @@ fn render_task_class_analysis(
         entry.7 += bundle.probe_summary.harness_friction_count;
     }
     let mut lines = vec!["# 任务类型分析".to_string(), String::new()];
-    for (task_class, (count, visible_tokens, tools, commands, control_rods, bridge_msgs, verification_msgs, harness_friction)) in rollup {
+    for (
+        task_class,
+        (
+            count,
+            visible_tokens,
+            tools,
+            commands,
+            control_rods,
+            bridge_msgs,
+            verification_msgs,
+            harness_friction,
+        ),
+    ) in rollup
+    {
         lines.push(format!("## {}", task_class));
         lines.push(format!(
             "- run_count={} | visible_output_total_tokens_est={} | tool_count={} | command_count={} | control_rod_events={} | bridge_messages={} | verification_messages={} | harness_friction_events={}",
             count, visible_tokens, tools, commands, control_rods, bridge_msgs, verification_msgs, harness_friction
         ));
-        if let Some(profile) = benchmark_research_profile
-            .and_then(|profile| profile.task_class_profiles.iter().find(|entry| entry.task_class == task_class))
-        {
+        if let Some(profile) = benchmark_research_profile.and_then(|profile| {
+            profile
+                .task_class_profiles
+                .iter()
+                .find(|entry| entry.task_class == task_class)
+        }) {
             lines.push(format!(
                 "- benchmark_hints: verification_strength={} | context_pressure={} | bootstrap_risk={} | language_need={}",
                 profile.expected_verification_strength,
@@ -1369,6 +1613,19 @@ fn render_tool_inventory_report(bundles: &[RunReportBundle]) -> String {
             median_i64(&stats.durations_ms)
         ));
     }
+    lines.push(String::new());
+    lines.push("## 机制补充".to_string());
+    for bundle in bundles {
+        lines.push(format!(
+            "- {} / {}: tool_routes={} exec_approval_requests={} patch_approval_requests={} skill_approval_triggers={}",
+            bundle.selected.instance_id,
+            bundle.selected.cohort_id,
+            render_count_map(&bundle.summary.tool_route_counts),
+            bundle.probe_summary.exec_approval_request_count,
+            bundle.probe_summary.patch_approval_request_count,
+            bundle.probe_summary.skill_approval_trigger_count
+        ));
+    }
     lines.join("\n")
 }
 
@@ -1376,7 +1633,10 @@ fn render_tool_route_report(bundles: &[RunReportBundle]) -> String {
     let routes = aggregate_tool_routes(bundles);
     let mut lines = vec!["# Tool Route 分析".to_string(), String::new()];
     for ((cohort_id, route), count) in routes {
-        lines.push(format!("- cohort=`{}` route=`{}` count={}", cohort_id, route, count));
+        lines.push(format!(
+            "- cohort=`{}` route=`{}` count={}",
+            cohort_id, route, count
+        ));
     }
     lines.join("\n")
 }
@@ -1402,6 +1662,22 @@ fn render_linguistic_profile_report(bundles: &[RunReportBundle]) -> String {
             "- discourse_counts: {}",
             render_count_map(&profile.discourse_counts)
         ));
+        lines.push(format!(
+            "- state_externalization_messages={} | planning_messages={} | verification_messages={} | tool_bridge_messages={}",
+            profile
+                .discourse_counts
+                .get("decision_explanation")
+                .copied()
+                .unwrap_or_default()
+                + profile
+                    .discourse_counts
+                    .get("observation")
+                    .copied()
+                    .unwrap_or_default(),
+            profile.planning_messages,
+            profile.verification_messages,
+            profile.tool_bridge_messages
+        ));
         lines.push(String::new());
     }
     lines.join("\n")
@@ -1412,10 +1688,29 @@ fn render_phrase_and_tone_report(bundles: &[RunReportBundle]) -> String {
     let mut lines = vec!["# 短语与语气分析".to_string(), String::new()];
     for profile in profiles {
         lines.push(format!("## {}", profile.cohort_id));
-        lines.push(format!("- social_tone_messages={}", profile.social_tone_messages));
-        lines.push(format!("- verification_messages={}", profile.verification_messages));
-        lines.push(format!("- tool_bridge_messages={}", profile.tool_bridge_messages));
+        lines.push(format!(
+            "- social_tone_messages={}",
+            profile.social_tone_messages
+        ));
+        lines.push(format!(
+            "- verification_messages={}",
+            profile.verification_messages
+        ));
+        lines.push(format!(
+            "- tool_bridge_messages={}",
+            profile.tool_bridge_messages
+        ));
         lines.push(format!("- planning_messages={}", profile.planning_messages));
+        lines.push(format!(
+            "- dominant_discourse_frames={}",
+            render_ranked_terms(
+                &profile
+                    .discourse_counts
+                    .iter()
+                    .map(|(k, v)| (k.clone(), *v))
+                    .collect::<Vec<_>>()
+            )
+        ));
         lines.push(String::new());
     }
     lines.join("\n")
@@ -1442,14 +1737,41 @@ fn render_bridge_language_report(bundles: &[RunReportBundle]) -> String {
 fn render_personality_mechanism_report(bundles: &[RunReportBundle]) -> String {
     let mut lines = vec!["# Personality 机制分析".to_string(), String::new()];
     for bundle in bundles {
+        let rows = bundle_artifact_rows(bundle, "personalityEvents");
+        let fallback_count = rows
+            .iter()
+            .filter(|row| {
+                row.get("event").and_then(Value::as_str) == Some("personality_warning_fallback")
+            })
+            .count();
+        let mismatch_count = rows
+            .iter()
+            .filter(|row| {
+                row.get("personalityMismatch")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+            })
+            .count();
+        let preserved_count = rows
+            .iter()
+            .filter(|row| {
+                row.get("modelNativeInstructionsPreserved")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+            })
+            .count();
         lines.push(format!(
-            "- `{}` / `{}`: social_tone_ratio_bps={:?}, instruction_shift_count={}, tool_grounded_commentary_ratio_bps={:?}, verification_grounded_commentary_ratio_bps={:?}",
+            "- `{}` / `{}`: social_tone_ratio_bps={:?}, instruction_shift_count={}, tool_grounded_commentary_ratio_bps={:?}, verification_grounded_commentary_ratio_bps={:?}, actionable_commentary_ratio_bps={:?}, personality_fallbacks={}, personality_mismatches={}, model_native_preserved_rows={}",
             bundle.selected.instance_id,
             bundle.selected.cohort_id,
             bundle.probe_summary.social_tone_ratio_bps,
             bundle.probe_summary.instruction_shift_count,
             bundle.probe_summary.tool_grounded_commentary_ratio_bps,
-            bundle.probe_summary.verification_grounded_commentary_ratio_bps
+            bundle.probe_summary.verification_grounded_commentary_ratio_bps,
+            bundle.probe_summary.actionable_commentary_ratio_bps,
+            fallback_count,
+            mismatch_count,
+            preserved_count
         ));
     }
     lines.join("\n")
@@ -1470,6 +1792,71 @@ fn render_instruction_stratification_report(bundles: &[RunReportBundle]) -> Stri
     lines.join("\n")
 }
 
+fn render_patch_mechanism_report(bundles: &[RunReportBundle]) -> String {
+    let mut lines = vec!["# Patch 机制分析".to_string(), String::new()];
+    for bundle in bundles {
+        let rows = bundle_artifact_rows(bundle, "patchChain");
+        let begin_count = rows
+            .iter()
+            .filter(|row| row.get("event").and_then(Value::as_str) == Some("patch_apply_begin"))
+            .count();
+        let approval_count = rows
+            .iter()
+            .filter(|row| {
+                row.get("event").and_then(Value::as_str) == Some("patch_approval_request")
+            })
+            .count();
+        let failed_count = rows
+            .iter()
+            .filter(|row| row.get("success").and_then(Value::as_bool) == Some(false))
+            .count();
+        lines.push(format!(
+            "- `{}` / `{}`: patch_begins={} patch_approvals={} patch_failures={} patch_declined_count={} patch_failed_count={}",
+            bundle.selected.instance_id,
+            bundle.selected.cohort_id,
+            begin_count,
+            approval_count,
+            failed_count,
+            bundle.probe_summary.patch_declined_count,
+            bundle.probe_summary.patch_failed_count
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_skill_mechanism_report(bundles: &[RunReportBundle]) -> String {
+    let mut lines = vec!["# Skill 机制分析".to_string(), String::new()];
+    for bundle in bundles {
+        let rows = bundle_artifact_rows(bundle, "skillMechanism");
+        let listed = rows
+            .iter()
+            .filter(|row| row.get("event").and_then(Value::as_str) == Some("list_skills_response"))
+            .count();
+        let remote = rows
+            .iter()
+            .filter(|row| {
+                row.get("event").and_then(Value::as_str) == Some("list_remote_skills_response")
+            })
+            .count();
+        let approval = rows
+            .iter()
+            .filter(|row| row.get("event").and_then(Value::as_str) == Some("exec_approval_request"))
+            .count();
+        lines.push(format!(
+            "- `{}` / `{}`: listed={} remote_listed={} approval_skill_mechanisms={} skill_catalog_count={} remote_catalog_count={} approval_trigger_count={}",
+            bundle.selected.instance_id,
+            bundle.selected.cohort_id,
+            listed,
+            remote,
+            approval,
+            bundle.probe_summary.skill_catalog_count,
+            bundle.probe_summary.skill_remote_catalog_count,
+            bundle.probe_summary.skill_approval_trigger_count
+        ));
+    }
+    lines.join("\n")
+}
+
 fn render_cohort_pair_report(bundles: &[RunReportBundle]) -> String {
     let mut by_pair = BTreeMap::<String, Vec<&RunReportBundle>>::new();
     for bundle in bundles {
@@ -1484,17 +1871,28 @@ fn render_cohort_pair_report(bundles: &[RunReportBundle]) -> String {
         lines.push(format!("## {}", pair_key));
         for bundle in items {
             lines.push(format!(
-                "- {}: visible_output_total_tokens_est={} | tool_count={} | command_count={} | social_tone_ratio_bps={:?}",
+                "- {}: visible_output_total_tokens_est={} | tool_count={} | command_count={} | social_tone_ratio_bps={:?} | actionable_commentary_ratio_bps={:?} | verification_grounded_commentary_ratio_bps={:?}",
                 bundle.selected.cohort_id,
                 bundle.summary.visible_output_total_tokens_est,
                 bundle.summary.tool_count,
                 bundle.summary.command_count,
-                bundle.probe_summary.social_tone_ratio_bps
+                bundle.probe_summary.social_tone_ratio_bps,
+                bundle.probe_summary.actionable_commentary_ratio_bps,
+                bundle.probe_summary.verification_grounded_commentary_ratio_bps
             ));
         }
         lines.push(String::new());
     }
     lines.join("\n")
+}
+
+fn bundle_artifact_rows(bundle: &RunReportBundle, artifact_key: &str) -> Vec<Value> {
+    bundle
+        .artifact_paths
+        .get(artifact_key)
+        .filter(|path| path.exists())
+        .and_then(|path| read_jsonl_values(path).ok())
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1537,29 +1935,67 @@ fn aggregate_tool_inventory(
 ) -> BTreeMap<(String, String, String), ToolInventoryStats> {
     let mut inventory = BTreeMap::<(String, String, String), ToolInventoryStats>::new();
     for bundle in bundles {
-        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        let path = bundle
+            .selected
+            .run_dir
+            .join("attempt-01")
+            .join("tool-events.jsonl");
+        let mut pending_keys = BTreeMap::<String, (String, String, String)>::new();
         for value in read_jsonl_values(&path).unwrap_or_default() {
             if value.get("phase").and_then(Value::as_str) == Some("begin") {
                 let key = (
                     bundle.selected.cohort_id.clone(),
-                    value.get("kind").and_then(Value::as_str).unwrap_or("-").to_string(),
-                    value.get("name").and_then(Value::as_str).unwrap_or("-").to_string(),
+                    value
+                        .get("kind")
+                        .and_then(Value::as_str)
+                        .unwrap_or("-")
+                        .to_string(),
+                    value
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("-")
+                        .to_string(),
                 );
                 let stats = inventory.entry(key).or_default();
                 stats.call_count += 1;
-                if let Some(success) = value.get("success").and_then(Value::as_bool) {
-                    if success {
-                        stats.success_count += 1;
-                    } else {
-                        stats.failure_count += 1;
-                    }
+                if let Some(call_id) = value.get("callId").and_then(Value::as_str) {
+                    pending_keys.insert(
+                        call_id.to_string(),
+                        (
+                            bundle.selected.cohort_id.clone(),
+                            value
+                                .get("kind")
+                                .and_then(Value::as_str)
+                                .unwrap_or("-")
+                                .to_string(),
+                            value
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .unwrap_or("-")
+                                .to_string(),
+                        ),
+                    );
                 }
             } else if value.get("phase").and_then(Value::as_str) == Some("end") {
-                let key = (
-                    bundle.selected.cohort_id.clone(),
-                    value.get("kind").and_then(Value::as_str).unwrap_or("-").to_string(),
-                    value.get("name").and_then(Value::as_str).unwrap_or("-").to_string(),
-                );
+                let key = value
+                    .get("callId")
+                    .and_then(Value::as_str)
+                    .and_then(|call_id| pending_keys.get(call_id).cloned())
+                    .unwrap_or_else(|| {
+                        (
+                            bundle.selected.cohort_id.clone(),
+                            value
+                                .get("kind")
+                                .and_then(Value::as_str)
+                                .unwrap_or("-")
+                                .to_string(),
+                            value
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .unwrap_or("-")
+                                .to_string(),
+                        )
+                    });
                 let stats = inventory.entry(key).or_default();
                 if let Some(success) = value.get("success").and_then(Value::as_bool) {
                     if success {
@@ -1568,7 +2004,10 @@ fn aggregate_tool_inventory(
                         stats.failure_count += 1;
                     }
                 }
-                stats.total_output_size += value.get("outputSize").and_then(Value::as_u64).unwrap_or_default() as usize;
+                stats.total_output_size += value
+                    .get("outputSize")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default() as usize;
                 if let Some(duration) = value.get("durationMs").and_then(Value::as_i64) {
                     stats.durations_ms.push(duration);
                 }
@@ -1581,7 +2020,11 @@ fn aggregate_tool_inventory(
 fn aggregate_tool_routes(bundles: &[RunReportBundle]) -> BTreeMap<(String, String), usize> {
     let mut routes = BTreeMap::new();
     for bundle in bundles {
-        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        let path = bundle
+            .selected
+            .run_dir
+            .join("attempt-01")
+            .join("tool-events.jsonl");
         for value in read_jsonl_values(&path).unwrap_or_default() {
             if value.get("phase").and_then(Value::as_str) != Some("begin")
                 && value.get("phase").and_then(Value::as_str) != Some("call")
@@ -1590,7 +2033,11 @@ fn aggregate_tool_routes(bundles: &[RunReportBundle]) -> BTreeMap<(String, Strin
             }
             let key = (
                 bundle.selected.cohort_id.clone(),
-                value.get("toolRoute").and_then(Value::as_str).unwrap_or("-").to_string(),
+                value
+                    .get("toolRoute")
+                    .and_then(Value::as_str)
+                    .unwrap_or("-")
+                    .to_string(),
             );
             *routes.entry(key).or_insert(0usize) += 1;
         }
@@ -1609,7 +2056,11 @@ fn aggregate_linguistic_profiles(bundles: &[RunReportBundle]) -> Vec<LinguisticP
     let mut by_cohort_planning = BTreeMap::<String, usize>::new();
 
     for bundle in bundles {
-        let path = bundle.selected.run_dir.join("attempt-01").join("message-metrics.jsonl");
+        let path = bundle
+            .selected
+            .run_dir
+            .join("attempt-01")
+            .join("message-metrics.jsonl");
         for value in read_jsonl_values(&path).unwrap_or_default() {
             let cohort_id = bundle.selected.cohort_id.clone();
             let text = value.get("message").and_then(Value::as_str).unwrap_or("");
@@ -1676,7 +2127,9 @@ fn aggregate_linguistic_profiles(bundles: &[RunReportBundle]) -> Vec<LinguisticP
             top_trigrams: top_n_terms(by_cohort_trigrams.remove(&cohort_id).unwrap_or_default(), 8),
             discourse_counts: by_cohort_discourse.remove(&cohort_id).unwrap_or_default(),
             social_tone_messages: by_cohort_social.remove(&cohort_id).unwrap_or_default(),
-            verification_messages: by_cohort_verification.remove(&cohort_id).unwrap_or_default(),
+            verification_messages: by_cohort_verification
+                .remove(&cohort_id)
+                .unwrap_or_default(),
             tool_bridge_messages: by_cohort_tool_bridge.remove(&cohort_id).unwrap_or_default(),
             planning_messages: by_cohort_planning.remove(&cohort_id).unwrap_or_default(),
         })
@@ -1687,10 +2140,7 @@ fn top_term_map(terms: &[(String, usize)]) -> BTreeMap<String, usize> {
     terms.iter().cloned().collect()
 }
 
-fn compute_phrase_deltas(
-    bundles: &[RunReportBundle],
-    mode: &str,
-) -> Vec<PairPhraseDeltaRow> {
+fn compute_phrase_deltas(bundles: &[RunReportBundle], mode: &str) -> Vec<PairPhraseDeltaRow> {
     let profiles = aggregate_linguistic_profiles(bundles)
         .into_iter()
         .map(|profile| (profile.cohort_id.clone(), profile))
@@ -1723,10 +2173,14 @@ fn compute_phrase_deltas(
                 let left = items[left_idx];
                 let right = items[right_idx];
                 let comparable = match mode {
-                    "model" => left.selected.model != right.selected.model
-                        && left.selected.personality_mode == right.selected.personality_mode,
-                    "personality" => left.selected.model == right.selected.model
-                        && left.selected.personality_mode != right.selected.personality_mode,
+                    "model" => {
+                        left.selected.model != right.selected.model
+                            && left.selected.personality_mode == right.selected.personality_mode
+                    }
+                    "personality" => {
+                        left.selected.model == right.selected.model
+                            && left.selected.personality_mode != right.selected.personality_mode
+                    }
                     _ => false,
                 };
                 if !comparable {
@@ -1741,9 +2195,21 @@ fn compute_phrase_deltas(
                 };
 
                 let lexical_families = vec![
-                    ("word", top_term_map(&left_profile.top_words), top_term_map(&right_profile.top_words)),
-                    ("bigram", top_term_map(&left_profile.top_bigrams), top_term_map(&right_profile.top_bigrams)),
-                    ("trigram", top_term_map(&left_profile.top_trigrams), top_term_map(&right_profile.top_trigrams)),
+                    (
+                        "word",
+                        top_term_map(&left_profile.top_words),
+                        top_term_map(&right_profile.top_words),
+                    ),
+                    (
+                        "bigram",
+                        top_term_map(&left_profile.top_bigrams),
+                        top_term_map(&right_profile.top_bigrams),
+                    ),
+                    (
+                        "trigram",
+                        top_term_map(&left_profile.top_trigrams),
+                        top_term_map(&right_profile.top_trigrams),
+                    ),
                 ];
 
                 for (term_type, left_map, right_map) in lexical_families {
@@ -1756,6 +2222,9 @@ fn compute_phrase_deltas(
                         let left_count = left_map.get(&term).copied().unwrap_or_default();
                         let right_count = right_map.get(&term).copied().unwrap_or_default();
                         if left_count == 0 && right_count == 0 {
+                            continue;
+                        }
+                        if left_count + right_count < 2 {
                             continue;
                         }
                         rows.push(PairPhraseDeltaRow {
@@ -1788,24 +2257,14 @@ fn compute_phrase_deltas(
 }
 
 fn tokenize_for_research(text: &str) -> Vec<String> {
-    text.to_lowercase()
-        .split(|ch: char| !ch.is_alphanumeric())
-        .filter(|token| token.len() >= 3)
-        .filter(|token| !token.chars().any(|ch| ch.is_ascii_digit()))
-        .filter(|token| !token.contains("users") && !token.contains("downloads") && !token.contains("codexplusclaw"))
-        .filter(|token| !matches!(*token, "the" | "and" | "for" | "with" | "that" | "this" | "then" | "from" | "into" | "have" | "will" | "just" | "about" | "after" | "before" | "using" | "need" | "next" | "let" | "lets" | "our" | "you" | "your" | "are" | "was" | "were" | "has" | "had" | "workspace" | "artifacts" | "runs" | "attempt" | "path" | "file" | "swebench" | "study" | "kevinlin" | "friendly" | "pragmatic" | "gpt"))
-        .map(ToString::to_string)
-        .collect()
+    tokenize_research_terms(text)
 }
 
 fn make_ngrams(tokens: &[String], n: usize) -> Vec<String> {
     if tokens.len() < n {
         return Vec::new();
     }
-    tokens
-        .windows(n)
-        .map(|window| window.join(" "))
-        .collect()
+    tokens.windows(n).map(|window| window.join(" ")).collect()
 }
 
 fn top_n_terms(map: BTreeMap<String, usize>, limit: usize) -> Vec<(String, usize)> {
@@ -1854,9 +2313,7 @@ fn write_datasets(
     let mut campaign_runs = vec![
         "campaign_id,experiment_id,instance_id,paired_instance_key,cohort_id,model,provider,personality_mode,prompt_style,task_class,status,grading_status,total_tokens,visible_output_total_tokens_est,tool_count,command_count,anomaly_count".to_string()
     ];
-    let mut claim_rows = vec![
-        "instance_id,cohort_id,claim_id,label".to_string()
-    ];
+    let mut claim_rows = vec!["instance_id,cohort_id,claim_id,label".to_string()];
     let mut task_class_summary = vec![
         "task_class,run_count,total_tokens,visible_output_total_tokens_est,tool_count,command_count".to_string()
     ];
@@ -1864,17 +2321,13 @@ fn write_datasets(
     let mut model_pair_deltas = vec![
         "paired_instance_key,cohort_id,model,personality_mode,total_tokens,visible_output_total_tokens_est,tool_count,command_count".to_string()
     ];
-    let mut message_lexical_summary = vec![
-        "cohort_id,term_type,term,count".to_string()
-    ];
+    let mut message_lexical_summary = vec!["cohort_id,term_type,term,count".to_string()];
     let mut cohort_lexical_summary = vec![
         "cohort_id,top_word_mass,top_bigram_mass,top_trigram_mass,social_tone_messages,verification_messages,tool_bridge_messages,planning_messages".to_string()
     ];
-    let mut message_discourse_summary = vec![
-        "cohort_id,category,count".to_string()
-    ];
+    let mut message_discourse_summary = vec!["cohort_id,category,count".to_string()];
     let mut message_style = vec![
-        "instance_id,cohort_id,message_id,turn_id,seq,hedging_score_bps,confidence_score_bps,collaboration_tone_score_bps,directive_score_bps,reflective_score_bps,formality_score_bps,empathy_alignment_score_bps,content_word_count,function_word_count,type_token_ratio_bps,lexical_diversity_score_bps".to_string()
+        "instance_id,cohort_id,message_id,turn_id,seq,hedging_score_bps,confidence_score_bps,collaboration_tone_score_bps,directive_score_bps,reflective_score_bps,formality_score_bps,empathy_alignment_score_bps,bridge_language_score_bps,verification_language_score_bps,state_externalization_score_bps,content_word_count,function_word_count,type_token_ratio_bps,lexical_diversity_score_bps,hapax_ratio_bps,first_person_singular_count,first_person_plural_count,second_person_count,modal_verb_count,sequencing_cue_count,artifact_reference_count,code_reference_count,question_count,exclamation_count,colon_count,backtick_span_count,readability_ease,readability_grade_bps".to_string()
     ];
     let mut model_phrase_deltas = vec![
         "pair_kind,grouping_key,left_cohort,right_cohort,term_type,term,left_count,right_count,delta".to_string()
@@ -1885,11 +2338,20 @@ fn write_datasets(
     let mut tool_inventory = vec![
         "cohort_id,kind,name,call_count,success_count,failure_count,total_output_size,median_duration_ms".to_string()
     ];
-    let mut tool_route_summary = vec![
-        "cohort_id,tool_route,count".to_string()
-    ];
+    let mut tool_route_summary = vec!["cohort_id,tool_route,count".to_string()];
     let mut tool_by_turn = vec![
         "instance_id,cohort_id,turn_id,kind,name,tool_route,phase,seq,call_id,duration_ms,success,preceded_by_commentary_tokens,output_size".to_string()
+    ];
+    let mut personality_mechanism = vec![
+        "instance_id,cohort_id,seq,event,requested_personality,effective_personality,personality_mismatch,model_native_instructions_preserved,base_instructions_source,session_source".to_string()
+    ];
+    let mut patch_chain = vec![
+        "instance_id,cohort_id,seq,event,turn_id,call_id,status,success,change_count,reason"
+            .to_string(),
+    ];
+    let mut skill_mechanism = vec![
+        "instance_id,cohort_id,seq,event,turn_id,call_id,skill_name,kind,skill_path,reason"
+            .to_string(),
     ];
 
     for bundle in bundles {
@@ -1939,7 +2401,9 @@ fn write_datasets(
         entry.3 += bundle.summary.tool_count;
         entry.4 += bundle.summary.command_count;
     }
-    for (task_class, (count, total_tokens, visible_tokens, tool_count, command_count)) in task_rollup {
+    for (task_class, (count, total_tokens, visible_tokens, tool_count, command_count)) in
+        task_rollup
+    {
         task_class_summary.push(csv_row(&[
             &task_class,
             &count.to_string(),
@@ -1950,10 +2414,22 @@ fn write_datasets(
         ]));
     }
 
-    fs::write(datasets_dir.join("campaign_runs.csv"), campaign_runs.join("\n"))?;
-    fs::write(datasets_dir.join("claim_evidence.csv"), claim_rows.join("\n"))?;
-    fs::write(datasets_dir.join("model_pair_deltas.csv"), model_pair_deltas.join("\n"))?;
-    fs::write(datasets_dir.join("task_class_summary.csv"), task_class_summary.join("\n"))?;
+    fs::write(
+        datasets_dir.join("campaign_runs.csv"),
+        campaign_runs.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("claim_evidence.csv"),
+        claim_rows.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("model_pair_deltas.csv"),
+        model_pair_deltas.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("task_class_summary.csv"),
+        task_class_summary.join("\n"),
+    )?;
 
     for ((cohort_id, kind, name), stats) in aggregate_tool_inventory(bundles) {
         tool_inventory.push(csv_row(&[
@@ -1971,9 +2447,21 @@ fn write_datasets(
         tool_route_summary.push(csv_row(&[&cohort_id, &route, &count.to_string()]));
     }
     for profile in aggregate_linguistic_profiles(bundles) {
-        let top_word_mass = profile.top_words.iter().map(|(_, count)| *count).sum::<usize>();
-        let top_bigram_mass = profile.top_bigrams.iter().map(|(_, count)| *count).sum::<usize>();
-        let top_trigram_mass = profile.top_trigrams.iter().map(|(_, count)| *count).sum::<usize>();
+        let top_word_mass = profile
+            .top_words
+            .iter()
+            .map(|(_, count)| *count)
+            .sum::<usize>();
+        let top_bigram_mass = profile
+            .top_bigrams
+            .iter()
+            .map(|(_, count)| *count)
+            .sum::<usize>();
+        let top_trigram_mass = profile
+            .top_trigrams
+            .iter()
+            .map(|(_, count)| *count)
+            .sum::<usize>();
         cohort_lexical_summary.push(csv_row(&[
             &profile.cohort_id,
             &top_word_mass.to_string(),
@@ -1985,41 +2473,201 @@ fn write_datasets(
             &profile.planning_messages.to_string(),
         ]));
         for (term, count) in profile.top_words {
-            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "word", &term, &count.to_string()]));
+            message_lexical_summary.push(csv_row(&[
+                &profile.cohort_id,
+                "word",
+                &term,
+                &count.to_string(),
+            ]));
         }
         for (term, count) in profile.top_bigrams {
-            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "bigram", &term, &count.to_string()]));
+            message_lexical_summary.push(csv_row(&[
+                &profile.cohort_id,
+                "bigram",
+                &term,
+                &count.to_string(),
+            ]));
         }
         for (term, count) in profile.top_trigrams {
-            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "trigram", &term, &count.to_string()]));
+            message_lexical_summary.push(csv_row(&[
+                &profile.cohort_id,
+                "trigram",
+                &term,
+                &count.to_string(),
+            ]));
         }
         for (category, count) in profile.discourse_counts {
-            message_discourse_summary.push(csv_row(&[&profile.cohort_id, &category, &count.to_string()]));
+            message_discourse_summary.push(csv_row(&[
+                &profile.cohort_id,
+                &category,
+                &count.to_string(),
+            ]));
         }
     }
     for bundle in bundles {
-        let message_path = bundle.selected.run_dir.join("attempt-01").join("message-metrics.jsonl");
+        let message_path = bundle
+            .selected
+            .run_dir
+            .join("attempt-01")
+            .join("message-metrics.jsonl");
         for value in read_jsonl_values(&message_path).unwrap_or_default() {
             message_style.push(csv_row(&[
                 &bundle.selected.instance_id,
                 &bundle.selected.cohort_id,
                 value.get("messageId").and_then(Value::as_str).unwrap_or(""),
                 value.get("turnId").and_then(Value::as_str).unwrap_or(""),
-                &value.get("seq").and_then(Value::as_u64).unwrap_or_default().to_string(),
-                &value.get("hedgingScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("confidenceScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("collaborationToneScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("directiveScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("reflectiveScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("formalityScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("empathyAlignmentScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("contentWordCount").and_then(Value::as_u64).unwrap_or_default().to_string(),
-                &value.get("functionWordCount").and_then(Value::as_u64).unwrap_or_default().to_string(),
-                &value.get("typeTokenRatioBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("lexicalDiversityScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value
+                    .get("seq")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("hedgingScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("confidenceScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("collaborationToneScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("directiveScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("reflectiveScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("formalityScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("empathyAlignmentScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("bridgeLanguageScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("verificationLanguageScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("stateExternalizationScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("contentWordCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("functionWordCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("typeTokenRatioBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("lexicalDiversityScoreBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("hapaxRatioBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("firstPersonSingularCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("firstPersonPluralCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("secondPersonCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("modalVerbCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("sequencingCueCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("artifactReferenceCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("codeReferenceCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("questionCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("exclamationCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("colonCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("backtickSpanCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("readabilityEase")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("readabilityGradeBps")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
             ]));
         }
-        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        let path = bundle
+            .selected
+            .run_dir
+            .join("attempt-01")
+            .join("tool-events.jsonl");
         for value in read_jsonl_values(&path).unwrap_or_default() {
             tool_by_turn.push(csv_row(&[
                 &bundle.selected.instance_id,
@@ -2029,12 +2677,118 @@ fn write_datasets(
                 value.get("name").and_then(Value::as_str).unwrap_or(""),
                 value.get("toolRoute").and_then(Value::as_str).unwrap_or(""),
                 value.get("phase").and_then(Value::as_str).unwrap_or(""),
-                &value.get("seq").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                &value
+                    .get("seq")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
                 value.get("callId").and_then(Value::as_str).unwrap_or(""),
-                &value.get("durationMs").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("success").and_then(Value::as_bool).unwrap_or(false).to_string(),
-                &value.get("precededByCommentaryTokens").and_then(Value::as_i64).unwrap_or_default().to_string(),
-                &value.get("outputSize").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                &value
+                    .get("durationMs")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("success")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    .to_string(),
+                &value
+                    .get("precededByCommentaryTokens")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default()
+                    .to_string(),
+                &value
+                    .get("outputSize")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+            ]));
+        }
+        for value in bundle_artifact_rows(bundle, "personalityEvents") {
+            personality_mechanism.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                &value
+                    .get("seq")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                value.get("event").and_then(Value::as_str).unwrap_or(""),
+                value
+                    .get("requestedPersonality")
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+                value
+                    .get("effectivePersonality")
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+                &value
+                    .get("personalityMismatch")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    .to_string(),
+                &value
+                    .get("modelNativeInstructionsPreserved")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    .to_string(),
+                value
+                    .get("baseInstructionsSource")
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+                value
+                    .get("sessionSource")
+                    .and_then(Value::as_str)
+                    .unwrap_or(""),
+            ]));
+        }
+        for value in bundle_artifact_rows(bundle, "patchChain") {
+            patch_chain.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                &value
+                    .get("seq")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                value.get("event").and_then(Value::as_str).unwrap_or(""),
+                value.get("turnId").and_then(Value::as_str).unwrap_or(""),
+                value.get("callId").and_then(Value::as_str).unwrap_or(""),
+                value.get("status").and_then(Value::as_str).unwrap_or(""),
+                &value
+                    .get("success")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    .to_string(),
+                &value
+                    .get("changeCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                value.get("reason").and_then(Value::as_str).unwrap_or(""),
+            ]));
+        }
+        for value in bundle_artifact_rows(bundle, "skillMechanism") {
+            skill_mechanism.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                &value
+                    .get("seq")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default()
+                    .to_string(),
+                value.get("event").and_then(Value::as_str).unwrap_or(""),
+                value.get("turnId").and_then(Value::as_str).unwrap_or(""),
+                value.get("callId").and_then(Value::as_str).unwrap_or(""),
+                value.get("skillName").and_then(Value::as_str).unwrap_or(""),
+                value.get("kind").and_then(Value::as_str).unwrap_or(""),
+                value
+                    .get("path")
+                    .and_then(Value::as_str)
+                    .or_else(|| value.get("skillPath").and_then(Value::as_str))
+                    .unwrap_or(""),
+                value.get("reason").and_then(Value::as_str).unwrap_or(""),
             ]));
         }
     }
@@ -2066,15 +2820,51 @@ fn write_datasets(
         ]));
     }
 
-    fs::write(datasets_dir.join("message_lexical_summary.csv"), message_lexical_summary.join("\n"))?;
-    fs::write(datasets_dir.join("cohort_lexical_summary.csv"), cohort_lexical_summary.join("\n"))?;
-    fs::write(datasets_dir.join("message_discourse_summary.csv"), message_discourse_summary.join("\n"))?;
-    fs::write(datasets_dir.join("message_style.csv"), message_style.join("\n"))?;
-    fs::write(datasets_dir.join("model_phrase_deltas.csv"), model_phrase_deltas.join("\n"))?;
-    fs::write(datasets_dir.join("personality_phrase_deltas.csv"), personality_phrase_deltas.join("\n"))?;
-    fs::write(datasets_dir.join("tool_inventory.csv"), tool_inventory.join("\n"))?;
-    fs::write(datasets_dir.join("tool_route_summary.csv"), tool_route_summary.join("\n"))?;
-    fs::write(datasets_dir.join("tool_by_turn.csv"), tool_by_turn.join("\n"))?;
+    fs::write(
+        datasets_dir.join("message_lexical_summary.csv"),
+        message_lexical_summary.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("cohort_lexical_summary.csv"),
+        cohort_lexical_summary.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("message_discourse_summary.csv"),
+        message_discourse_summary.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("message_style.csv"),
+        message_style.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("model_phrase_deltas.csv"),
+        model_phrase_deltas.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("personality_phrase_deltas.csv"),
+        personality_phrase_deltas.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("tool_inventory.csv"),
+        tool_inventory.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("tool_route_summary.csv"),
+        tool_route_summary.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("tool_by_turn.csv"),
+        tool_by_turn.join("\n"),
+    )?;
+    fs::write(
+        datasets_dir.join("personality_mechanism.csv"),
+        personality_mechanism.join("\n"),
+    )?;
+    fs::write(datasets_dir.join("patch_chain.csv"), patch_chain.join("\n"))?;
+    fs::write(
+        datasets_dir.join("skill_mechanism.csv"),
+        skill_mechanism.join("\n"),
+    )?;
 
     write_pass_through_dataset(
         &datasets_dir.join("turn_metrics.csv"),
@@ -2144,22 +2934,43 @@ fn render_attempt_log(
     let mut chronology = Vec::<(usize, String)>::new();
 
     for value in lifecycle_events {
-        chronology.push((value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize, format_lifecycle_event(value)));
+        chronology.push((
+            value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize,
+            format_lifecycle_event(value),
+        ));
     }
     for value in turn_metrics {
-        chronology.push((value.get("startSeq").and_then(Value::as_u64).unwrap_or_default() as usize, format!("TURN {}", format_turn_metric(value))));
+        chronology.push((
+            value
+                .get("startSeq")
+                .and_then(Value::as_u64)
+                .unwrap_or_default() as usize,
+            format!("TURN {}", format_turn_metric(value)),
+        ));
     }
     for value in skill_events {
-        chronology.push((value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize, format!("SKILL {}", format_skill_event(value))));
+        chronology.push((
+            value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize,
+            format!("SKILL {}", format_skill_event(value)),
+        ));
     }
     for value in tool_events {
-        chronology.push((value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize, format!("TOOL {}", format_tool_event(value))));
+        chronology.push((
+            value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize,
+            format!("TOOL {}", format_tool_event(value)),
+        ));
     }
     for value in command_events {
-        chronology.push((value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize, format!("CMD {}", format_command_event(value))));
+        chronology.push((
+            value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize,
+            format!("CMD {}", format_command_event(value)),
+        ));
     }
     for value in anomaly_events {
-        chronology.push((value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize, format!("ANOMALY {}", format_anomaly_event(value))));
+        chronology.push((
+            value.get("seq").and_then(Value::as_u64).unwrap_or_default() as usize,
+            format!("ANOMALY {}", format_anomaly_event(value)),
+        ));
     }
     chronology.sort_by_key(|(seq, _)| *seq);
 
@@ -2226,7 +3037,12 @@ fn load_official_grading_overview(campaign_dir: &Path) -> OfficialGradingOvervie
     let mut overview = OfficialGradingOverview::default();
     overview.status = read_json::<Value>(&grader_path)
         .ok()
-        .and_then(|value| value.get("status").and_then(Value::as_str).map(ToOwned::to_owned))
+        .and_then(|value| {
+            value
+                .get("status")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        })
         .unwrap_or_else(|| "missing".to_string());
 
     let official_dir = campaign_dir.join("reports").join("official");
@@ -2263,16 +3079,46 @@ fn format_turn_metric(value: &Value) -> String {
         "turn={} status={} total_delta={} input_delta={} output_delta={} cache_delta={} cmds={} mcp={} patch={} skills={} first={} last={}",
         value.get("turnId").and_then(Value::as_str).unwrap_or("-"),
         value.get("status").and_then(Value::as_str).unwrap_or("-"),
-        value.get("totalTokensDelta").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("inputTokensDelta").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("outputTokensDelta").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("cacheReadTokensDelta").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("commandCount").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("mcpToolCount").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("patchApplyCount").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("skillEventCount").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("firstCommand").and_then(Value::as_str).unwrap_or("-"),
-        value.get("lastCommand").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("totalTokensDelta")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("inputTokensDelta")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("outputTokensDelta")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("cacheReadTokensDelta")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("commandCount")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("mcpToolCount")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("patchApplyCount")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("skillEventCount")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("firstCommand")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("lastCommand")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
     )
 }
 
@@ -2280,12 +3126,30 @@ fn format_token_snapshot(value: &Value) -> String {
     format!(
         "seq={} total={} input={} output={} cache_read={} last_total={} context_window={}",
         value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("totalTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("inputTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("outputTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("cachedInputTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("lastTotalTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("modelContextWindow").and_then(Value::as_i64).unwrap_or_default(),
+        value
+            .get("totalTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("inputTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("outputTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("cachedInputTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("lastTotalTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("modelContextWindow")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
     )
 }
 
@@ -2296,8 +3160,15 @@ fn format_command_event(value: &Value) -> String {
         value.get("phase").and_then(Value::as_str).unwrap_or("-"),
         value.get("turnId").and_then(Value::as_str).unwrap_or("-"),
         value.get("command").and_then(Value::as_str).unwrap_or("-"),
-        value.get("exitCode").and_then(Value::as_i64).map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
-        value.get("durationMs").and_then(Value::as_i64).unwrap_or_default(),
+        value
+            .get("exitCode")
+            .and_then(Value::as_i64)
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        value
+            .get("durationMs")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
         value.get("cwd").and_then(Value::as_str).unwrap_or("-"),
     )
 }
@@ -2309,15 +3180,31 @@ fn format_tool_event(value: &Value) -> String {
         value.get("phase").and_then(Value::as_str).unwrap_or("-"),
         value.get("kind").and_then(Value::as_str).unwrap_or("-"),
         value.get("name").and_then(Value::as_str).unwrap_or("-"),
-        value.get("toolRoute").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("toolRoute")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
         value.get("turnId").and_then(Value::as_str).unwrap_or("-"),
         value.get("callId").and_then(Value::as_str).unwrap_or("-"),
         value.get("server").and_then(Value::as_str).unwrap_or("-"),
         value.get("tool").and_then(Value::as_str).unwrap_or("-"),
-        value.get("success").and_then(Value::as_bool).map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
-        value.get("durationMs").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("precededByCommentaryTokens").and_then(Value::as_i64).unwrap_or_default(),
-        value.get("outputSize").and_then(Value::as_u64).unwrap_or_default(),
+        value
+            .get("success")
+            .and_then(Value::as_bool)
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        value
+            .get("durationMs")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("precededByCommentaryTokens")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("outputSize")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
     )
 }
 
@@ -2326,10 +3213,45 @@ fn format_skill_event(value: &Value) -> String {
         "seq={} kind={} skill={} scope={} enabled={} command={}",
         value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
         value.get("kind").and_then(Value::as_str).unwrap_or("-"),
-        value.get("skillName").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("skillName")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
         value.get("scope").and_then(Value::as_str).unwrap_or("-"),
-        value.get("enabled").and_then(Value::as_bool).map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
+        value
+            .get("enabled")
+            .and_then(Value::as_bool)
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
         value.get("command").and_then(Value::as_str).unwrap_or("-"),
+    )
+}
+
+fn format_generic_event_row(value: &Value) -> String {
+    format!(
+        "seq={} event={} class={} turn={} call={} skill={} route={} status={} summary={}",
+        value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
+        value.get("event").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("classification")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value.get("turnId").and_then(Value::as_str).unwrap_or("-"),
+        value.get("callId").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("skillName")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("toolRoute")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value.get("status").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("message")
+            .and_then(Value::as_str)
+            .or_else(|| value.get("reason").and_then(Value::as_str))
+            .unwrap_or("-"),
     )
 }
 
@@ -2338,20 +3260,39 @@ fn format_message_metric(value: &Value) -> String {
         "seq={} phase={} chars={} tokens_est={} categories={} next_step={} tool_intent={} verification={} result={} social={} text={}",
         value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
         value.get("phase").and_then(Value::as_str).unwrap_or("-"),
-        value.get("textChars").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("textTokensEst").and_then(Value::as_i64).unwrap_or_default(),
+        value
+            .get("textChars")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("textTokensEst")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
         value
             .get("categories")
             .and_then(Value::as_array)
-            .map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("|"))
+            .map(|items| items
+                .iter()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join("|"))
             .unwrap_or_else(|| "-".to_string()),
-        value.get("containsNextStep").and_then(Value::as_bool).unwrap_or(false),
-        value.get("containsToolIntent").and_then(Value::as_bool).unwrap_or(false),
+        value
+            .get("containsNextStep")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        value
+            .get("containsToolIntent")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         value
             .get("containsVerificationLanguage")
             .and_then(Value::as_bool)
             .unwrap_or(false),
-        value.get("containsResultClaim").and_then(Value::as_bool).unwrap_or(false),
+        value
+            .get("containsResultClaim")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         value
             .get("containsEmpathyOrAlignmentLanguage")
             .and_then(Value::as_bool)
@@ -2378,7 +3319,10 @@ fn format_coupling_row(value: &Value) -> String {
             .get("visibleMessagesSinceLastTool")
             .and_then(Value::as_u64)
             .unwrap_or_default(),
-        value.get("burstLabel").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("burstLabel")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
     )
 }
 
@@ -2398,9 +3342,18 @@ fn format_probe_event(value: &Value) -> String {
     format!(
         "seq={} subsystem={} code={} class={} summary={}",
         value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
-        value.get("subsystem").and_then(Value::as_str).unwrap_or("-"),
-        value.get("evidence_code").and_then(Value::as_str).unwrap_or("-"),
-        value.get("classification").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("subsystem")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("evidence_code")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("classification")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
         value.get("summary").and_then(Value::as_str).unwrap_or("-"),
     )
 }
@@ -2418,8 +3371,14 @@ fn format_anomaly_event(value: &Value) -> String {
 fn format_grade_event(value: &Value) -> String {
     format!(
         "instance={} grading_status={} official_summary={} official_instance_report={}",
-        value.get("instanceId").and_then(Value::as_str).unwrap_or("-"),
-        value.get("gradingStatus").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("instanceId")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("gradingStatus")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
         value
             .get("officialSummaryPath")
             .and_then(Value::as_str)
@@ -2537,7 +3496,9 @@ mod tests {
                 raw: Value::Null,
             },
             summary: RunSummary {
-                observability_contract_version: Some(REPORT_OBSERVABILITY_CONTRACT_VERSION.to_string()),
+                observability_contract_version: Some(
+                    REPORT_OBSERVABILITY_CONTRACT_VERSION.to_string(),
+                ),
                 instance_id: "demo__repo-1".to_string(),
                 repo: "demo/repo".to_string(),
                 task_class: "verification-heavy".to_string(),
@@ -2553,12 +3514,10 @@ mod tests {
                 command_count: 1,
                 total_tokens: Some(1000),
                 visible_output_total_tokens_est: 200,
-                field_classifications: BTreeMap::from([
-                    (
-                        "visible_output_total_tokens_est".to_string(),
-                        format!("{:?}", EvidenceClassification::Observed).to_lowercase(),
-                    ),
-                ]),
+                field_classifications: BTreeMap::from([(
+                    "visible_output_total_tokens_est".to_string(),
+                    format!("{:?}", EvidenceClassification::Observed).to_lowercase(),
+                )]),
                 ..RunSummary::default()
             },
             probe_summary: ProbeSummary::default(),
@@ -2606,9 +3565,18 @@ mod tests {
             .iter()
             .find(|profile| profile.cohort_id == "gpt-5.4-friendly")
             .expect("friendly profile");
-        assert!(friendly.top_words.iter().any(|(term, _)| term == "verify"));
+        assert!(
+            friendly
+                .top_words
+                .iter()
+                .any(|(term, _)| term.starts_with("verif") || term == "verify")
+        );
         assert_eq!(
-            friendly.discourse_counts.get("social_tone").copied().unwrap_or_default(),
+            friendly
+                .discourse_counts
+                .get("social_tone")
+                .copied()
+                .unwrap_or_default(),
             1
         );
     }
@@ -2622,7 +3590,7 @@ mod tests {
                 "gpt-5.4-friendly",
                 "gpt-5.4",
                 "friendly",
-                "Let's verify the fix and explain the result clearly.",
+                "Let's verify the fix and explain the result clearly. Explain the result clearly.",
                 &["planning", "verification_framing", "social_tone"],
                 "exec_command",
                 "shell",
@@ -2653,13 +3621,12 @@ mod tests {
         assert!(model_rows.iter().any(|row| {
             row.grouping_key == "demo__repo-1::friendly"
                 && row.left_cohort != row.right_cohort
-                && row.term == "explain"
+                && row.term.starts_with("explain")
         }));
 
         let personality_rows = compute_phrase_deltas(&bundles, "personality");
         assert!(personality_rows.iter().any(|row| {
-            row.grouping_key == "demo__repo-1::gpt-5.4"
-                && row.left_cohort != row.right_cohort
+            row.grouping_key == "demo__repo-1::gpt-5.4" && row.left_cohort != row.right_cohort
         }));
     }
 
@@ -2672,7 +3639,12 @@ mod tests {
             "gpt-5.4",
             "friendly",
             "Let's verify the fix and explain the result clearly.",
-            &["planning", "verification_framing", "social_tone", "tool_bridge_before"],
+            &[
+                "planning",
+                "verification_framing",
+                "social_tone",
+                "tool_bridge_before",
+            ],
             "exec_command",
             "shell",
         )];
@@ -2713,7 +3685,12 @@ mod tests {
                 "gpt-5.4",
                 "friendly",
                 "Let's verify the fix and explain the result clearly.",
-                &["planning", "verification_framing", "social_tone", "tool_bridge_before"],
+                &[
+                    "planning",
+                    "verification_framing",
+                    "social_tone",
+                    "tool_bridge_before",
+                ],
                 "exec_command",
                 "shell",
             ),
@@ -2752,6 +3729,8 @@ mod tests {
             cohorts: Vec::new(),
             seed: "seed".to_string(),
             sample_size: 1,
+            max_parallel_runs: 2,
+            per_repo_prepare_parallelism: 1,
             study_mode: "codex_behavior".to_string(),
             required_task_classes: Vec::new(),
             preferred_task_classes: Vec::new(),
@@ -2764,7 +3743,10 @@ mod tests {
             benchmark_research_profile_path: None,
             last_report_path: None,
             last_report_generated_at: None,
-            selected_instances: bundles.iter().map(|bundle| bundle.selected.clone()).collect(),
+            selected_instances: bundles
+                .iter()
+                .map(|bundle| bundle.selected.clone())
+                .collect(),
         };
 
         write_datasets(&campaign_dir, &manifest, &bundles).expect("write datasets");
@@ -2778,6 +3760,9 @@ mod tests {
             "tool_inventory.csv",
             "tool_route_summary.csv",
             "tool_by_turn.csv",
+            "personality_mechanism.csv",
+            "patch_chain.csv",
+            "skill_mechanism.csv",
             "model_phrase_deltas.csv",
             "personality_phrase_deltas.csv",
             "cohort_lexical_summary.csv",

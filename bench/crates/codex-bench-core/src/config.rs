@@ -52,6 +52,10 @@ pub struct StudyPreset {
     pub future_benchmarks: Vec<String>,
     #[serde(default)]
     pub notes: Vec<String>,
+    #[serde(default = "default_max_parallel_runs")]
+    pub max_parallel_runs: usize,
+    #[serde(default = "default_per_repo_prepare_parallelism")]
+    pub per_repo_prepare_parallelism: usize,
 }
 
 impl StudyPreset {
@@ -69,7 +73,12 @@ impl StudyPreset {
                 .stages
                 .iter()
                 .find(|stage| stage.name == stage_name)
-                .ok_or_else(|| anyhow!("stage `{stage_name}` was not found in preset `{}`", self.name))?;
+                .ok_or_else(|| {
+                    anyhow!(
+                        "stage `{stage_name}` was not found in preset `{}`",
+                        self.name
+                    )
+                })?;
             return Ok((Some(stage.name.clone()), stage.sample_size));
         }
 
@@ -111,4 +120,12 @@ fn default_probe_profile() -> String {
 
 fn default_report_profile() -> String {
     "evidence-dossier.v1".to_string()
+}
+
+fn default_max_parallel_runs() -> usize {
+    2
+}
+
+fn default_per_repo_prepare_parallelism() -> usize {
+    1
 }

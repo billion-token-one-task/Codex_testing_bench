@@ -23,7 +23,9 @@ cargo run -p codex-bench-cli -- prepare \
   --campaign-root ../artifacts \
   --preset-path ../studies/task-presets/swebench-v1.json \
   --stage behavior-pilot \
-  --seed my-study
+  --seed my-study \
+  --max-parallel-runs 2 \
+  --per-repo-prepare-parallelism 1
 ```
 
 这一步会写出：
@@ -75,6 +77,8 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 - `reports/tool-route-analysis.md`
 - `reports/cohort-pair-analysis.md`
 - `reports/personality-mechanism-analysis.md`
+- `reports/patch-mechanism-analysis.md`
+- `reports/skill-mechanism-analysis.md`
 - `reports/instruction-stratification-analysis.md`
 - `datasets/*.csv`
 
@@ -87,6 +91,28 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 - `tool_inventory.csv`
 - `tool_route_summary.csv`
 - `tool_by_turn.csv`
+- `personality_mechanism.csv`
+- `patch_chain.csv`
+- `skill_mechanism.csv`
+
+其中和当前 `5.4 vs 5.3-codex × friendly/pragmatic` 研究最相关的是：
+
+- `message_style.csv`
+  - 每条用户可见输出的语气、桥接语言、验证语言、状态外显化、词汇多样性
+- `message_lexical_summary.csv`
+  - 高频 lemma、bigram、trigram
+- `tool_inventory.csv`
+  - Codex 具体调用了哪些工具、多少次、成功率如何
+- `tool_by_turn.csv`
+  - 每个 turn 的具体工具使用画像
+- `verbosity_tool_coupling.csv`
+  - 语言和工具在时序上的耦合
+- `personality_mechanism.csv`
+  - personality 请求、实际生效、fallback、model-native 指令保留情况
+- `patch_chain.csv`
+  - patch begin/end、审批、失败与时序链路
+- `skill_mechanism.csv`
+  - skill catalog、远端 skill catalog、权限触发与 skill 机制事件
 
 ### 4. 进行评分
 
@@ -117,6 +143,8 @@ cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 - `artifacts/<campaign-id>/reports/tool-language-coupling.md`
 - `artifacts/<campaign-id>/reports/linguistic-profile.md`
 - `artifacts/<campaign-id>/reports/tool-inventory.md`
+- `artifacts/<campaign-id>/reports/patch-mechanism-analysis.md`
+- `artifacts/<campaign-id>/reports/skill-mechanism-analysis.md`
 - `artifacts/<campaign-id>/reports/cohort-pair-analysis.md`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/run-evidence.txt`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/attempt-log.txt`

@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Result, anyhow, bail};
 use chrono::Utc;
@@ -16,6 +17,8 @@ use codex_bench_report::{render_campaign_report, render_run_evidence};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use tokio::process::Command;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 pub const SCHEMA_VERSION: &str = "codex-bench.v1";
 pub const STUDY_MODE: &str = "codex_live_observation";
@@ -29,12 +32,15 @@ pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-cod
 
 pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
-    let preset_path = args
-        .preset_path
-        .clone()
-        .unwrap_or_else(|| repo_root.join("studies").join("task-presets").join("newtonbench-v0.json"));
+    let preset_path = args.preset_path.clone().unwrap_or_else(|| {
+        repo_root
+            .join("studies")
+            .join("task-presets")
+            .join("newtonbench-v0.json")
+    });
     let preset = codex_bench_core::load_study_preset(&preset_path)?;
-    let (stage_name, sample_size) = preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
+    let (stage_name, sample_size) =
+        preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
 
     let campaign_root = ensure_absolute_dir(&args.campaign_root)?;
     let campaign_id = format!(
@@ -88,7 +94,10 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
         campaign_status: "prepared".to_string(),
-        experiment_id: format!("exp-{}", short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))),
+        experiment_id: format!(
+            "exp-{}",
+            short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))
+        ),
         experiment_name: args
             .experiment_name
             .clone()
@@ -119,6 +128,14 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         seed: args.seed,
         sample_size: selected_instances.len(),
         study_mode: STUDY_MODE.to_string(),
+        max_parallel_runs: args
+            .max_parallel_runs
+            .unwrap_or(preset.max_parallel_runs)
+            .max(1),
+        per_repo_prepare_parallelism: args
+            .per_repo_prepare_parallelism
+            .unwrap_or(preset.per_repo_prepare_parallelism)
+            .max(1),
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
@@ -134,7 +151,10 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     };
 
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    write_json_pretty(&campaign_dir.join("selected-dataset.json"), &selected_records)?;
+    write_json_pretty(
+        &campaign_dir.join("selected-dataset.json"),
+        &selected_records,
+    )?;
     write_json_pretty(
         &benchmark_research_profile_path,
         &newtonbench_benchmark_research_profile(),
@@ -194,8 +214,19 @@ pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "running".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    for selected in &manifest.selected_instances {
-        run_instance(&manifest, selected).await?;
+    let limiter = Arc::new(Semaphore::new(manifest.max_parallel_runs.max(1)));
+    let manifest_arc = Arc::new(manifest.clone());
+    let mut join_set = JoinSet::new();
+    for selected in manifest.selected_instances.clone() {
+        let permit = limiter.clone().acquire_owned().await?;
+        let manifest = Arc::clone(&manifest_arc);
+        join_set.spawn(async move {
+            let _permit = permit;
+            run_instance(manifest.as_ref(), &selected).await
+        });
+    }
+    while let Some(joined) = join_set.join_next().await {
+        joined??;
     }
     manifest.campaign_status = "run_completed".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -242,7 +273,9 @@ pub async fn grade_campaign(campaign_dir: &Path) -> Result<()> {
             .and_then(Value::as_f64)
             .unwrap_or_default();
         let rmsle = payload.get("rmsle").and_then(Value::as_f64);
-        let numeric_ok = rmsle.map(|value| value.is_finite() && value < 1e-6).unwrap_or(false);
+        let numeric_ok = rmsle
+            .map(|value| value.is_finite() && value < 1e-6)
+            .unwrap_or(false);
         let grading_status = if exact >= 1.0 {
             exact_pass += 1;
             "graded_pass_exact"
@@ -410,18 +443,23 @@ async fn prepare_workspace(record: &DatasetRecord, workspace_dir: &Path) -> Resu
     init_git_workspace(workspace_dir).await?;
 
     let vendor_root = PathBuf::from(
-        raw_string(record, "vendorRoot")
-            .ok_or_else(|| anyhow!("record missing vendorRoot"))?,
+        raw_string(record, "vendorRoot").ok_or_else(|| anyhow!("record missing vendorRoot"))?,
     );
-    let module_name = raw_string(record, "moduleName")
-        .ok_or_else(|| anyhow!("record missing moduleName"))?;
-    let difficulty = raw_string(record, "difficulty")
-        .ok_or_else(|| anyhow!("record missing difficulty"))?;
-    let system = raw_string(record, "system")
-        .ok_or_else(|| anyhow!("record missing system"))?;
+    let module_name =
+        raw_string(record, "moduleName").ok_or_else(|| anyhow!("record missing moduleName"))?;
+    let difficulty =
+        raw_string(record, "difficulty").ok_or_else(|| anyhow!("record missing difficulty"))?;
+    let system = raw_string(record, "system").ok_or_else(|| anyhow!("record missing system"))?;
     let law_version = raw_string(record, "lawVersion");
 
-    let meta = fetch_module_metadata(&vendor_root, &module_name, &difficulty, &system, law_version.as_deref()).await?;
+    let meta = fetch_module_metadata(
+        &vendor_root,
+        &module_name,
+        &difficulty,
+        &system,
+        law_version.as_deref(),
+    )
+    .await?;
     let meta_dir = workspace_dir.join(".bench-meta");
     let tools_dir = workspace_dir.join("tools");
     fs::create_dir_all(&meta_dir)?;
@@ -454,7 +492,10 @@ async fn prepare_workspace(record: &DatasetRecord, workspace_dir: &Path) -> Resu
     )?;
     fs::write(
         workspace_dir.join("submission.py"),
-        format!("{}\n    raise NotImplementedError(\"discover the law\")\n", meta.function_signature),
+        format!(
+            "{}\n    raise NotImplementedError(\"discover the law\")\n",
+            meta.function_signature
+        ),
     )?;
     fs::write(tools_dir.join("newton_lab.py"), render_newton_lab_script())?;
     fs::write(
@@ -470,12 +511,23 @@ fn build_prompt(record: &DatasetRecord) -> String {
     let python_cmd = preferred_python().display().to_string();
     prompt.push_str("You are solving a NewtonBench scientific law discovery task.\n");
     prompt.push_str("Read ./task.md first. Use the local Newton lab helper to run experiments and validate your candidate law.\n");
-    prompt.push_str("Write your final answer into ./submission.py as a valid discovered_law function.\n");
+    prompt.push_str(
+        "Write your final answer into ./submission.py as a valid discovered_law function.\n",
+    );
     prompt.push_str("You may create scratch scripts, but keep the final deliverable focused on submission.py and any minimal supporting files.\n\n");
     prompt.push_str("Task metadata:\n");
-    prompt.push_str(&format!("- Module: {}\n", raw_string(record, "moduleName").unwrap_or_default()));
-    prompt.push_str(&format!("- Difficulty: {}\n", raw_string(record, "difficulty").unwrap_or_default()));
-    prompt.push_str(&format!("- System: {}\n", raw_string(record, "system").unwrap_or_default()));
+    prompt.push_str(&format!(
+        "- Module: {}\n",
+        raw_string(record, "moduleName").unwrap_or_default()
+    ));
+    prompt.push_str(&format!(
+        "- Difficulty: {}\n",
+        raw_string(record, "difficulty").unwrap_or_default()
+    ));
+    prompt.push_str(&format!(
+        "- System: {}\n",
+        raw_string(record, "system").unwrap_or_default()
+    ));
     prompt.push_str(&format!(
         "\nUse `{python_cmd} tools/newton_lab.py show-task` to inspect the full benchmark task and `{python_cmd} tools/newton_lab.py run --params-json ...` to perform experiments.\n"
     ));
@@ -494,7 +546,8 @@ fn load_newtonbench_records(vendor_root: &Path) -> Result<Vec<DatasetRecord>> {
         }
         for difficulty in ["easy", "medium", "hard"] {
             for system in ["vanilla_equation", "simple_system", "complex_system"] {
-                let instance_id = format!("newtonbench__{}__{}__{}", module_name, difficulty, system);
+                let instance_id =
+                    format!("newtonbench__{}__{}__{}", module_name, difficulty, system);
                 records.push(DatasetRecord {
                     instance_id,
                     repo: format!("newtonbench/{}", module_name),

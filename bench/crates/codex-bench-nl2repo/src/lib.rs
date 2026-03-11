@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
@@ -8,14 +9,16 @@ use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     BenchmarkResearchProfile, BenchmarkTaskClassProfile, CampaignManifest, CodexRunRequest,
     DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance, attempt_artifact_paths,
-    command_capture, ensure_absolute_dir, git_commit_all, init_git_workspace, read_json,
-    reset_dir, write_json_pretty,
+    command_capture, ensure_absolute_dir, git_commit_all, init_git_workspace, read_json, reset_dir,
+    write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::{render_campaign_report, render_run_evidence};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use tokio::process::Command;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 pub const SCHEMA_VERSION: &str = "codex-bench.v1";
 pub const STUDY_MODE: &str = "codex_live_observation";
@@ -29,12 +32,15 @@ pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-cod
 
 pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
-    let preset_path = args
-        .preset_path
-        .clone()
-        .unwrap_or_else(|| repo_root.join("studies").join("task-presets").join("nl2repo-v0.json"));
+    let preset_path = args.preset_path.clone().unwrap_or_else(|| {
+        repo_root
+            .join("studies")
+            .join("task-presets")
+            .join("nl2repo-v0.json")
+    });
     let preset = codex_bench_core::load_study_preset(&preset_path)?;
-    let (stage_name, sample_size) = preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
+    let (stage_name, sample_size) =
+        preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
 
     let campaign_root = ensure_absolute_dir(&args.campaign_root)?;
     let campaign_id = format!(
@@ -88,7 +94,10 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
         campaign_status: "prepared".to_string(),
-        experiment_id: format!("exp-{}", short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))),
+        experiment_id: format!(
+            "exp-{}",
+            short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))
+        ),
         experiment_name: args
             .experiment_name
             .clone()
@@ -119,6 +128,14 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         seed: args.seed,
         sample_size: selected_instances.len(),
         study_mode: STUDY_MODE.to_string(),
+        max_parallel_runs: args
+            .max_parallel_runs
+            .unwrap_or(preset.max_parallel_runs)
+            .max(1),
+        per_repo_prepare_parallelism: args
+            .per_repo_prepare_parallelism
+            .unwrap_or(preset.per_repo_prepare_parallelism)
+            .max(1),
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
@@ -134,7 +151,10 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     };
 
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    write_json_pretty(&campaign_dir.join("selected-dataset.json"), &selected_records)?;
+    write_json_pretty(
+        &campaign_dir.join("selected-dataset.json"),
+        &selected_records,
+    )?;
     write_json_pretty(
         &benchmark_research_profile_path,
         &nl2repo_benchmark_research_profile(),
@@ -194,8 +214,19 @@ pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "running".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    for selected in &manifest.selected_instances {
-        run_instance(&manifest, selected).await?;
+    let limiter = Arc::new(Semaphore::new(manifest.max_parallel_runs.max(1)));
+    let manifest_arc = Arc::new(manifest.clone());
+    let mut join_set = JoinSet::new();
+    for selected in manifest.selected_instances.clone() {
+        let permit = limiter.clone().acquire_owned().await?;
+        let manifest = Arc::clone(&manifest_arc);
+        join_set.spawn(async move {
+            let _permit = permit;
+            run_instance(manifest.as_ref(), &selected).await
+        });
+    }
+    while let Some(joined) = join_set.join_next().await {
+        joined??;
     }
     manifest.campaign_status = "run_completed".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -433,7 +464,9 @@ fn build_prompt(record: &DatasetRecord) -> String {
     prompt.push_str("Read ./start.md and implement the entire project in the current directory.\n");
     prompt.push_str("The benchmark metadata lives in ./.bench-meta/.\n");
     prompt.push_str("Do not edit benchmark metadata files unless absolutely necessary.\n");
-    prompt.push_str("Your goal is to make the repository runnable and pass the listed test commands.\n\n");
+    prompt.push_str(
+        "Your goal is to make the repository runnable and pass the listed test commands.\n\n",
+    );
     prompt.push_str("Task bundle:\n");
     prompt.push_str(&format!(
         "- Task name: {}\n",
@@ -587,7 +620,9 @@ pub fn classify_task(record: &DatasetRecord) -> String {
     if text.contains("docker")
         || text.contains("dependency")
         || text.contains("install")
-        || test_commands.iter().any(|command| command.contains("pip install"))
+        || test_commands
+            .iter()
+            .any(|command| command.contains("pip install"))
     {
         "bootstrap-heavy".to_string()
     } else if text.len() > 12_000 {

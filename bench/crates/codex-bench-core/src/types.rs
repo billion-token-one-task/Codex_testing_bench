@@ -30,6 +30,10 @@ pub struct PrepareCampaignArgs {
     pub repo_cache_root: Option<PathBuf>,
     pub preset_path: Option<PathBuf>,
     pub stage: Option<String>,
+    #[serde(default)]
+    pub max_parallel_runs: Option<usize>,
+    #[serde(default)]
+    pub per_repo_prepare_parallelism: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,6 +136,10 @@ pub struct CampaignManifest {
     pub seed: String,
     pub sample_size: usize,
     pub study_mode: String,
+    #[serde(default)]
+    pub max_parallel_runs: usize,
+    #[serde(default)]
+    pub per_repo_prepare_parallelism: usize,
     #[serde(default)]
     pub required_task_classes: Vec<String>,
     #[serde(default)]
@@ -339,6 +347,26 @@ pub struct ProbeSummary {
     #[serde(default)]
     pub visible_text_before_first_tool_chars: Option<usize>,
     #[serde(default)]
+    pub personality_fallback_count: usize,
+    #[serde(default)]
+    pub personality_model_native_preserved_count: usize,
+    #[serde(default)]
+    pub personality_requested_effective_mismatch_count: usize,
+    #[serde(default)]
+    pub patch_approval_request_count: usize,
+    #[serde(default)]
+    pub patch_declined_count: usize,
+    #[serde(default)]
+    pub patch_failed_count: usize,
+    #[serde(default)]
+    pub exec_approval_request_count: usize,
+    #[serde(default)]
+    pub skill_catalog_count: usize,
+    #[serde(default)]
+    pub skill_remote_catalog_count: usize,
+    #[serde(default)]
+    pub skill_approval_trigger_count: usize,
+    #[serde(default)]
     pub field_classifications: BTreeMap<String, String>,
 }
 
@@ -441,6 +469,8 @@ pub struct RunSummary {
     pub tool_kind_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub tool_name_counts: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub tool_route_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub skill_name_counts: BTreeMap<String, usize>,
     #[serde(default)]

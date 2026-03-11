@@ -5,8 +5,8 @@ use std::time::Duration;
 use anyhow::Result;
 use codex_bench_core::{
     ClaimEvidence, DatasetRecord, ProbeEventRow, ProbeSummary, RunManifest, RunSummary,
-    artifact_inventory_for_attempt, artifact_role_map_for_attempt, patch_file_count, read_json,
-    write_json_pretty, write_jsonl,
+    analyze_message, artifact_inventory_for_attempt, artifact_role_map_for_attempt,
+    patch_file_count, read_json, write_json_pretty, write_jsonl,
 };
 use codex_protocol::protocol::{
     Event, EventMsg, ExecCommandBeginEvent, ExecCommandEndEvent, StudyProbeEvent, TokenUsageInfo,
@@ -57,6 +57,9 @@ pub fn derive_run_outputs(
     let mut command_rows = Vec::<Value>::new();
     let mut tool_rows = Vec::<Value>::new();
     let mut skill_rows = Vec::<Value>::new();
+    let mut personality_rows = Vec::<Value>::new();
+    let mut skill_mechanism_rows = Vec::<Value>::new();
+    let mut patch_chain_rows = Vec::<Value>::new();
     let mut patch_rows = Vec::<Value>::new();
     let mut lifecycle_rows = Vec::<Value>::new();
     let mut anomaly_rows = Vec::<Value>::new();
@@ -69,8 +72,7 @@ pub fn derive_run_outputs(
     let mut diagnostic_type_counts = BTreeMap::<String, usize>::new();
 
     let mut probe_summary = ProbeSummary::default();
-    probe_summary.observability_contract_version =
-        Some(OBSERVABILITY_CONTRACT_VERSION.to_string());
+    probe_summary.observability_contract_version = Some(OBSERVABILITY_CONTRACT_VERSION.to_string());
     let mut last_token_info = None::<TokenUsageInfo>;
     let mut last_patch_seq = None::<usize>;
     let mut last_write_seq = None::<usize>;
@@ -79,8 +81,14 @@ pub fn derive_run_outputs(
     let mut turn_accumulators = BTreeMap::<String, TurnAccumulator>::new();
     let mut tool_kind_counts = BTreeMap::<String, usize>::new();
     let mut tool_name_counts = BTreeMap::<String, usize>::new();
+    let mut tool_route_counts = BTreeMap::<String, usize>::new();
     let mut skill_name_counts = BTreeMap::<String, usize>::new();
     let mut message_category_counts = BTreeMap::<String, usize>::new();
+    let run_manifest_meta = attempt_dir
+        .parent()
+        .map(|run_dir| run_dir.join("manifest.json"))
+        .filter(|path| path.exists())
+        .and_then(|path| read_json::<RunManifest>(&path).ok());
 
     let mut seen_read_commands_since_write = BTreeSet::<String>::new();
     let mut seen_verification_commands_since_write = BTreeSet::<String>::new();
@@ -227,6 +235,9 @@ pub fn derive_run_outputs(
                 command_seq += 1;
                 *tool_kind_counts.entry("shell".to_string()).or_default() += 1;
                 *tool_name_counts.entry("shell".to_string()).or_default() += 1;
+                *tool_route_counts
+                    .entry("exec_command".to_string())
+                    .or_default() += 1;
                 if !first_tool_seen {
                     first_tool_seen = true;
                     probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
@@ -367,92 +378,67 @@ pub fn derive_run_outputs(
                     .as_ref()
                     .map(|phase| format!("{phase:?}").to_lowercase())
                     .unwrap_or_else(|| "unknown".to_string());
-                let categories = classify_agent_message(&ev.message, &phase);
-                let text_chars = ev.message.chars().count();
-                let text_tokens_est = estimate_text_tokens(&ev.message);
-                let sentence_count = count_sentences(&ev.message);
-                let paragraph_count = count_paragraphs(&ev.message);
-                let bullet_count = count_bullets(&ev.message);
-                let codeblock_count = ev.message.matches("```").count() / 2;
-                let contains_question = ev.message.contains('?') || ev.message.contains('？');
-                let contains_uncertainty = contains_any(&ev.message, &["maybe", "might", "probably", "可能", "也许", "perhaps", "unclear"]);
-                let contains_next_step = contains_any(&ev.message, &["next", "接下来", "now i", "i'll", "will ", "计划", "then "]);
-                let contains_tool_intent = contains_any(&ev.message, &["run", "inspect", "check", "test", "edit", "patch", "search", "打开", "查看", "测试", "修改"]);
-                let contains_verification_language = contains_any(&ev.message, &["verify", "verified", "test", "tests", "确认", "验证", "通过"]);
-                let contains_result_claim = contains_any(&ev.message, &["fixed", "resolved", "done", "完成", "修复", "解决"]);
-                let contains_empathy_or_alignment_language = contains_any(&ev.message, &["we ", "let's", "together", "我会", "我们", "一起", "friendly"]);
-                let message_tokens = tokenize_message_for_nlp(&ev.message);
-                let content_word_count = count_content_words(&message_tokens);
-                let function_word_count = message_tokens.len().saturating_sub(content_word_count);
-                let lexical_diversity_bps = lexical_diversity_bps(&message_tokens);
-                let avg_sentence_length = if sentence_count == 0 {
-                    0
-                } else {
-                    (text_chars / sentence_count.max(1)) as i64
-                };
-                let top_lemmas = top_terms_for_message(&message_tokens, 5);
-                let top_bigrams = top_terms_for_message(&make_ngrams_from_tokens(&message_tokens, 2), 3);
-                let top_trigrams = top_terms_for_message(&make_ngrams_from_tokens(&message_tokens, 3), 3);
-                let hedge_word_count = count_tokens_in_set(&message_tokens, HEDGE_WORDS);
-                let certainty_word_count = count_tokens_in_set(&message_tokens, CERTAINTY_WORDS);
-                let planning_verb_count = count_tokens_in_set(&message_tokens, PLANNING_WORDS);
-                let verification_verb_count = count_tokens_in_set(&message_tokens, VERIFICATION_WORDS);
-                let tool_action_verb_count = count_tokens_in_set(&message_tokens, TOOL_ACTION_WORDS);
-                let social_alignment_phrase_count = count_phrase_matches(&ev.message, SOCIAL_ALIGNMENT_PHRASES);
-                let hedging_score = ratio_bps(hedge_word_count, message_tokens.len());
-                let confidence_score = ratio_bps(certainty_word_count, message_tokens.len());
-                let collaboration_tone_score = ratio_bps(
-                    social_alignment_phrase_count + usize::from(contains_empathy_or_alignment_language),
-                    sentence_count.max(1),
-                );
-                let directive_score = ratio_bps(
-                    planning_verb_count + tool_action_verb_count,
-                    sentence_count.max(1),
-                );
-                let reflective_score = ratio_bps(
-                    count_phrase_matches(&ev.message, REFLECTIVE_PHRASES),
-                    sentence_count.max(1),
-                );
-                let formality_score = ratio_bps(
-                    count_phrase_matches(&ev.message, FORMALITY_MARKERS),
-                    sentence_count.max(1),
-                );
-                let empathy_alignment_score = ratio_bps(
-                    social_alignment_phrase_count,
-                    sentence_count.max(1),
-                );
+                let analysis = analyze_message(&ev.message, &phase);
+                let categories = analysis.categories.clone();
                 for category in &categories {
                     *message_category_counts.entry(category.clone()).or_default() += 1;
                 }
-                if categories.iter().any(|category| matches!(category.as_str(), "planning" | "decision_explanation" | "tool_bridge_before" | "tool_bridge_after" | "verification_framing" | "result_framing" | "observation")) {
-                    actionable_commentary_tokens += text_tokens_est;
+                if categories.iter().any(|category| {
+                    matches!(
+                        category.as_str(),
+                        "planning"
+                            | "decision_explanation"
+                            | "tool_bridge_before"
+                            | "tool_bridge_after"
+                            | "verification_framing"
+                            | "result_framing"
+                            | "observation"
+                    )
+                }) {
+                    actionable_commentary_tokens += analysis.text_tokens_est;
                 }
-                if categories.iter().any(|category| matches!(category.as_str(), "tool_bridge_before" | "tool_bridge_after")) {
-                    tool_grounded_commentary_tokens += text_tokens_est;
+                if categories.iter().any(|category| {
+                    matches!(
+                        category.as_str(),
+                        "tool_bridge_before" | "tool_bridge_after"
+                    )
+                }) {
+                    tool_grounded_commentary_tokens += analysis.text_tokens_est;
                 }
-                if categories.iter().any(|category| matches!(category.as_str(), "verification_framing" | "result_framing")) || contains_verification_language {
-                    verification_grounded_commentary_tokens += text_tokens_est;
+                if categories.iter().any(|category| {
+                    matches!(category.as_str(), "verification_framing" | "result_framing")
+                }) || analysis.contains_verification_language
+                {
+                    verification_grounded_commentary_tokens += analysis.text_tokens_est;
                 }
-                if categories.iter().any(|category| category == "task_restatement") {
-                    restatement_tokens += text_tokens_est;
+                if categories
+                    .iter()
+                    .any(|category| category == "task_restatement")
+                {
+                    restatement_tokens += analysis.text_tokens_est;
                 }
-                if categories.iter().any(|category| category == "redundant_recap") {
-                    redundant_commentary_tokens += text_tokens_est;
+                if categories
+                    .iter()
+                    .any(|category| category == "redundant_recap")
+                {
+                    redundant_commentary_tokens += analysis.text_tokens_est;
                 }
-                if contains_uncertainty {
-                    speculation_tokens += text_tokens_est;
+                if analysis.contains_uncertainty {
+                    speculation_tokens += analysis.text_tokens_est;
                 }
-                if categories.iter().any(|category| category == "social_tone") || contains_empathy_or_alignment_language {
-                    social_tone_tokens += text_tokens_est;
+                if categories.iter().any(|category| category == "social_tone")
+                    || analysis.contains_empathy_or_alignment_language
+                {
+                    social_tone_tokens += analysis.text_tokens_est;
                 }
-                visible_output_total_chars += text_chars;
-                visible_output_total_tokens_est += text_tokens_est;
-                visible_output_sentence_count += sentence_count;
-                visible_output_paragraph_count += paragraph_count;
-                visible_output_bullet_count += bullet_count;
-                visible_output_codeblock_count += codeblock_count;
-                commentary_chars_since_last_tool += text_chars;
-                commentary_tokens_since_last_tool += text_tokens_est;
+                visible_output_total_chars += analysis.text_chars;
+                visible_output_total_tokens_est += analysis.text_tokens_est;
+                visible_output_sentence_count += analysis.sentence_count;
+                visible_output_paragraph_count += analysis.paragraph_count;
+                visible_output_bullet_count += analysis.bullet_count;
+                visible_output_codeblock_count += analysis.codeblock_count;
+                commentary_chars_since_last_tool += analysis.text_chars;
+                commentary_tokens_since_last_tool += analysis.text_tokens_est;
                 commentary_messages_since_last_tool += 1;
                 message_rows.push(json!({
                     "seq": seq,
@@ -460,40 +446,58 @@ pub fn derive_run_outputs(
                     "turnId": current_turn_id,
                     "phase": phase,
                     "messageId": format!("{run_id}-message-{seq}"),
-                    "textChars": text_chars,
-                    "textTokensEst": text_tokens_est,
-                    "sentenceCount": sentence_count,
-                    "paragraphCount": paragraph_count,
-                    "bulletCount": bullet_count,
-                    "codeblockCount": codeblock_count,
-                    "avgSentenceLength": avg_sentence_length,
-                    "contentWordCount": content_word_count,
-                    "functionWordCount": function_word_count,
-                    "typeTokenRatioBps": lexical_diversity_bps,
-                    "lexicalDiversityScoreBps": lexical_diversity_bps,
-                    "topLemmas": top_lemmas,
-                    "topBigrams": top_bigrams,
-                    "topTrigrams": top_trigrams,
-                    "hedgeWordCount": hedge_word_count,
-                    "certaintyWordCount": certainty_word_count,
-                    "planningVerbCount": planning_verb_count,
-                    "verificationVerbCount": verification_verb_count,
-                    "toolActionVerbCount": tool_action_verb_count,
-                    "socialAlignmentPhraseCount": social_alignment_phrase_count,
-                    "hedgingScoreBps": hedging_score,
-                    "confidenceScoreBps": confidence_score,
-                    "collaborationToneScoreBps": collaboration_tone_score,
-                    "directiveScoreBps": directive_score,
-                    "reflectiveScoreBps": reflective_score,
-                    "formalityScoreBps": formality_score,
-                    "empathyAlignmentScoreBps": empathy_alignment_score,
-                    "containsQuestion": contains_question,
-                    "containsUncertainty": contains_uncertainty,
-                    "containsNextStep": contains_next_step,
-                    "containsToolIntent": contains_tool_intent,
-                    "containsVerificationLanguage": contains_verification_language,
-                    "containsResultClaim": contains_result_claim,
-                    "containsEmpathyOrAlignmentLanguage": contains_empathy_or_alignment_language,
+                    "textChars": analysis.text_chars,
+                    "textTokensEst": analysis.text_tokens_est,
+                    "sentenceCount": analysis.sentence_count,
+                    "paragraphCount": analysis.paragraph_count,
+                    "bulletCount": analysis.bullet_count,
+                    "codeblockCount": analysis.codeblock_count,
+                    "avgSentenceLength": analysis.avg_sentence_length,
+                    "questionCount": analysis.question_count,
+                    "exclamationCount": analysis.exclamation_count,
+                    "colonCount": analysis.colon_count,
+                    "backtickSpanCount": analysis.backtick_span_count,
+                    "contentWordCount": analysis.content_word_count,
+                    "functionWordCount": analysis.function_word_count,
+                    "typeTokenRatioBps": analysis.type_token_ratio_bps,
+                    "lexicalDiversityScoreBps": analysis.lexical_diversity_score_bps,
+                    "hapaxRatioBps": analysis.hapax_ratio_bps,
+                    "topSurfaceTerms": analysis.top_surface_terms,
+                    "topLemmas": analysis.top_lemmas,
+                    "topBigrams": analysis.top_bigrams,
+                    "topTrigrams": analysis.top_trigrams,
+                    "hedgeWordCount": analysis.hedge_word_count,
+                    "certaintyWordCount": analysis.certainty_word_count,
+                    "planningVerbCount": analysis.planning_verb_count,
+                    "verificationVerbCount": analysis.verification_verb_count,
+                    "toolActionVerbCount": analysis.tool_action_verb_count,
+                    "socialAlignmentPhraseCount": analysis.social_alignment_phrase_count,
+                    "firstPersonSingularCount": analysis.first_person_singular_count,
+                    "firstPersonPluralCount": analysis.first_person_plural_count,
+                    "secondPersonCount": analysis.second_person_count,
+                    "modalVerbCount": analysis.modal_verb_count,
+                    "sequencingCueCount": analysis.sequencing_cue_count,
+                    "artifactReferenceCount": analysis.artifact_reference_count,
+                    "codeReferenceCount": analysis.code_reference_count,
+                    "hedgingScoreBps": analysis.hedging_score_bps,
+                    "confidenceScoreBps": analysis.confidence_score_bps,
+                    "collaborationToneScoreBps": analysis.collaboration_tone_score_bps,
+                    "directiveScoreBps": analysis.directive_score_bps,
+                    "reflectiveScoreBps": analysis.reflective_score_bps,
+                    "formalityScoreBps": analysis.formality_score_bps,
+                    "empathyAlignmentScoreBps": analysis.empathy_alignment_score_bps,
+                    "bridgeLanguageScoreBps": analysis.bridge_language_score_bps,
+                    "verificationLanguageScoreBps": analysis.verification_language_score_bps,
+                    "stateExternalizationScoreBps": analysis.state_externalization_score_bps,
+                    "readabilityEase": analysis.readability_ease,
+                    "readabilityGradeBps": analysis.readability_grade_bps,
+                    "containsQuestion": analysis.contains_question,
+                    "containsUncertainty": analysis.contains_uncertainty,
+                    "containsNextStep": analysis.contains_next_step,
+                    "containsToolIntent": analysis.contains_tool_intent,
+                    "containsVerificationLanguage": analysis.contains_verification_language,
+                    "containsResultClaim": analysis.contains_result_claim,
+                    "containsEmpathyOrAlignmentLanguage": analysis.contains_empathy_or_alignment_language,
                     "categories": categories,
                     "message": ev.message,
                 }));
@@ -503,6 +507,7 @@ pub fn derive_run_outputs(
                 *tool_name_counts
                     .entry(format!("{}::{}", ev.invocation.server, ev.invocation.tool))
                     .or_default() += 1;
+                *tool_route_counts.entry("mcp".to_string()).or_default() += 1;
                 if !first_tool_seen {
                     first_tool_seen = true;
                     probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
@@ -597,8 +602,15 @@ pub fn derive_run_outputs(
                 probe_summary.tool_mediation_tax_count += 1;
             }
             EventMsg::PatchApplyBegin(ev) => {
-                *tool_kind_counts.entry("apply_patch".to_string()).or_default() += 1;
-                *tool_name_counts.entry("apply_patch".to_string()).or_default() += 1;
+                *tool_kind_counts
+                    .entry("apply_patch".to_string())
+                    .or_default() += 1;
+                *tool_name_counts
+                    .entry("apply_patch".to_string())
+                    .or_default() += 1;
+                *tool_route_counts
+                    .entry("apply_patch".to_string())
+                    .or_default() += 1;
                 if !first_tool_seen {
                     first_tool_seen = true;
                     probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
@@ -665,7 +677,8 @@ pub fn derive_run_outputs(
                         "ToolMediation",
                         "fission.ignition.patch_apply",
                         "exact",
-                        "first controlled change appears to happen via patch application".to_string(),
+                        "first controlled change appears to happen via patch application"
+                            .to_string(),
                         vec!["patch-events.jsonl".to_string()],
                     ));
                 }
@@ -679,10 +692,26 @@ pub fn derive_run_outputs(
                     "callId": ev.call_id,
                     "autoApproved": ev.auto_approved,
                 }));
+                patch_chain_rows.push(json!({
+                    "seq": seq,
+                    "classification": "observed",
+                    "event": "patch_apply_begin",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "autoApproved": ev.auto_approved,
+                    "changeCount": ev.changes.len(),
+                    "changedPaths": ev.changes.keys().map(|path| path.display().to_string()).collect::<Vec<_>>(),
+                }));
             }
             EventMsg::PatchApplyEnd(ev) => {
                 last_write_seq = Some(seq);
                 last_patch_seq = Some(seq);
+                if matches!(format!("{:?}", ev.status).as_str(), "Declined") {
+                    probe_summary.patch_declined_count += 1;
+                }
+                if !ev.success {
+                    probe_summary.patch_failed_count += 1;
+                }
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "end",
@@ -709,10 +738,28 @@ pub fn derive_run_outputs(
                     "stdoutChars": ev.stdout.chars().count(),
                     "stderrChars": ev.stderr.chars().count(),
                 }));
+                patch_chain_rows.push(json!({
+                    "seq": seq,
+                    "classification": "observed",
+                    "event": "patch_apply_end",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "status": format!("{:?}", ev.status).to_lowercase(),
+                    "success": ev.success,
+                    "stdoutChars": ev.stdout.chars().count(),
+                    "stderrChars": ev.stderr.chars().count(),
+                    "changeCount": ev.changes.len(),
+                    "changedPaths": ev.changes.keys().map(|path| path.display().to_string()).collect::<Vec<_>>(),
+                }));
             }
             EventMsg::DynamicToolCallRequest(ev) => {
-                *tool_kind_counts.entry("dynamic_tool".to_string()).or_default() += 1;
+                *tool_kind_counts
+                    .entry("dynamic_tool".to_string())
+                    .or_default() += 1;
                 *tool_name_counts.entry(ev.tool.clone()).or_default() += 1;
+                *tool_route_counts
+                    .entry("dynamic_tool".to_string())
+                    .or_default() += 1;
                 if !first_tool_seen {
                     first_tool_seen = true;
                     probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
@@ -780,8 +827,15 @@ pub fn derive_run_outputs(
                 probe_summary.tool_mediation_tax_count += 1;
             }
             EventMsg::ViewImageToolCall(ev) => {
-                *tool_kind_counts.entry("view_image".to_string()).or_default() += 1;
-                *tool_name_counts.entry("view_image".to_string()).or_default() += 1;
+                *tool_kind_counts
+                    .entry("view_image".to_string())
+                    .or_default() += 1;
+                *tool_name_counts
+                    .entry("view_image".to_string())
+                    .or_default() += 1;
+                *tool_route_counts
+                    .entry("view_image".to_string())
+                    .or_default() += 1;
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "call",
@@ -794,8 +848,15 @@ pub fn derive_run_outputs(
                 }));
             }
             EventMsg::WebSearchBegin(ev) => {
-                *tool_kind_counts.entry("web_search".to_string()).or_default() += 1;
-                *tool_name_counts.entry("web_search".to_string()).or_default() += 1;
+                *tool_kind_counts
+                    .entry("web_search".to_string())
+                    .or_default() += 1;
+                *tool_name_counts
+                    .entry("web_search".to_string())
+                    .or_default() += 1;
+                *tool_route_counts
+                    .entry("web_search".to_string())
+                    .or_default() += 1;
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "begin",
@@ -820,8 +881,15 @@ pub fn derive_run_outputs(
                 }));
             }
             EventMsg::ImageGenerationBegin(ev) => {
-                *tool_kind_counts.entry("image_generation".to_string()).or_default() += 1;
-                *tool_name_counts.entry("image_generation".to_string()).or_default() += 1;
+                *tool_kind_counts
+                    .entry("image_generation".to_string())
+                    .or_default() += 1;
+                *tool_name_counts
+                    .entry("image_generation".to_string())
+                    .or_default() += 1;
+                *tool_route_counts
+                    .entry("image_generation".to_string())
+                    .or_default() += 1;
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "begin",
@@ -858,12 +926,77 @@ pub fn derive_run_outputs(
                     record,
                     task_class,
                     probe,
+                    run_manifest_meta.as_ref(),
                     &mut derived_probes,
                     &mut probe_summary,
+                    &mut personality_rows,
                     &mut anomaly_rows,
                 );
             }
+            EventMsg::ExecApprovalRequest(ev) => {
+                probe_summary.exec_approval_request_count += 1;
+                if ev.skill_metadata.is_some() {
+                    probe_summary.skill_approval_trigger_count += 1;
+                }
+                skill_mechanism_rows.push(json!({
+                    "seq": seq,
+                    "classification": "observed",
+                    "event": "exec_approval_request",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "approvalId": ev.approval_id,
+                    "command": join_command(&ev.command),
+                    "cwd": ev.cwd,
+                    "reason": ev.reason,
+                    "hasNetworkApprovalContext": ev.network_approval_context.is_some(),
+                    "hasAdditionalPermissions": ev.additional_permissions.is_some(),
+                    "hasExecPolicyAmendment": ev.proposed_execpolicy_amendment.is_some(),
+                    "skillPath": ev.skill_metadata.as_ref().map(|meta| meta.path_to_skills_md.display().to_string()),
+                    "availableDecisionCount": ev.available_decisions.as_ref().map(|d| d.len()).unwrap_or_default(),
+                }));
+                if let Some(skill_metadata) = &ev.skill_metadata {
+                    skill_rows.push(json!({
+                        "seq": seq,
+                        "classification": "inferred",
+                        "kind": "approval_triggered",
+                        "skillName": "approval_skill",
+                        "path": skill_metadata.path_to_skills_md,
+                        "command": join_command(&ev.command),
+                        "cwd": ev.cwd,
+                    }));
+                }
+            }
+            EventMsg::ApplyPatchApprovalRequest(ev) => {
+                probe_summary.patch_approval_request_count += 1;
+                patch_chain_rows.push(json!({
+                    "seq": seq,
+                    "classification": "observed",
+                    "event": "patch_approval_request",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "reason": ev.reason,
+                    "grantRoot": ev.grant_root,
+                    "changeCount": ev.changes.len(),
+                    "changedPaths": ev.changes.keys().map(|path| path.display().to_string()).collect::<Vec<_>>(),
+                }));
+            }
+            EventMsg::RequestPermissions(ev) => {
+                skill_mechanism_rows.push(json!({
+                    "seq": seq,
+                    "classification": "observed",
+                    "event": "request_permissions",
+                    "turnId": ev.turn_id,
+                    "callId": ev.call_id,
+                    "reason": ev.reason,
+                    "permissions": ev.permissions,
+                }));
+            }
             EventMsg::ListSkillsResponse(ev) => {
+                probe_summary.skill_catalog_count += ev
+                    .skills
+                    .iter()
+                    .map(|entry| entry.skills.len())
+                    .sum::<usize>();
                 for entry in &ev.skills {
                     for skill in &entry.skills {
                         *skill_name_counts.entry(skill.name.clone()).or_default() += 1;
@@ -877,16 +1010,37 @@ pub fn derive_run_outputs(
                             "enabled": skill.enabled,
                             "cwd": entry.cwd,
                         }));
+                        skill_mechanism_rows.push(json!({
+                            "seq": seq,
+                            "classification": "observed",
+                            "event": "list_skills_response",
+                            "kind": "local_catalog",
+                            "skillName": skill.name,
+                            "path": skill.path,
+                            "scope": format!("{:?}", skill.scope),
+                            "enabled": skill.enabled,
+                            "cwd": entry.cwd,
+                        }));
                     }
                 }
             }
             EventMsg::ListRemoteSkillsResponse(ev) => {
+                probe_summary.skill_remote_catalog_count += ev.skills.len();
                 for skill in &ev.skills {
                     *skill_name_counts.entry(skill.name.clone()).or_default() += 1;
                     skill_rows.push(json!({
                         "seq": seq,
                         "classification": "exact",
                         "kind": "remote_listed",
+                        "skillName": skill.name,
+                        "remoteSkillId": skill.id,
+                        "description": skill.description,
+                    }));
+                    skill_mechanism_rows.push(json!({
+                        "seq": seq,
+                        "classification": "observed",
+                        "event": "list_remote_skills_response",
+                        "kind": "remote_catalog",
                         "skillName": skill.name,
                         "remoteSkillId": skill.id,
                         "description": skill.description,
@@ -901,6 +1055,19 @@ pub fn derive_run_outputs(
                     "message": ev.message,
                     "sourceRefs": ["raw-agent-events.jsonl"],
                 }));
+                if ev
+                    .message
+                    .contains("Model personality requested but model_messages is missing")
+                {
+                    probe_summary.personality_fallback_count += 1;
+                    personality_rows.push(json!({
+                        "seq": seq,
+                        "classification": "observed",
+                        "event": "personality_warning_fallback",
+                        "message": ev.message,
+                        "requestedPersonality": run_manifest_meta.as_ref().and_then(|manifest| manifest.personality_mode.clone()),
+                    }));
+                }
             }
             EventMsg::Error(ev) => {
                 anomaly_rows.push(json!({
@@ -1000,10 +1167,12 @@ pub fn derive_run_outputs(
         probe_summary.useful_step_proxy_den = command_seq.max(1);
     }
     if probe_summary.useful_token_proxy_den == 0 {
-        probe_summary.useful_token_proxy_den = last_token_total(&last_token_info).unwrap_or_default();
+        probe_summary.useful_token_proxy_den =
+            last_token_total(&last_token_info).unwrap_or_default();
     }
     if probe_summary.friction_token_proxy_den == 0 {
-        probe_summary.friction_token_proxy_den = last_token_total(&last_token_info).unwrap_or_default();
+        probe_summary.friction_token_proxy_den =
+            last_token_total(&last_token_info).unwrap_or_default();
     }
     if probe_summary.retained_edit_ratio_den == 0 {
         probe_summary.retained_edit_ratio_den = patch_rows
@@ -1062,10 +1231,12 @@ pub fn derive_run_outputs(
             "sourceRefs": ["codex-probe-events.jsonl"],
         }));
     }
-    if !decoded_events
-        .iter()
-        .any(|event| matches!(event.msg, EventMsg::TurnComplete(_) | EventMsg::TurnAborted(_)))
-    {
+    if !decoded_events.iter().any(|event| {
+        matches!(
+            event.msg,
+            EventMsg::TurnComplete(_) | EventMsg::TurnAborted(_)
+        )
+    }) {
         anomaly_rows.push(json!({
             "seq": decoded_events.len(),
             "severity": "error",
@@ -1082,6 +1253,15 @@ pub fn derive_run_outputs(
     write_jsonl(&attempt_dir.join("command-events.jsonl"), &command_rows)?;
     write_jsonl(&attempt_dir.join("tool-events.jsonl"), &tool_rows)?;
     write_jsonl(&attempt_dir.join("skill-events.jsonl"), &skill_rows)?;
+    write_jsonl(
+        &attempt_dir.join("personality-events.jsonl"),
+        &personality_rows,
+    )?;
+    write_jsonl(
+        &attempt_dir.join("skill-mechanism.jsonl"),
+        &skill_mechanism_rows,
+    )?;
+    write_jsonl(&attempt_dir.join("patch-chain.jsonl"), &patch_chain_rows)?;
     write_jsonl(&attempt_dir.join("patch-events.jsonl"), &patch_rows)?;
     write_jsonl(&attempt_dir.join("anomalies.jsonl"), &anomaly_rows)?;
     write_jsonl(
@@ -1101,12 +1281,6 @@ pub fn derive_run_outputs(
         hasher.update(patch_text);
         Some(format!("{:x}", hasher.finalize()))
     };
-
-    let run_manifest_meta = attempt_dir
-        .parent()
-        .map(|run_dir| run_dir.join("manifest.json"))
-        .filter(|path| path.exists())
-        .and_then(|path| read_json::<RunManifest>(&path).ok());
 
     let summary = RunSummary {
         observability_contract_version: Some(OBSERVABILITY_CONTRACT_VERSION.to_string()),
@@ -1169,7 +1343,9 @@ pub fn derive_run_outputs(
         total_tokens: last_token_info
             .as_ref()
             .map(|info| info.total_token_usage.total_tokens),
-        model_context_window: last_token_info.as_ref().and_then(|info| info.model_context_window),
+        model_context_window: last_token_info
+            .as_ref()
+            .and_then(|info| info.model_context_window),
         anomaly_count: anomaly_rows.len(),
         visible_output_total_chars,
         visible_output_total_tokens_est,
@@ -1177,16 +1353,35 @@ pub fn derive_run_outputs(
         visible_output_paragraph_count,
         visible_output_bullet_count,
         visible_output_codeblock_count,
-        visible_output_per_turn_tokens_est: div_i64(visible_output_total_tokens_est, turn_rows.len()),
-        visible_output_per_tool_call_tokens_est: div_i64(visible_output_total_tokens_est, tool_rows.iter().filter(|row| row.get("phase").and_then(Value::as_str) == Some("begin")).count()),
-        visible_output_per_patch_event_tokens_est: div_i64(visible_output_total_tokens_est, patch_rows.iter().filter(|row| row.get("phase").and_then(Value::as_str) == Some("end")).count()),
-        visible_output_per_verification_event_tokens_est: div_i64(visible_output_total_tokens_est, probe_summary.verification_closure_count),
+        visible_output_per_turn_tokens_est: div_i64(
+            visible_output_total_tokens_est,
+            turn_rows.len(),
+        ),
+        visible_output_per_tool_call_tokens_est: div_i64(
+            visible_output_total_tokens_est,
+            tool_rows
+                .iter()
+                .filter(|row| row.get("phase").and_then(Value::as_str) == Some("begin"))
+                .count(),
+        ),
+        visible_output_per_patch_event_tokens_est: div_i64(
+            visible_output_total_tokens_est,
+            patch_rows
+                .iter()
+                .filter(|row| row.get("phase").and_then(Value::as_str) == Some("end"))
+                .count(),
+        ),
+        visible_output_per_verification_event_tokens_est: div_i64(
+            visible_output_total_tokens_est,
+            probe_summary.verification_closure_count,
+        ),
         event_type_counts,
         probe_code_counts,
         probe_subsystem_counts,
         diagnostic_type_counts,
         tool_kind_counts,
         tool_name_counts,
+        tool_route_counts,
         skill_name_counts,
         message_category_counts,
         artifact_inventory: artifact_inventory_for_attempt(attempt_dir),
@@ -1217,10 +1412,16 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "first_controlled_change_tokens".to_string(),
             "inferred".to_string(),
         ),
-        ("first_verification_tokens".to_string(), "inferred".to_string()),
+        (
+            "first_verification_tokens".to_string(),
+            "inferred".to_string(),
+        ),
         ("first_patch_tokens".to_string(), "inferred".to_string()),
         ("final_patch_tokens".to_string(), "inferred".to_string()),
-        ("ignition_shell_search_count".to_string(), "inferred".to_string()),
+        (
+            "ignition_shell_search_count".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "ignition_patch_apply_count".to_string(),
             "observed".to_string(),
@@ -1238,7 +1439,10 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "repeated_git_inspection_count".to_string(),
             "inferred".to_string(),
         ),
-        ("post_submit_activity_count".to_string(), "inferred".to_string()),
+        (
+            "post_submit_activity_count".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "cleanup_only_activity_count".to_string(),
             "inferred".to_string(),
@@ -1248,14 +1452,23 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "compaction_rediscovery_count".to_string(),
             "inferred".to_string(),
         ),
-        ("config_freeze_drift_count".to_string(), "observed".to_string()),
-        ("instruction_shift_count".to_string(), "observed".to_string()),
+        (
+            "config_freeze_drift_count".to_string(),
+            "observed".to_string(),
+        ),
+        (
+            "instruction_shift_count".to_string(),
+            "observed".to_string(),
+        ),
         (
             "instruction_stratification_count".to_string(),
             "inferred".to_string(),
         ),
         ("harness_friction_count".to_string(), "observed".to_string()),
-        ("tool_mediation_tax_count".to_string(), "inferred".to_string()),
+        (
+            "tool_mediation_tax_count".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "control_rod_compaction_count".to_string(),
             "observed".to_string(),
@@ -1268,10 +1481,22 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "control_rod_persistence_count".to_string(),
             "observed".to_string(),
         ),
-        ("chain_reaction_cycle_count".to_string(), "inferred".to_string()),
-        ("containment_breach_count".to_string(), "inferred".to_string()),
-        ("containment_heat_leak_count".to_string(), "inferred".to_string()),
-        ("verification_closure_count".to_string(), "inferred".to_string()),
+        (
+            "chain_reaction_cycle_count".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "containment_breach_count".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "containment_heat_leak_count".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "verification_closure_count".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "persistence_continuity_count".to_string(),
             "inferred".to_string(),
@@ -1284,17 +1509,38 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "externalized_coordination_count".to_string(),
             "inferred".to_string(),
         ),
-        ("event_discontinuity_count".to_string(), "inferred".to_string()),
+        (
+            "event_discontinuity_count".to_string(),
+            "inferred".to_string(),
+        ),
         ("useful_step_proxy_num".to_string(), "inferred".to_string()),
         ("useful_step_proxy_den".to_string(), "inferred".to_string()),
         ("useful_token_proxy_num".to_string(), "inferred".to_string()),
         ("useful_token_proxy_den".to_string(), "inferred".to_string()),
-        ("friction_token_proxy_num".to_string(), "inferred".to_string()),
-        ("friction_token_proxy_den".to_string(), "inferred".to_string()),
-        ("retained_edit_ratio_num".to_string(), "inferred".to_string()),
-        ("retained_edit_ratio_den".to_string(), "inferred".to_string()),
-        ("reverted_work_ratio_num".to_string(), "inferred".to_string()),
-        ("reverted_work_ratio_den".to_string(), "inferred".to_string()),
+        (
+            "friction_token_proxy_num".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "friction_token_proxy_den".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "retained_edit_ratio_num".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "retained_edit_ratio_den".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "reverted_work_ratio_num".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "reverted_work_ratio_den".to_string(),
+            "inferred".to_string(),
+        ),
         ("cache_read_ratio_num".to_string(), "observed".to_string()),
         ("cache_read_ratio_den".to_string(), "observed".to_string()),
         ("context_window".to_string(), "observed".to_string()),
@@ -1303,8 +1549,14 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
             "inferred".to_string(),
         ),
         ("useful_token_proxy_bps".to_string(), "inferred".to_string()),
-        ("friction_token_proxy_bps".to_string(), "inferred".to_string()),
-        ("harness_overhead_proxy_bps".to_string(), "inferred".to_string()),
+        (
+            "friction_token_proxy_bps".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "harness_overhead_proxy_bps".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "visible_output_total_chars".to_string(),
             "observed".to_string(),
@@ -1337,14 +1589,51 @@ fn probe_summary_field_classifications() -> BTreeMap<String, String> {
         ("speculation_ratio_bps".to_string(), "inferred".to_string()),
         ("social_tone_ratio_bps".to_string(), "inferred".to_string()),
         ("tool_burst_count".to_string(), "inferred".to_string()),
-        ("silent_tool_burst_count".to_string(), "inferred".to_string()),
+        (
+            "silent_tool_burst_count".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "micro_narrated_tool_burst_count".to_string(),
             "inferred".to_string(),
         ),
-        ("tokens_before_first_tool".to_string(), "inferred".to_string()),
+        (
+            "tokens_before_first_tool".to_string(),
+            "inferred".to_string(),
+        ),
         (
             "visible_text_before_first_tool_chars".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "personality_fallback_count".to_string(),
+            "observed".to_string(),
+        ),
+        (
+            "personality_model_native_preserved_count".to_string(),
+            "observed".to_string(),
+        ),
+        (
+            "personality_requested_effective_mismatch_count".to_string(),
+            "inferred".to_string(),
+        ),
+        (
+            "patch_approval_request_count".to_string(),
+            "observed".to_string(),
+        ),
+        ("patch_declined_count".to_string(), "observed".to_string()),
+        ("patch_failed_count".to_string(), "observed".to_string()),
+        (
+            "exec_approval_request_count".to_string(),
+            "observed".to_string(),
+        ),
+        ("skill_catalog_count".to_string(), "observed".to_string()),
+        (
+            "skill_remote_catalog_count".to_string(),
+            "observed".to_string(),
+        ),
+        (
+            "skill_approval_trigger_count".to_string(),
             "inferred".to_string(),
         ),
     ])
@@ -1368,7 +1657,10 @@ fn run_summary_field_classifications() -> BTreeMap<String, String> {
         ("patch_sha256".to_string(), "observed".to_string()),
         ("total_input_tokens".to_string(), "observed".to_string()),
         ("total_output_tokens".to_string(), "observed".to_string()),
-        ("total_cache_read_tokens".to_string(), "observed".to_string()),
+        (
+            "total_cache_read_tokens".to_string(),
+            "observed".to_string(),
+        ),
         ("total_tokens".to_string(), "observed".to_string()),
         ("model_context_window".to_string(), "observed".to_string()),
         ("anomaly_count".to_string(), "observed".to_string()),
@@ -1418,8 +1710,12 @@ fn run_summary_field_classifications() -> BTreeMap<String, String> {
         ("diagnostic_type_counts".to_string(), "observed".to_string()),
         ("tool_kind_counts".to_string(), "observed".to_string()),
         ("tool_name_counts".to_string(), "observed".to_string()),
+        ("tool_route_counts".to_string(), "observed".to_string()),
         ("skill_name_counts".to_string(), "inferred".to_string()),
-        ("message_category_counts".to_string(), "inferred".to_string()),
+        (
+            "message_category_counts".to_string(),
+            "inferred".to_string(),
+        ),
         ("artifact_inventory".to_string(), "observed".to_string()),
         ("artifact_roles".to_string(), "observed".to_string()),
     ])
@@ -1431,8 +1727,10 @@ fn handle_raw_probe(
     record: &DatasetRecord,
     task_class: &str,
     probe: &StudyProbeEvent,
+    run_manifest_meta: Option<&RunManifest>,
     derived_probes: &mut Vec<ProbeEventRow>,
     probe_summary: &mut ProbeSummary,
+    personality_rows: &mut Vec<Value>,
     anomalies: &mut Vec<Value>,
 ) {
     let subsystem = format!("{:?}", probe.subsystem);
@@ -1465,7 +1763,10 @@ fn handle_raw_probe(
             "ContextCompaction",
             "control_rod.compaction_regulation",
             "inferred",
-            format!("compaction acted as a regulation layer via `{}`", probe.code),
+            format!(
+                "compaction acted as a regulation layer via `{}`",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -1492,7 +1793,10 @@ fn handle_raw_probe(
             "InstructionChannel",
             "instruction.stratification",
             "inferred",
-            format!("Codex exposed layered instruction behavior via `{}`", probe.code),
+            format!(
+                "Codex exposed layered instruction behavior via `{}`",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -1510,6 +1814,35 @@ fn handle_raw_probe(
     if probe.code == "session_configured"
         && let Some(payload) = &probe.payload
     {
+        let requested_personality =
+            run_manifest_meta.and_then(|manifest| manifest.personality_mode.clone());
+        let effective_personality = payload
+            .get("personality")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned);
+        let model_native_preserved = payload
+            .get("modelNativeInstructionsPreserved")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let personality_mismatch = requested_personality != effective_personality;
+        if personality_mismatch {
+            probe_summary.personality_requested_effective_mismatch_count += 1;
+        }
+        if model_native_preserved {
+            probe_summary.personality_model_native_preserved_count += 1;
+        }
+        personality_rows.push(json!({
+            "seq": seq,
+            "classification": "observed",
+            "event": "session_configured_probe",
+            "requestedPersonality": requested_personality,
+            "effectivePersonality": effective_personality,
+            "modelNativeInstructionsPreserved": model_native_preserved,
+            "baseInstructionsSource": payload.get("baseInstructionsSource").cloned(),
+            "sessionSource": payload.get("sessionSource").cloned(),
+            "dynamicToolsCount": payload.get("dynamicToolsCount").cloned(),
+            "personalityMismatch": personality_mismatch,
+        }));
         let effective_model = payload
             .get("model")
             .and_then(Value::as_str)
@@ -1628,7 +1961,10 @@ fn handle_raw_probe(
             "PersistenceReconstruction",
             "persistence.resume_path",
             classification.as_str(),
-            format!("persistence or reconstruction event observed: {}", probe.code),
+            format!(
+                "persistence or reconstruction event observed: {}",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
         derived_probes.push(make_probe(
@@ -1639,7 +1975,10 @@ fn handle_raw_probe(
             "PersistenceReconstruction",
             "control_rod.persistence",
             "inferred",
-            format!("persistence layer acted as a regulation/continuity mechanism via `{}`", probe.code),
+            format!(
+                "persistence layer acted as a regulation/continuity mechanism via `{}`",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -1670,7 +2009,10 @@ fn handle_raw_probe(
             "HarnessFriction",
             "containment.heat_leak",
             classification.as_str(),
-            format!("Codex harness leaked effort into orchestration via `{}`", probe.code),
+            format!(
+                "Codex harness leaked effort into orchestration via `{}`",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -1684,7 +2026,10 @@ fn handle_raw_probe(
             "AppServerTranslation",
             "events.discontinuity",
             classification.as_str(),
-            format!("observer-visible event architecture discontinuity: `{}`", probe.code),
+            format!(
+                "observer-visible event architecture discontinuity: `{}`",
+                probe.code
+            ),
             vec!["codex-probe-events.jsonl".to_string()],
         ));
     }
@@ -1738,7 +2083,9 @@ fn handle_command_begin(
             vec!["command-events.jsonl".to_string()],
         ));
     }
-    if probe_summary.first_meaningful_edit_tokens.is_none() && is_meaningful_edit_command(&command_text) {
+    if probe_summary.first_meaningful_edit_tokens.is_none()
+        && is_meaningful_edit_command(&command_text)
+    {
         probe_summary.first_meaningful_edit_tokens = token_total;
         if probe_summary.first_controlled_change_tokens.is_none() {
             probe_summary.first_controlled_change_tokens = token_total;
@@ -1815,7 +2162,9 @@ fn handle_command_begin(
                 "TurnLifecycle",
                 "verification.retry_loop",
                 "inferred",
-                format!("verification command repeated without intervening write: `{command_text}`"),
+                format!(
+                    "verification command repeated without intervening write: `{command_text}`"
+                ),
                 vec!["command-events.jsonl".to_string()],
             ));
         }
@@ -1828,7 +2177,9 @@ fn handle_command_begin(
             "TurnLifecycle",
             "chain_reaction.cycle",
             "inferred",
-            format!("productive reaction cycle advanced through verification command `{command_text}`"),
+            format!(
+                "productive reaction cycle advanced through verification command `{command_text}`"
+            ),
             vec!["command-events.jsonl".to_string()],
         ));
     } else if is_meaningful_edit_command(&command_text) {
@@ -1882,7 +2233,9 @@ fn handle_command_end(
         "stderrBytes": ev.stderr.len(),
         "aggregatedOutputBytes": ev.aggregated_output.len(),
     }));
-    if let Some(patch_seq) = last_patch_seq && seq > patch_seq {
+    if let Some(patch_seq) = last_patch_seq
+        && seq > patch_seq
+    {
         probe_summary.post_submit_activity_count += 1;
         derived_probes.push(make_probe(
             run_id,
@@ -2280,7 +2633,8 @@ fn build_claim_evidence(
 }
 
 fn last_token_total(info: &Option<TokenUsageInfo>) -> Option<i64> {
-    info.as_ref().map(|info| info.total_token_usage.total_tokens)
+    info.as_ref()
+        .map(|info| info.total_token_usage.total_tokens)
 }
 
 fn update_turn_token_state(acc: &mut TurnAccumulator, info: &TokenUsageInfo) {
@@ -2348,9 +2702,17 @@ fn detect_skills_from_command(command: &str) -> Vec<String> {
 
 fn is_meaningful_edit_command(command: &str) -> bool {
     let command = command.to_ascii_lowercase();
-    ["sed -i", "perl -0pi", "python -c", "python3 -c", "apply_patch", "git apply", "cat >"]
-        .iter()
-        .any(|needle| command.contains(needle))
+    [
+        "sed -i",
+        "perl -0pi",
+        "python -c",
+        "python3 -c",
+        "apply_patch",
+        "git apply",
+        "cat >",
+    ]
+    .iter()
+    .any(|needle| command.contains(needle))
         || command.starts_with("ed ")
         || command.starts_with("perl ")
 }
@@ -2385,9 +2747,11 @@ fn is_git_inspection_command(command: &str) -> bool {
 
 fn is_read_only_command(command: &str) -> bool {
     let command = command.to_ascii_lowercase();
-    ["rg ", "grep ", "find ", "ls ", "cat ", "sed -n", "git grep", "git show", "git diff"]
-        .iter()
-        .any(|needle| command.starts_with(needle))
+    [
+        "rg ", "grep ", "find ", "ls ", "cat ", "sed -n", "git grep", "git show", "git diff",
+    ]
+    .iter()
+    .any(|needle| command.starts_with(needle))
 }
 
 fn is_search_command(command: &str) -> bool {
@@ -2395,189 +2759,6 @@ fn is_search_command(command: &str) -> bool {
     ["rg ", "grep ", "find ", "git grep", "ls ", "sed -n", "cat "]
         .iter()
         .any(|needle| command.starts_with(needle))
-}
-
-fn estimate_text_tokens(text: &str) -> i64 {
-    let chars = text.chars().count() as i64;
-    (chars / 4).max(1)
-}
-
-fn count_sentences(text: &str) -> usize {
-    text.matches(['.', '!', '?', '。', '！', '？'])
-        .count()
-        .max(usize::from(!text.trim().is_empty()))
-}
-
-fn count_paragraphs(text: &str) -> usize {
-    text.split("\n\n")
-        .map(str::trim)
-        .filter(|segment| !segment.is_empty())
-        .count()
-        .max(usize::from(!text.trim().is_empty()))
-}
-
-fn count_bullets(text: &str) -> usize {
-    text.lines()
-        .filter(|line| {
-            let trimmed = line.trim_start();
-            trimmed.starts_with("- ")
-                || trimmed.starts_with("* ")
-                || trimmed.starts_with("1. ")
-                || trimmed.starts_with("2. ")
-                || trimmed.starts_with("3. ")
-        })
-        .count()
-}
-
-fn contains_any(text: &str, needles: &[&str]) -> bool {
-    let lowered = text.to_ascii_lowercase();
-    needles
-        .iter()
-        .any(|needle| lowered.contains(&needle.to_ascii_lowercase()))
-}
-
-const FUNCTION_WORDS: &[&str] = &[
-    "the", "and", "for", "with", "that", "this", "then", "from", "into", "have", "will", "just",
-    "about", "after", "before", "using", "need", "next", "let", "lets", "our", "you", "your",
-    "are", "was", "were", "has", "had", "can", "could", "should", "would", "may", "might", "to",
-    "of", "in", "on", "at", "as", "if", "or", "we", "i", "it",
-];
-const HEDGE_WORDS: &[&str] = &[
-    "maybe", "might", "probably", "perhaps", "seems", "appears", "likely", "possibly", "unclear",
-];
-const CERTAINTY_WORDS: &[&str] = &[
-    "definitely", "clearly", "confirmed", "verified", "resolved", "fixed", "surely", "certainly",
-];
-const PLANNING_WORDS: &[&str] = &[
-    "plan", "next", "first", "then", "start", "check", "inspect", "trace", "review", "update",
-];
-const VERIFICATION_WORDS: &[&str] = &[
-    "verify", "verified", "validation", "test", "tests", "assert", "confirmed", "regression",
-];
-const TOOL_ACTION_WORDS: &[&str] = &[
-    "run", "inspect", "check", "edit", "patch", "search", "grep", "open", "read", "apply",
-];
-const SOCIAL_ALIGNMENT_PHRASES: &[&str] = &[
-    "let's", "we can", "i'll", "i will", "together", "we should", "i'm going to",
-];
-const REFLECTIVE_PHRASES: &[&str] = &[
-    "it looks like", "this suggests", "that means", "i think", "i suspect", "it seems",
-];
-const FORMALITY_MARKERS: &[&str] = &[
-    "therefore", "however", "meanwhile", "additionally", "specifically", "notably",
-];
-
-fn tokenize_message_for_nlp(text: &str) -> Vec<String> {
-    text.to_lowercase()
-        .split(|ch: char| !ch.is_alphanumeric())
-        .filter(|token| token.len() >= 2)
-        .filter(|token| !token.chars().all(|ch| ch.is_ascii_digit()))
-        .map(ToString::to_string)
-        .collect()
-}
-
-fn count_content_words(tokens: &[String]) -> usize {
-    tokens
-        .iter()
-        .filter(|token| !FUNCTION_WORDS.contains(&token.as_str()))
-        .count()
-}
-
-fn count_tokens_in_set(tokens: &[String], needles: &[&str]) -> usize {
-    tokens
-        .iter()
-        .filter(|token| needles.contains(&token.as_str()))
-        .count()
-}
-
-fn count_phrase_matches(text: &str, phrases: &[&str]) -> usize {
-    let lowered = text.to_ascii_lowercase();
-    phrases
-        .iter()
-        .map(|phrase| lowered.matches(&phrase.to_ascii_lowercase()).count())
-        .sum()
-}
-
-fn lexical_diversity_bps(tokens: &[String]) -> i64 {
-    if tokens.is_empty() {
-        return 0;
-    }
-    let unique = tokens.iter().collect::<std::collections::BTreeSet<_>>().len();
-    ((unique as i64) * 10_000) / (tokens.len() as i64)
-}
-
-fn ratio_bps(numerator: usize, denominator: usize) -> i64 {
-    if denominator == 0 {
-        0
-    } else {
-        (((numerator as i64) * 10_000) / (denominator as i64)).min(10_000)
-    }
-}
-
-fn make_ngrams_from_tokens(tokens: &[String], n: usize) -> Vec<String> {
-    if tokens.len() < n {
-        return Vec::new();
-    }
-    tokens
-        .windows(n)
-        .map(|window| window.join(" "))
-        .collect()
-}
-
-fn top_terms_for_message(tokens: &[String], limit: usize) -> Vec<String> {
-    let mut counts = BTreeMap::<String, usize>::new();
-    for token in tokens {
-        *counts.entry(token.clone()).or_default() += 1;
-    }
-    let mut entries = counts.into_iter().collect::<Vec<_>>();
-    entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    entries
-        .into_iter()
-        .take(limit)
-        .map(|(term, count)| format!("{term}:{count}"))
-        .collect()
-}
-
-fn classify_agent_message(message: &str, phase: &str) -> Vec<String> {
-    let lowered = message.to_ascii_lowercase();
-    let mut categories = Vec::new();
-    if phase == "commentary" {
-        categories.push("orientation".to_string());
-    }
-    if contains_any(&lowered, &["problem", "task", "issue", "need to", "要求", "问题", "任务"]) {
-        categories.push("task_restatement".to_string());
-    }
-    if contains_any(&lowered, &["plan", "next", "first", "then", "接下来", "先", "然后"]) {
-        categories.push("planning".to_string());
-    }
-    if contains_any(&lowered, &["found", "noticed", "see", "looks like", "发现", "看到", "看起来"]) {
-        categories.push("observation".to_string());
-    }
-    if contains_any(&lowered, &["because", "so that", "i'm going to", "decide", "因为", "所以", "决定"]) {
-        categories.push("decision_explanation".to_string());
-    }
-    if contains_any(&lowered, &["i'll run", "i'm going to run", "run ", "check ", "inspect ", "我去", "我会先", "先跑"]) {
-        categories.push("tool_bridge_before".to_string());
-    }
-    if contains_any(&lowered, &["output shows", "that means", "the result", "结果", "说明", "表明"]) {
-        categories.push("tool_bridge_after".to_string());
-    }
-    if contains_any(&lowered, &["verify", "test", "validated", "验证", "测试", "确认"]) {
-        categories.push("verification_framing".to_string());
-    }
-    if phase == "finalanswer" || contains_any(&lowered, &["fixed", "resolved", "done", "修复", "解决", "完成"]) {
-        categories.push("result_framing".to_string());
-    }
-    if contains_any(&lowered, &["we ", "let's", "happy to", "together", "我们", "一起", "我来"]) {
-        categories.push("social_tone".to_string());
-    }
-    if contains_any(&lowered, &["again", "as mentioned", "recap", "再说一遍", "总结一下", "重申"]) {
-        categories.push("redundant_recap".to_string());
-    }
-    if categories.is_empty() {
-        categories.push("observation".to_string());
-    }
-    categories
 }
 
 fn classify_tool_burst(message_count: usize, token_count: i64) -> &'static str {
@@ -2653,22 +2834,15 @@ fn event_type_name(msg: &EventMsg) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use codex_bench_core::nlp::{analyze_message, tokenize_research_terms};
 
     #[test]
-    fn tokenize_message_for_nlp_normalizes_and_filters_noise() {
+    fn tokenize_research_terms_normalizes_and_filters_noise() {
         let tokens =
-            tokenize_message_for_nlp("Plan 123: We'll verify, then PATCH the repo in 2026.");
-        assert_eq!(
-            tokens,
-            vec!["plan", "we", "ll", "verify", "then", "patch", "the", "repo", "in"]
-        );
-    }
-
-    #[test]
-    fn ratio_bps_is_zero_safe_and_clamped() {
-        assert_eq!(ratio_bps(0, 0), 0);
-        assert_eq!(ratio_bps(5, 2), 10_000);
-        assert_eq!(ratio_bps(1, 4), 2_500);
+            tokenize_research_terms("Plan 123: We'll verify, then PATCH the repo in 2026.");
+        assert!(tokens.contains(&"plan".to_string()));
+        assert!(tokens.contains(&"verifi".to_string()) || tokens.contains(&"verif".to_string()));
+        assert!(tokens.contains(&"patch".to_string()));
     }
 
     #[test]
@@ -2680,14 +2854,18 @@ mod tests {
 
     #[test]
     fn classify_agent_message_detects_relevant_discourse_categories() {
-        let categories = classify_agent_message(
+        let analysis = analyze_message(
             "I found the bug. Next I'll run tests and verify the fix together.",
             "commentary",
         );
-        assert!(categories.contains(&"orientation".to_string()));
-        assert!(categories.contains(&"observation".to_string()));
-        assert!(categories.contains(&"planning".to_string()));
-        assert!(categories.contains(&"verification_framing".to_string()));
-        assert!(categories.contains(&"social_tone".to_string()));
+        assert!(analysis.categories.contains(&"orientation".to_string()));
+        assert!(analysis.categories.contains(&"observation".to_string()));
+        assert!(analysis.categories.contains(&"planning".to_string()));
+        assert!(
+            analysis
+                .categories
+                .contains(&"verification_framing".to_string())
+        );
+        assert!(analysis.categories.contains(&"social_tone".to_string()));
     }
 }

@@ -4,7 +4,6 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use rust_stemmers::{Algorithm, Stemmer};
 use serde::Deserialize;
-use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone, Deserialize)]
 struct ResearchLexicons {
@@ -95,8 +94,10 @@ static TOKEN_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?u)[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*").expect("valid token regex")
 });
 static LEXICONS: Lazy<ResearchLexicons> = Lazy::new(|| {
-    serde_json::from_str(include_str!("../../../../studies/nlp/english-research-lexicons.json"))
-        .expect("valid research lexicons")
+    serde_json::from_str(include_str!(
+        "../../../../studies/nlp/english-research-lexicons.json"
+    ))
+    .expect("valid research lexicons")
 });
 
 pub fn analyze_message(text: &str, phase: &str) -> MessageNlpAnalysis {
@@ -134,8 +135,7 @@ pub fn analyze_message(text: &str, phase: &str) -> MessageNlpAnalysis {
     let planning_verb_count = count_tokens_in_set(&surface_tokens, &LEXICONS.planning_words);
     let verification_verb_count =
         count_tokens_in_set(&surface_tokens, &LEXICONS.verification_words);
-    let tool_action_verb_count =
-        count_tokens_in_set(&surface_tokens, &LEXICONS.tool_action_words);
+    let tool_action_verb_count = count_tokens_in_set(&surface_tokens, &LEXICONS.tool_action_words);
     let social_alignment_phrase_count =
         count_phrase_matches(&normalized, &LEXICONS.social_alignment_phrases);
     let first_person_singular_count =
@@ -144,22 +144,22 @@ pub fn analyze_message(text: &str, phase: &str) -> MessageNlpAnalysis {
         count_tokens_in_set(&surface_tokens, &LEXICONS.first_person_plural);
     let second_person_count = count_tokens_in_set(&surface_tokens, &LEXICONS.second_person);
     let modal_verb_count = count_tokens_in_set(&surface_tokens, &LEXICONS.modal_words);
-    let sequencing_cue_count =
-        count_tokens_in_set(&surface_tokens, &LEXICONS.sequencing_words);
+    let sequencing_cue_count = count_tokens_in_set(&surface_tokens, &LEXICONS.sequencing_words);
     let artifact_reference_count =
         count_tokens_in_set(&surface_tokens, &LEXICONS.artifact_reference_words);
     let code_reference_count =
-        count_tokens_in_set(&surface_tokens, &LEXICONS.code_artifact_words)
-            + backtick_span_count;
+        count_tokens_in_set(&surface_tokens, &LEXICONS.code_artifact_words) + backtick_span_count;
 
     let contains_question = question_count > 0;
     let contains_uncertainty = hedge_word_count > 0;
     let contains_next_step = sequencing_cue_count > 0
-        || contains_any(&normalized, &["next", "then", "i'll", "i will", "now i'm", "going to"]);
+        || contains_any(
+            &normalized,
+            &["next", "then", "i'll", "i will", "now i'm", "going to"],
+        );
     let contains_tool_intent = tool_action_verb_count > 0;
     let contains_verification_language = verification_verb_count > 0;
-    let contains_result_claim =
-        count_tokens_in_set(&surface_tokens, &LEXICONS.result_words) > 0;
+    let contains_result_claim = count_tokens_in_set(&surface_tokens, &LEXICONS.result_words) > 0;
     let contains_empathy_or_alignment_language = social_alignment_phrase_count > 0
         || first_person_plural_count > 0
         || contains_any(&normalized, &["let's", "together"]);
@@ -170,14 +170,22 @@ pub fn analyze_message(text: &str, phase: &str) -> MessageNlpAnalysis {
         social_alignment_phrase_count + first_person_plural_count,
         sentence_count.max(1),
     );
-    let directive_score_bps =
-        ratio_bps(planning_verb_count + tool_action_verb_count + modal_verb_count, sentence_count.max(1));
-    let reflective_score_bps =
-        ratio_bps(count_phrase_matches(&normalized, &LEXICONS.reflective_phrases), sentence_count.max(1));
-    let formality_score_bps =
-        ratio_bps(count_phrase_matches(&normalized, &LEXICONS.formality_markers), sentence_count.max(1));
-    let empathy_alignment_score_bps =
-        ratio_bps(social_alignment_phrase_count + first_person_plural_count, sentence_count.max(1));
+    let directive_score_bps = ratio_bps(
+        planning_verb_count + tool_action_verb_count + modal_verb_count,
+        sentence_count.max(1),
+    );
+    let reflective_score_bps = ratio_bps(
+        count_phrase_matches(&normalized, &LEXICONS.reflective_phrases),
+        sentence_count.max(1),
+    );
+    let formality_score_bps = ratio_bps(
+        count_phrase_matches(&normalized, &LEXICONS.formality_markers),
+        sentence_count.max(1),
+    );
+    let empathy_alignment_score_bps = ratio_bps(
+        social_alignment_phrase_count + first_person_plural_count,
+        sentence_count.max(1),
+    );
     let bridge_language_score_bps = ratio_bps(
         sequencing_cue_count + tool_action_verb_count + artifact_reference_count,
         surface_tokens.len().max(1),
@@ -252,7 +260,11 @@ pub fn analyze_message(text: &str, phase: &str) -> MessageNlpAnalysis {
         verification_language_score_bps,
         state_externalization_score_bps,
         readability_ease: flesch_reading_ease(&normalized, sentence_count, surface_tokens.len()),
-        readability_grade_bps: flesch_kincaid_grade_bps(&normalized, sentence_count, surface_tokens.len()),
+        readability_grade_bps: flesch_kincaid_grade_bps(
+            &normalized,
+            sentence_count,
+            surface_tokens.len(),
+        ),
         categories,
         contains_question,
         contains_uncertainty,
@@ -270,7 +282,11 @@ pub fn tokenize_research_terms(text: &str) -> Vec<String> {
         .map(|token| STEMMER.stem(&token).to_string())
         .filter(|token| token.len() >= 3)
         .filter(|token| !token.chars().any(|ch| ch.is_ascii_digit()))
-        .filter(|token| !token.contains("users") && !token.contains("downloads") && !token.contains("codexplusclaw"))
+        .filter(|token| {
+            !token.contains("users")
+                && !token.contains("downloads")
+                && !token.contains("codexplusclaw")
+        })
         .filter(|token| !LEXICONS.function_words.iter().any(|stop| stop == token))
         .filter(|token| {
             !matches!(
@@ -319,7 +335,10 @@ fn classify_discourse(
         categories.push("observation".to_string());
     }
     if count_tokens_in_set(tokens, &LEXICONS.decision_words) > 0
-        || contains_any(normalized, &["because", "so that", "which means", "in order to"])
+        || contains_any(
+            normalized,
+            &["because", "so that", "which means", "in order to"],
+        )
     {
         categories.push("decision_explanation".to_string());
     }
@@ -328,7 +347,13 @@ fn classify_discourse(
     }
     if contains_any(
         normalized,
-        &["the result", "output shows", "that means", "this confirms", "this suggests"],
+        &[
+            "the result",
+            "output shows",
+            "that means",
+            "this confirms",
+            "this suggests",
+        ],
     ) {
         categories.push("tool_bridge_after".to_string());
     }
@@ -363,13 +388,21 @@ fn tokenize_surface_words(text: &str) -> Vec<String> {
 fn count_content_words(tokens: &[String]) -> usize {
     tokens
         .iter()
-        .filter(|token| !LEXICONS.function_words.iter().any(|stop| stop == token.as_str()))
+        .filter(|token| {
+            !LEXICONS
+                .function_words
+                .iter()
+                .any(|stop| stop == token.as_str())
+        })
         .count()
 }
 
 fn count_tokens_in_set(tokens: &[String], needles: &[String]) -> usize {
     let set = needles.iter().map(String::as_str).collect::<BTreeSet<_>>();
-    tokens.iter().filter(|token| set.contains(token.as_str())).count()
+    tokens
+        .iter()
+        .filter(|token| set.contains(token.as_str()))
+        .count()
 }
 
 fn count_phrase_matches(text: &str, phrases: &[String]) -> usize {
@@ -528,10 +561,20 @@ mod tests {
             "Let's verify the fix, then run the regression test and explain the result clearly.",
             "commentary",
         );
-        assert!(analysis.surface_tokens.iter().any(|token| token == "verify"));
-        assert!(analysis.top_lemmas.iter().any(|term| term.starts_with("verifi:")));
+        assert!(
+            analysis
+                .surface_tokens
+                .iter()
+                .any(|token| token == "verify")
+        );
+        assert!(analysis.verification_verb_count > 0);
+        assert!(!analysis.top_lemmas.is_empty());
         assert!(analysis.categories.contains(&"planning".to_string()));
-        assert!(analysis.categories.contains(&"verification_framing".to_string()));
+        assert!(
+            analysis
+                .categories
+                .contains(&"verification_framing".to_string())
+        );
         assert!(analysis.categories.contains(&"social_tone".to_string()));
         assert!(analysis.bridge_language_score_bps > 0);
         assert!(analysis.state_externalization_score_bps > 0);

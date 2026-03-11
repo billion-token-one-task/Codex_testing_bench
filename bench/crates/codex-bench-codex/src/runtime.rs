@@ -14,8 +14,8 @@ use codex_bench_core::CodexRunRequest;
 use codex_core::config::{ConfigBuilder, ConfigOverrides};
 use codex_core::config_loader::{CloudRequirementsLoader, LoaderOverrides};
 use codex_feedback::CodexFeedback;
-use codex_protocol::config_types::SandboxMode as CoreSandboxMode;
 use codex_protocol::config_types::Personality;
+use codex_protocol::config_types::SandboxMode as CoreSandboxMode;
 use codex_protocol::protocol::{AskForApproval, Event, EventMsg, StudyMetadata, StudyProbeEvent};
 use serde_json::{Map, Value, json};
 use tokio::io::AsyncWriteExt;
@@ -84,7 +84,12 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
     .await?;
 
     let study_metadata = StudyMetadata {
-        campaign_id: request.run_id.split("-attempt-").next().unwrap_or(&request.run_id).to_string(),
+        campaign_id: request
+            .run_id
+            .split("-attempt-")
+            .next()
+            .unwrap_or(&request.run_id)
+            .to_string(),
         run_id: request.run_id.clone(),
         instance_id: request.instance_id.clone(),
         repo: request.repo.clone(),
@@ -100,7 +105,10 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
             params: ThreadStartParams {
                 model: Some(request.model.clone()),
                 model_provider: Some(request.provider.clone()),
-                personality: request.personality_mode.as_deref().and_then(parse_personality),
+                personality: request
+                    .personality_mode
+                    .as_deref()
+                    .and_then(parse_personality),
                 cwd: Some(worktree_dir.display().to_string()),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox: Some(SandboxMode::WorkspaceWrite),
@@ -123,7 +131,10 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
                 }],
                 cwd: Some(worktree_dir.clone()),
                 model: Some(request.model.clone()),
-                personality: request.personality_mode.as_deref().and_then(parse_personality),
+                personality: request
+                    .personality_mode
+                    .as_deref()
+                    .and_then(parse_personality),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox_policy: Some(SandboxPolicy::WorkspaceWrite {
                     writable_roots: Vec::new(),
@@ -169,8 +180,10 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
                             .await?;
                         probe_events.push(probe.clone());
                     }
-                    let done =
-                        matches!(decoded.msg, EventMsg::TurnComplete(_) | EventMsg::TurnAborted(_));
+                    let done = matches!(
+                        decoded.msg,
+                        EventMsg::TurnComplete(_) | EventMsg::TurnAborted(_)
+                    );
                     decoded_events.push(decoded);
                     if done {
                         break;

@@ -39,4 +39,3 @@ pub fn read_jsonl_values(path: &Path) -> Result<Vec<Value>> {
         .collect::<Result<Vec<_>, _>>()
         .map_err(Into::into)
 }
-

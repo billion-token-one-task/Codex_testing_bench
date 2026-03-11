@@ -44,6 +44,8 @@
 - `reports/tool-route-analysis.md`
 - `reports/personality-analysis.md`
 - `reports/personality-mechanism-analysis.md`
+- `reports/patch-mechanism-analysis.md`
+- `reports/skill-mechanism-analysis.md`
 - `reports/instruction-stratification-analysis.md`
 - `reports/cohort-pair-analysis.md`
 - `datasets/*.csv`
@@ -72,8 +74,11 @@
 - `command-events.jsonl`
 - `tool-events.jsonl`
 - `skill-events.jsonl`
+- `personality-events.jsonl`
+- `skill-mechanism.jsonl`
 - `verbosity-tool-coupling.jsonl`
 - `patch-events.jsonl`
+- `patch-chain.jsonl`
 - `anomalies.jsonl`
 - `patch.diff`
 - `run-summary.json`
@@ -103,6 +108,28 @@
 - `tool_route_summary.csv`
 - `tool_by_turn.csv`
 - `verbosity_tool_coupling.csv`
+- `personality_mechanism.csv`
+- `patch_chain.csv`
+- `skill_mechanism.csv`
+
+当前与“模型是否更愿意说、说了什么、这些话和工具怎么耦合”最直接相关的文件是：
+
+- `message-metrics.jsonl`
+  - 每条可见输出的长度、词汇、话语功能、语气分数
+- `message_style.csv`
+  - 适合直接做 cohort 对比的 message-level 风格数据集
+- `tool_inventory.csv`
+  - 具体工具级别的调用画像
+- `tool_by_turn.csv`
+  - turn 级语言-工具耦合基础表
+- `verbosity_tool_coupling.csv`
+  - 研究 `talk_then_act` / `silent_tool_burst` / `micro_narrated_tool_burst` 的主表
+- `personality_mechanism.csv`
+  - requested/effective personality、fallback、model-native 指令保留情况
+- `patch_chain.csv`
+  - patch begin/end、patch 审批、patch 失败与时序链路
+- `skill_mechanism.csv`
+  - skill catalog 与权限相关机制事件
 
 ## Artifact 角色分类
 
@@ -126,11 +153,21 @@
 - `command-events.jsonl`
 - `tool-events.jsonl`
 - `skill-events.jsonl`
+- `personality-events.jsonl`
+- `skill-mechanism.jsonl`
 - `patch-events.jsonl`
+- `patch-chain.jsonl`
 - `grade-events.jsonl`
 - `anomalies.jsonl`
 - `verbosity-tool-coupling.jsonl`
 - `probe-events.jsonl`
+
+注意：
+
+- `message-metrics.jsonl` 中长度、句子、段落、代码块、词频等大多属于 `observed` 或 `estimated`
+- discourse category、bridge language、state externalization、tool-grounded commentary 等属于 `inferred`
+- tool route 的粗粒度（shell / apply_patch / MCP / dynamic_tool）通常是 `observed`
+- 更细粒度的 mediation tax 仍应视为 `inferred`
 
 ### Derived summary
 

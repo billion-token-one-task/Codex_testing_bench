@@ -81,9 +81,9 @@
     "claim_id": "grounding.state_verbalization",
     "label": "evidence_consistent",
     "supporting_evidence": [
-      "actionable_commentary_ratio_bps=Some(9199)",
-      "tool_grounded_commentary_ratio_bps=Some(2208)",
-      "verification_grounded_commentary_ratio_bps=Some(8418)"
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "tool_grounded_commentary_ratio_bps=Some(5434)",
+      "verification_grounded_commentary_ratio_bps=Some(8846)"
     ],
     "conflicting_evidence": [],
     "relevant_runs": [
@@ -218,7 +218,7 @@
     "label": "evidence_consistent",
     "supporting_evidence": [
       "visible_output_total_tokens_est=1612",
-      "tool_grounded_commentary_ratio_bps=Some(2208)",
+      "tool_grounded_commentary_ratio_bps=Some(5434)",
       "tool_burst_count=60"
     ],
     "conflicting_evidence": [],
@@ -233,9 +233,9 @@
     "claim_id": "codex.state_verbalization",
     "label": "evidence_consistent",
     "supporting_evidence": [
-      "actionable_commentary_ratio_bps=Some(9199)",
-      "restatement_ratio_bps=Some(0)",
-      "redundant_commentary_ratio_bps=Some(341)"
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "restatement_ratio_bps=Some(8300)",
+      "redundant_commentary_ratio_bps=Some(0)"
     ],
     "conflicting_evidence": [],
     "relevant_runs": [

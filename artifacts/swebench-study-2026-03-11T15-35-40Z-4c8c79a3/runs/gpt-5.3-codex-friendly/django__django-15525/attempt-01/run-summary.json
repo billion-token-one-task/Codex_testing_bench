@@ -72,17 +72,19 @@
     "apply_patch": 4,
     "shell": 39
   },
+  "tool_route_counts": {},
   "skill_name_counts": {},
   "message_category_counts": {
-    "decision_explanation": 1,
+    "decision_explanation": 5,
     "observation": 3,
     "orientation": 13,
-    "planning": 9,
+    "planning": 12,
+    "redundant_recap": 1,
     "result_framing": 2,
-    "social_tone": 4,
-    "task_restatement": 1,
-    "tool_bridge_before": 6,
-    "verification_framing": 13
+    "social_tone": 10,
+    "task_restatement": 9,
+    "tool_bridge_before": 9,
+    "verification_framing": 14
   },
   "artifact_inventory": {
     "anomalies": true,
@@ -95,7 +97,9 @@
     "lifecycleEvents": true,
     "messageMetrics": true,
     "patch": true,
+    "patchChain": false,
     "patchEvents": true,
+    "personalityEvents": false,
     "probeEvents": true,
     "probeSummary": true,
     "prompt": true,
@@ -105,6 +109,7 @@
     "runEvidence": true,
     "runSummary": true,
     "skillEvents": true,
+    "skillMechanism": false,
     "tokenSnapshots": true,
     "toolEvents": true,
     "turnMetrics": true,

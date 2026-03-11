@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow, bail};
 use chrono::Utc;
@@ -17,6 +18,8 @@ use codex_bench_report::{render_campaign_report, render_run_evidence};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 use tokio::process::Command;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 pub const SCHEMA_VERSION: &str = "codex-bench.v1";
 pub const STUDY_MODE: &str = "codex_live_observation";
@@ -25,8 +28,7 @@ pub const SCHEDULER_DOC: &str =
     "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md";
 pub const DEEPWIKI_DOC: &str = "https://deepwiki.com/openai/codex";
 pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-codex-harness/";
-pub const MODEL_BEHAVIOR_HYPOTHESES: &str =
-    "studies/hypotheses/model-behavior-v1.json";
+pub const MODEL_BEHAVIOR_HYPOTHESES: &str = "studies/hypotheses/model-behavior-v1.json";
 
 pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
@@ -162,6 +164,14 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         seed: args.seed,
         sample_size: selected_records.len(),
         study_mode: STUDY_MODE.to_string(),
+        max_parallel_runs: args
+            .max_parallel_runs
+            .unwrap_or(preset.max_parallel_runs)
+            .max(1),
+        per_repo_prepare_parallelism: args
+            .per_repo_prepare_parallelism
+            .unwrap_or(preset.per_repo_prepare_parallelism)
+            .max(1),
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
@@ -177,7 +187,10 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     };
 
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    write_json_pretty(&campaign_dir.join("selected-dataset.json"), &selected_records)?;
+    write_json_pretty(
+        &campaign_dir.join("selected-dataset.json"),
+        &selected_records,
+    )?;
     write_json_pretty(
         &benchmark_research_profile_path,
         &swebench_benchmark_research_profile(),
@@ -281,10 +294,27 @@ pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Resu
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "running".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
-    for selected in &manifest.selected_instances {
-        run_instance(&manifest, selected, refresh_repo_cache).await?;
+    let max_parallel_runs = manifest.max_parallel_runs.max(1);
+    let run_limiter = Arc::new(Semaphore::new(max_parallel_runs));
+    let repo_prepare_limiters = build_repo_prepare_limiters(&manifest);
+    let manifest_arc = Arc::new(manifest.clone());
+    let mut join_set = JoinSet::new();
+    for selected in manifest.selected_instances.clone() {
+        let permit = run_limiter.clone().acquire_owned().await?;
+        let manifest = Arc::clone(&manifest_arc);
+        let repo_prepare_limiter = repo_prepare_limiters
+            .get(&selected.repo)
+            .cloned()
+            .unwrap_or_else(|| Arc::new(Semaphore::new(1)));
+        join_set.spawn(async move {
+            let _permit = permit;
+            run_instance(manifest, selected, refresh_repo_cache, repo_prepare_limiter).await
+        });
     }
-    write_predictions_jsonl(&manifest, campaign_dir).await?;
+    while let Some(joined) = join_set.join_next().await {
+        joined??;
+    }
+    write_predictions_jsonl(manifest_arc.as_ref(), campaign_dir).await?;
     manifest.campaign_status = "run_completed".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     let report_path = render_campaign_report(campaign_dir)?;
@@ -297,9 +327,19 @@ pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Resu
 
 pub async fn warm_repo_cache(campaign_dir: &Path, refresh_repo_cache: bool) -> Result<()> {
     let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
-    for selected in &manifest.selected_instances {
-        let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
-        ensure_repo_commit_cached(&manifest.repo_cache_root, &record, refresh_repo_cache).await?;
+    let limiter = Arc::new(Semaphore::new(manifest.max_parallel_runs.max(1)));
+    let unique_records = load_unique_repo_records(&manifest)?;
+    let mut join_set = JoinSet::new();
+    for record in unique_records {
+        let repo_cache_root = manifest.repo_cache_root.clone();
+        let permit = limiter.clone().acquire_owned().await?;
+        join_set.spawn(async move {
+            let _permit = permit;
+            ensure_repo_commit_cached(&repo_cache_root, &record, refresh_repo_cache).await
+        });
+    }
+    while let Some(joined) = join_set.join_next().await {
+        joined??;
     }
     Ok(())
 }
@@ -317,12 +357,24 @@ pub async fn bootstrap_local_assets(
     let mut warmed_repos = Vec::new();
     if let Some(campaign_dir) = campaign_dir {
         let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+        let limiter = Arc::new(Semaphore::new(manifest.max_parallel_runs.max(1)));
+        let unique_records = load_unique_repo_records(&manifest)?;
+        warmed_instances = unique_records.len();
+        let mut join_set = JoinSet::new();
+        for record in unique_records {
+            let repo_cache_root = manifest.repo_cache_root.clone();
+            let repo_name = record.repo.clone();
+            let permit = limiter.clone().acquire_owned().await?;
+            join_set.spawn(async move {
+                let _permit = permit;
+                ensure_repo_commit_cached(&repo_cache_root, &record, refresh_repo_cache)
+                    .await
+                    .map(|_| repo_name)
+            });
+        }
         let mut repos = BTreeSet::new();
-        for selected in &manifest.selected_instances {
-            let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
-            ensure_repo_commit_cached(&manifest.repo_cache_root, &record, refresh_repo_cache).await?;
-            warmed_instances += 1;
-            repos.insert(record.repo);
+        while let Some(joined) = join_set.join_next().await {
+            repos.insert(joined??);
         }
         warmed_repos.extend(repos);
     }
@@ -333,6 +385,37 @@ pub async fn bootstrap_local_assets(
         "warmedInstances": warmed_instances,
         "warmedRepos": warmed_repos,
     }))
+}
+
+fn build_repo_prepare_limiters(manifest: &CampaignManifest) -> BTreeMap<String, Arc<Semaphore>> {
+    let per_repo_parallelism = manifest.per_repo_prepare_parallelism.max(1);
+    manifest
+        .selected_instances
+        .iter()
+        .map(|selected| {
+            (
+                selected.repo.clone(),
+                Arc::new(Semaphore::new(per_repo_parallelism)),
+            )
+        })
+        .collect()
+}
+
+fn load_unique_repo_records(manifest: &CampaignManifest) -> Result<Vec<DatasetRecord>> {
+    let mut seen = BTreeSet::new();
+    let mut records = Vec::new();
+    for selected in &manifest.selected_instances {
+        let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
+        let key = (
+            record.repo.clone(),
+            record.base_commit.clone(),
+            record.environment_setup_commit.clone(),
+        );
+        if seen.insert(key) {
+            records.push(record);
+        }
+    }
+    Ok(records)
 }
 
 pub async fn hydrate_local_dataset_snapshot(repo_root: &Path) -> Result<PathBuf> {
@@ -400,8 +483,10 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
             }
             let cohort_official_dir = official_root.join(&cohort_id);
             fs::create_dir_all(&cohort_official_dir)?;
-            let command = command_template
-                .replace("{predictions}", &cohort_predictions_path.display().to_string());
+            let command = command_template.replace(
+                "{predictions}",
+                &cohort_predictions_path.display().to_string(),
+            );
             let output = Command::new("zsh")
                 .arg("-lc")
                 .arg(command)
@@ -506,7 +591,8 @@ fn ingest_official_grading(
             write_json_pretty(&summary_path, &summary)?;
         }
 
-        let per_instance_report = find_official_instance_report(campaign_dir, manifest, &selected.instance_id);
+        let per_instance_report =
+            find_official_instance_report(campaign_dir, manifest, &selected.instance_id);
         let grade_row = json!({
             "instanceId": selected.instance_id,
             "cohortId": selected.cohort_id,
@@ -572,9 +658,10 @@ fn value_string_set(value: &Value, key: &str) -> BTreeSet<String> {
 }
 
 async fn run_instance(
-    manifest: &CampaignManifest,
-    selected: &SelectedInstance,
+    manifest: Arc<CampaignManifest>,
+    selected: SelectedInstance,
     refresh_repo_cache: bool,
+    repo_prepare_limiter: Arc<Semaphore>,
 ) -> Result<()> {
     let run_dir = &selected.run_dir;
     let attempt_dir = run_dir.join("attempt-01");
@@ -582,15 +669,22 @@ async fn run_instance(
 
     let record: DatasetRecord = read_json(&run_dir.join("record.json"))?;
     let worktree_dir = run_dir.join("workspace");
-    prepare_repo_workspace(
-        &manifest.repo_cache_root,
-        &record,
-        &worktree_dir,
-        refresh_repo_cache,
-    )
-    .await?;
+    {
+        let _permit = repo_prepare_limiter.acquire().await?;
+        prepare_repo_workspace(
+            &manifest.repo_cache_root,
+            &record,
+            &worktree_dir,
+            refresh_repo_cache,
+        )
+        .await?;
+    }
 
-    let prompt = build_prompt(&record, selected.personality_mode.as_deref(), selected.prompt_style.as_deref());
+    let prompt = build_prompt(
+        &record,
+        selected.personality_mode.as_deref(),
+        selected.prompt_style.as_deref(),
+    );
     fs::write(attempt_dir.join("prompt.txt"), &prompt)?;
     write_json_pretty(
         &attempt_dir.join("environment-plan.json"),
@@ -924,7 +1018,10 @@ async fn load_dataset_records(
 }
 
 pub fn default_shared_repo_cache_root(repo_root: &Path) -> PathBuf {
-    repo_root.join(".local-cache").join("repos").join("swebench")
+    repo_root
+        .join(".local-cache")
+        .join("repos")
+        .join("swebench")
 }
 
 pub fn default_local_dataset_snapshot_path(repo_root: &Path) -> PathBuf {
@@ -955,10 +1052,16 @@ fn normalize_record(value: Value) -> Result<DatasetRecord> {
     let object = raw
         .as_object_mut()
         .ok_or_else(|| anyhow!("dataset row was not an object"))?;
-    let fail_to_pass =
-        normalize_test_list(object.remove("FAIL_TO_PASS").or_else(|| object.remove("fail_to_pass")));
-    let pass_to_pass =
-        normalize_test_list(object.remove("PASS_TO_PASS").or_else(|| object.remove("pass_to_pass")));
+    let fail_to_pass = normalize_test_list(
+        object
+            .remove("FAIL_TO_PASS")
+            .or_else(|| object.remove("fail_to_pass")),
+    );
+    let pass_to_pass = normalize_test_list(
+        object
+            .remove("PASS_TO_PASS")
+            .or_else(|| object.remove("pass_to_pass")),
+    );
     Ok(DatasetRecord {
         instance_id: string_field(object, "instance_id")?,
         repo: string_field(object, "repo")?,
@@ -1174,9 +1277,15 @@ async fn write_predictions_jsonl(manifest: &CampaignManifest, campaign_dir: &Pat
             .or_default()
             .push(row);
     }
-    fs::write(campaign_dir.join("predictions.jsonl"), combined_lines.join("\n"))?;
+    fs::write(
+        campaign_dir.join("predictions.jsonl"),
+        combined_lines.join("\n"),
+    )?;
     for (cohort_id, lines) in per_cohort_lines {
-        fs::write(predictions_dir.join(format!("{cohort_id}.jsonl")), lines.join("\n"))?;
+        fs::write(
+            predictions_dir.join(format!("{cohort_id}.jsonl")),
+            lines.join("\n"),
+        )?;
     }
     Ok(())
 }

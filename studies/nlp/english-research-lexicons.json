@@ -1,0 +1,65 @@
+{
+  "function_words": [
+    "the","and","for","with","that","this","then","from","into","have","will","just","about","after","before","using","need","next","let","lets","our","you","your","are","was","were","has","had","can","could","should","would","may","might","to","of","in","on","at","as","if","or","we","i","it","a","an","be","is","do","did","done","by","than","while","when","now"
+  ],
+  "hedge_words": [
+    "maybe","might","probably","perhaps","seems","appears","likely","possibly","unclear","roughly","tentative","guess","suspect"
+  ],
+  "certainty_words": [
+    "definitely","clearly","confirmed","verified","resolved","fixed","surely","certainly","exactly","precisely","confirmed","proven"
+  ],
+  "planning_words": [
+    "plan","next","first","then","start","check","inspect","trace","review","update","walk","map","narrow","reproduce","compare","retry"
+  ],
+  "verification_words": [
+    "verify","verified","validation","test","tests","assert","confirmed","regression","prove","proves","passing","fails","failure"
+  ],
+  "tool_action_words": [
+    "run","inspect","check","edit","patch","search","grep","open","read","apply","execute","diff","trace","list","query"
+  ],
+  "modal_words": [
+    "can","could","should","would","may","might","must","need","needs","needed","going"
+  ],
+  "sequencing_words": [
+    "first","then","next","after","before","finally","meanwhile","initially","now","once","later"
+  ],
+  "first_person_singular": [
+    "i","i'm","i’ve","i'd","i’ll","me","my"
+  ],
+  "first_person_plural": [
+    "we","we're","we’ve","we'll","our","us","let's"
+  ],
+  "second_person": [
+    "you","your","yours"
+  ],
+  "artifact_reference_words": [
+    "file","files","test","tests","patch","diff","repo","repository","command","commands","fixture","fixtures","serializer","serializers","model","models","migration","migrations"
+  ],
+  "code_artifact_words": [
+    "function","class","method","module","path","paths","command","call","call_id","turn","turn_id","patch","diff","fixture","serializer","loaddata","natural_key"
+  ],
+  "social_alignment_phrases": [
+    "let's","we can","i'll","i will","together","we should","i'm going to","happy to","keep the fix","keep this minimal"
+  ],
+  "reflective_phrases": [
+    "it looks like","this suggests","that means","i think","i suspect","it seems","my read is","the shape here"
+  ],
+  "formality_markers": [
+    "therefore","however","meanwhile","additionally","specifically","notably","furthermore","consequently"
+  ],
+  "task_words": [
+    "problem","task","issue","bug","failure","fix","regression","requirement","request"
+  ],
+  "observation_words": [
+    "found","noticed","see","observed","reveals","shows","indicates","confirms","matches","appears"
+  ],
+  "decision_words": [
+    "because","therefore","so","hence","decide","decision","choose","prefer","instead","rather"
+  ],
+  "result_words": [
+    "fixed","resolved","done","completed","working","passes","passing","green","success"
+  ],
+  "recap_words": [
+    "again","recap","summary","summarize","as mentioned","to recap","restate","repeating"
+  ]
+}

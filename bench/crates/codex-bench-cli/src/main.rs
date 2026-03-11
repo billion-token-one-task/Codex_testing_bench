@@ -6,7 +6,10 @@ use std::fs;
 use tokio::process::Command as TokioCommand;
 
 use codex_bench_codex::write_architecture_map;
-use codex_bench_core::{CampaignManifest, PrepareCampaignArgs, default_swebench_preset_path, load_study_preset, read_json};
+use codex_bench_core::{
+    CampaignManifest, PrepareCampaignArgs, default_swebench_preset_path, load_study_preset,
+    read_json,
+};
 use codex_bench_newtonbench::{
     grade_campaign as grade_newtonbench_campaign, prepare_campaign as prepare_newtonbench_campaign,
     run_campaign as run_newtonbench_campaign,
@@ -17,8 +20,7 @@ use codex_bench_nl2repo::{
 };
 use codex_bench_report::{render_campaign_report, render_single_run_replay};
 use codex_bench_swebench::{
-    bootstrap_local_assets as bootstrap_local_swebench_assets,
-    default_local_dataset_snapshot_path,
+    bootstrap_local_assets as bootstrap_local_swebench_assets, default_local_dataset_snapshot_path,
     grade_campaign as grade_swebench_campaign, prepare_campaign as prepare_swebench_campaign,
     run_campaign as run_swebench_campaign, warm_repo_cache as warm_swebench_cache,
 };
@@ -58,6 +60,10 @@ enum Command {
         preset_path: Option<PathBuf>,
         #[arg(long)]
         stage: Option<String>,
+        #[arg(long)]
+        max_parallel_runs: Option<usize>,
+        #[arg(long)]
+        per_repo_prepare_parallelism: Option<usize>,
     },
     Run {
         campaign_dir: PathBuf,
@@ -114,6 +120,8 @@ async fn main() -> Result<()> {
             repo_cache_root,
             preset_path,
             stage,
+            max_parallel_runs,
+            per_repo_prepare_parallelism,
         } => {
             let args = PrepareCampaignArgs {
                 campaign_root,
@@ -128,6 +136,8 @@ async fn main() -> Result<()> {
                 repo_cache_root,
                 preset_path,
                 stage,
+                max_parallel_runs,
+                per_repo_prepare_parallelism,
             };
             let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
             let resolved_preset_path = args
@@ -147,7 +157,8 @@ async fn main() -> Result<()> {
             campaign_dir,
             refresh_repo_cache,
         } => {
-            let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+            let manifest: CampaignManifest =
+                read_json(&campaign_dir.join("campaign-manifest.json"))?;
             match manifest.benchmark_adapter.as_str() {
                 "swebench" | "repo-patch-jsonl" => {
                     run_swebench_campaign(&campaign_dir, refresh_repo_cache).await?
@@ -193,9 +204,12 @@ async fn main() -> Result<()> {
             campaign_dir,
             command,
         } => {
-            let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+            let manifest: CampaignManifest =
+                read_json(&campaign_dir.join("campaign-manifest.json"))?;
             match manifest.benchmark_adapter.as_str() {
-                "swebench" | "repo-patch-jsonl" => grade_swebench_campaign(&campaign_dir, command).await?,
+                "swebench" | "repo-patch-jsonl" => {
+                    grade_swebench_campaign(&campaign_dir, command).await?
+                }
                 "nl2repo" => grade_nl2repo_campaign(&campaign_dir).await?,
                 "newtonbench" => grade_newtonbench_campaign(&campaign_dir).await?,
                 other => anyhow::bail!("unsupported benchmark adapter `{other}`"),
@@ -254,7 +268,11 @@ async fn main() -> Result<()> {
 
 fn built_binary_path(repo_root: &std::path::Path, release: bool) -> PathBuf {
     let profile = if release { "release" } else { "debug" };
-    repo_root.join("bench").join("target").join(profile).join("codex-bench-cli")
+    repo_root
+        .join("bench")
+        .join("target")
+        .join(profile)
+        .join("codex-bench-cli")
 }
 
 async fn build_local_bench_binary(repo_root: &std::path::Path, release: bool) -> Result<()> {

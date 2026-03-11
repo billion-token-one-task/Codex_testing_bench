@@ -44,6 +44,7 @@
 - 说的主要是什么
 - 哪些话语功能在某个 cohort 中上升
 - 哪些词、bigram、trigram 具有区分度
+- 哪些输出更像 state externalization、bridge language 或 verification framing
 
 ### 工具与语言耦合
 
@@ -61,6 +62,7 @@
 - 哪个 cohort 更像 `talk_then_act`
 - 哪个 cohort 更像 `silent_tool_burst`
 - 具体调用了哪些 Codex 工具、多少次、在哪些上下文中出现
+- 工具前后的 commentary 是在解释、规划、验证，还是只做社交包装
 
 ### Harness 机制
 
@@ -69,6 +71,8 @@
 - `codex-probe-events.jsonl`
 - `probe-events.jsonl`
 - `reports/personality-mechanism-analysis.md`
+- `reports/patch-mechanism-analysis.md`
+- `reports/skill-mechanism-analysis.md`
 - `reports/instruction-stratification-analysis.md`
 
 它们回答：
@@ -76,6 +80,7 @@
 - personality 是否通过 model-native instruction 生效
 - instruction layering 是否与 verbosity 上升相关
 - Codex 的 config freeze / compaction / persistence 是否调节了语言外显化
+- patch / approval / exec permission / skill catalog 等机制事件如何与 personality 和工具编排耦合
 
 ## 关键输出
 
@@ -92,6 +97,8 @@ campaign 级：
 - `reports/tool-route-analysis.md`
 - `reports/personality-analysis.md`
 - `reports/personality-mechanism-analysis.md`
+- `reports/patch-mechanism-analysis.md`
+- `reports/skill-mechanism-analysis.md`
 - `reports/instruction-stratification-analysis.md`
 - `reports/cohort-pair-analysis.md`
 
@@ -107,6 +114,9 @@ campaign 级：
 - `datasets/tool_by_turn.csv`
 - `datasets/verbosity_tool_coupling.csv`
 - `datasets/model_pair_deltas.csv`
+- `datasets/personality_mechanism.csv`
+- `datasets/patch_chain.csv`
+- `datasets/skill_mechanism.csv`
 
 ## 方法边界
 
@@ -123,3 +133,13 @@ campaign 级：
 - `H3`: `friendly` 不只是 cosmetic，而会改变可观察状态外显化方式
 - `H4`: `pragmatic` 会压低表层 verbosity，但不一定降低工具密度
 - `H5`: 一部分差异来自 Codex harness 的 instruction layering、tool mediation 与 regulation 机制，而不只是 base model
+
+## 当前分析策略更新
+
+当前 bench 的语言分析已经从“长度 + 少量 category”升级为更贴近研究目标的版本：
+
+- 不只看“多说”，还看“说了什么”
+- 不只看 tone，还看是否把中间状态外显出来
+- 不只看 tool count，还看具体工具、具体 route、工具前后的桥接语言
+- 不只看 personality 名字，还看 requested/effective/fallback 与 model-native instruction 保留情况
+- 所有字段都尽量对齐 [Codex 可观测面契约](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-observability-contract.md)，避免把 `inferred` 写成 `observed`

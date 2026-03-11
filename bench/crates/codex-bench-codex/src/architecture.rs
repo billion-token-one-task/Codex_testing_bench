@@ -226,4 +226,3 @@ pub fn write_architecture_map(campaign_dir: &Path) -> Result<PathBuf> {
     write_json_pretty(&path, &architecture_map())?;
     Ok(path)
 }
-

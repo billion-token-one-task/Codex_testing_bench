@@ -98,8 +98,8 @@ Visible output totals: chars=22830 tokens_est=5676
 Cohort counts: gpt-5.3-codex-friendly=1, gpt-5.3-codex-pragmatic=1, gpt-5.4-friendly=1, gpt-5.4-pragmatic=1
 Tool kind totals: apply_patch=10, mcp=4, shell=202
 Skill name totals: brainstorming=3, systematic-debugging=3, using-superpowers=3, verification-before-completion=2, web-search=1, writing-plans=3
-Message category totals: decision_explanation=8, observation=8, orientation=62, planning=29, redundant_recap=2, result_framing=5, social_tone=11, task_restatement=1, tool_bridge_before=20, verification_framing=54
-Artifact coverage gaps: gradeEvents=4
+Message category totals: decision_explanation=32, observation=9, orientation=62, planning=52, redundant_recap=1, result_framing=6, social_tone=25, task_restatement=46, tool_bridge_before=27, verification_framing=59
+Artifact coverage gaps: gradeEvents=4, patchChain=4, personalityEvents=4, skillMechanism=4
 
 Official Grading Overview
 =========================
@@ -267,32 +267,32 @@ codex.personality_policy_shape
   text: Codex personality modes can shape observable agent policy, not only surface tone.
   operationalization: Compare visible-output density, tool-bridge language, and verbosity-tool coupling between friendly and pragmatic cohorts under paired tasks.
   run: django__django-15525 -> evidence_consistent
-    support: visible_output_total_tokens_est=727; tool_grounded_commentary_ratio_bps=Some(6712); tool_burst_count=29
+    support: visible_output_total_tokens_est=727; tool_grounded_commentary_ratio_bps=Some(6189); tool_burst_count=29
     caveats: Strong support requires paired cohort comparisons across the same tasks.
   run: django__django-15525 -> evidence_consistent
-    support: visible_output_total_tokens_est=1027; tool_grounded_commentary_ratio_bps=Some(5715); tool_burst_count=43
+    support: visible_output_total_tokens_est=1027; tool_grounded_commentary_ratio_bps=Some(7409); tool_burst_count=43
     caveats: Strong support requires paired cohort comparisons across the same tasks.
   run: django__django-15525 -> evidence_consistent
-    support: visible_output_total_tokens_est=2310; tool_grounded_commentary_ratio_bps=Some(965); tool_burst_count=84
+    support: visible_output_total_tokens_est=2310; tool_grounded_commentary_ratio_bps=Some(1649); tool_burst_count=84
     caveats: Strong support requires paired cohort comparisons across the same tasks.
   run: django__django-15525 -> evidence_consistent
-    support: visible_output_total_tokens_est=1612; tool_grounded_commentary_ratio_bps=Some(2208); tool_burst_count=60
+    support: visible_output_total_tokens_est=1612; tool_grounded_commentary_ratio_bps=Some(5434); tool_burst_count=60
     caveats: Strong support requires paired cohort comparisons across the same tasks.
 codex.state_verbalization
   source: Codex behavior study
   text: Some Codex/model combinations externalize more actionable state into visible assistant language than others.
   operationalization: Compare message-level planning, decision, tool-bridge, and verification framing categories across models and personality modes.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(0)
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(8762); redundant_commentary_ratio_bps=Some(0)
     caveats: A single run cannot by itself establish model-to-model differences.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(3252); redundant_commentary_ratio_bps=Some(0)
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(7740); redundant_commentary_ratio_bps=Some(399)
     caveats: A single run cannot by itself establish model-to-model differences.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(9874); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(324)
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(8216); redundant_commentary_ratio_bps=Some(0)
     caveats: A single run cannot by itself establish model-to-model differences.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(9199); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(341)
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(8300); redundant_commentary_ratio_bps=Some(0)
     caveats: A single run cannot by itself establish model-to-model differences.
 codex.tool_mediation
   source: Codex core tool orchestration
@@ -398,16 +398,16 @@ grounding.state_verbalization
   text: Advanced task schedulers benefit when actionable state is externalized rather than remaining hidden inside a single opaque continuation.
   operationalization: Track visible assistant bridge language, verification framing, instruction stratification, and tool-grounded commentary ratios.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(6712); verification_grounded_commentary_ratio_bps=Some(9284)
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(6189); verification_grounded_commentary_ratio_bps=Some(9284)
     caveats: Visible commentary is only a proxy for deeper state externalization.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(5715); verification_grounded_commentary_ratio_bps=Some(9600)
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(7409); verification_grounded_commentary_ratio_bps=Some(10000)
     caveats: Visible commentary is only a proxy for deeper state externalization.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(9874); tool_grounded_commentary_ratio_bps=Some(965); verification_grounded_commentary_ratio_bps=Some(8649)
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(1649); verification_grounded_commentary_ratio_bps=Some(9458)
     caveats: Visible commentary is only a proxy for deeper state externalization.
   run: django__django-15525 -> evidence_consistent
-    support: actionable_commentary_ratio_bps=Some(9199); tool_grounded_commentary_ratio_bps=Some(2208); verification_grounded_commentary_ratio_bps=Some(8418)
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(5434); verification_grounded_commentary_ratio_bps=Some(8846)
     caveats: Visible commentary is only a proxy for deeper state externalization.
 grounding.verification_pressure
   source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
@@ -439,7 +439,7 @@ macOS-only bias: the study currently assumes a local Mac-hosted Codex runtime.
 SWE-bench-only bias: live tasks are real but not representative of every future workload.
 Hidden reasoning observability limits: internal chain-of-thought remains unavailable and some evidence is inferred.
 Harness noise: listener, DB, and translation events can affect observability in ways that are not identical to reasoning failures.
-Current telemetry gaps: gradeEvents=4
+Current telemetry gaps: gradeEvents=4, patchChain=4, personalityEvents=4, skillMechanism=4
 
 Run Index
 =========
@@ -466,7 +466,9 @@ django__django-15525:
   lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/lifecycle-events.jsonl
   messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/message-metrics.jsonl
   patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/patch.diff
+  patchChain: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/patch-chain.jsonl
   patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/patch-events.jsonl
+  personalityEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/personality-events.jsonl
   probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/probe-events.jsonl
   probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/probe-summary.json
   prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/prompt.txt
@@ -476,6 +478,7 @@ django__django-15525:
   runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/run-evidence.txt
   runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/run-summary.json
   skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/skill-events.jsonl
+  skillMechanism: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/skill-mechanism.jsonl
   tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/token-snapshots.jsonl
   toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/tool-events.jsonl
   turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/turn-metrics.jsonl
@@ -492,7 +495,9 @@ django__django-15525:
   lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/lifecycle-events.jsonl
   messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/message-metrics.jsonl
   patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/patch.diff
+  patchChain: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/patch-chain.jsonl
   patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/patch-events.jsonl
+  personalityEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/personality-events.jsonl
   probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/probe-events.jsonl
   probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/probe-summary.json
   prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/prompt.txt
@@ -502,6 +507,7 @@ django__django-15525:
   runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/run-evidence.txt
   runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/run-summary.json
   skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/skill-events.jsonl
+  skillMechanism: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/skill-mechanism.jsonl
   tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/token-snapshots.jsonl
   toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/tool-events.jsonl
   turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/turn-metrics.jsonl
@@ -518,7 +524,9 @@ django__django-15525:
   lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/lifecycle-events.jsonl
   messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/message-metrics.jsonl
   patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/patch.diff
+  patchChain: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/patch-chain.jsonl
   patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/patch-events.jsonl
+  personalityEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/personality-events.jsonl
   probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/probe-events.jsonl
   probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/probe-summary.json
   prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/prompt.txt
@@ -528,6 +536,7 @@ django__django-15525:
   runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/run-evidence.txt
   runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/run-summary.json
   skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/skill-events.jsonl
+  skillMechanism: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/skill-mechanism.jsonl
   tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/token-snapshots.jsonl
   toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/tool-events.jsonl
   turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/turn-metrics.jsonl
@@ -544,7 +553,9 @@ django__django-15525:
   lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/lifecycle-events.jsonl
   messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/message-metrics.jsonl
   patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/patch.diff
+  patchChain: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/patch-chain.jsonl
   patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/patch-events.jsonl
+  personalityEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/personality-events.jsonl
   probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/probe-events.jsonl
   probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/probe-summary.json
   prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/prompt.txt
@@ -554,6 +565,7 @@ django__django-15525:
   runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/run-evidence.txt
   runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/run-summary.json
   skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/skill-events.jsonl
+  skillMechanism: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/skill-mechanism.jsonl
   tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/token-snapshots.jsonl
   toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/tool-events.jsonl
   turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/turn-metrics.jsonl

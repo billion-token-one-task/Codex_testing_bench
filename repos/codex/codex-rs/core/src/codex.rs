@@ -2288,7 +2288,9 @@ impl Session {
                 .await,
         );
         let visible_skill_count = skills_outcome.skills.len();
-        let implicit_skill_count = skills_outcome.allowed_skills_for_implicit_invocation().len();
+        let implicit_skill_count = skills_outcome
+            .allowed_skills_for_implicit_invocation()
+            .len();
         let skill_error_count = skills_outcome.errors.len();
         let mut turn_context: TurnContext = Self::make_turn_context(
             Some(Arc::clone(&self.services.auth_manager)),

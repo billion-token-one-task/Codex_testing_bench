@@ -82,8 +82,8 @@
     "label": "evidence_consistent",
     "supporting_evidence": [
       "actionable_commentary_ratio_bps=Some(10000)",
-      "tool_grounded_commentary_ratio_bps=Some(5715)",
-      "verification_grounded_commentary_ratio_bps=Some(9600)"
+      "tool_grounded_commentary_ratio_bps=Some(7409)",
+      "verification_grounded_commentary_ratio_bps=Some(10000)"
     ],
     "conflicting_evidence": [],
     "relevant_runs": [
@@ -218,7 +218,7 @@
     "label": "evidence_consistent",
     "supporting_evidence": [
       "visible_output_total_tokens_est=1027",
-      "tool_grounded_commentary_ratio_bps=Some(5715)",
+      "tool_grounded_commentary_ratio_bps=Some(7409)",
       "tool_burst_count=43"
     ],
     "conflicting_evidence": [],
@@ -234,8 +234,8 @@
     "label": "evidence_consistent",
     "supporting_evidence": [
       "actionable_commentary_ratio_bps=Some(10000)",
-      "restatement_ratio_bps=Some(3252)",
-      "redundant_commentary_ratio_bps=Some(0)"
+      "restatement_ratio_bps=Some(7740)",
+      "redundant_commentary_ratio_bps=Some(399)"
     ],
     "conflicting_evidence": [],
     "relevant_runs": [
