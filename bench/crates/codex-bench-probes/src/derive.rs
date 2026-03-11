@@ -254,7 +254,7 @@ pub fn derive_run_outputs(
             .and_then(Value::as_str)
             .unwrap_or("unknown")
             .to_string();
-        *diagnostic_type_counts.entry(kind).or_default() += 1;
+        *diagnostic_type_counts.entry(kind.clone()).or_default() += 1;
         if kind == "lagged" {
             derived_probes.push(make_probe(
                 run_id,
