@@ -1,0 +1,558 @@
+Study Header
+============
+Campaign: swebench-study-2026-03-11T15-35-40Z-4c8c79a3
+Experiment: Codex 模型人格化行为对比研究 v1 (exp-20260311153540-0dadbe7d)
+Created: 2026-03-11T15:35:40.782241+00:00
+Benchmark: SWE-bench Verified (swebench)
+Preset: swebench-v1 [architecture-validation]
+Default model/provider: gpt-5.4 via openai
+Comparison axes: model, personality
+Cohorts:
+- gpt-5.3-codex-pragmatic | gpt-5.3-codex × pragmatic | model=gpt-5.3-codex provider=openai personality=pragmatic prompt_style=terse_engineer
+- gpt-5.3-codex-friendly | gpt-5.3-codex × friendly | model=gpt-5.3-codex provider=openai personality=friendly prompt_style=warm_collaborative
+- gpt-5.4-pragmatic | gpt-5.4 × pragmatic | model=gpt-5.4 provider=openai personality=pragmatic prompt_style=terse_engineer
+- gpt-5.4-friendly | gpt-5.4 × friendly | model=gpt-5.4 provider=openai personality=friendly prompt_style=warm_collaborative
+Study mode: codex_live_observation
+Probe profile: codex-deep-probe.v1
+Report profile: evidence-dossier.v1
+Artifact root: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3
+Grounding docs:
+- /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+- /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+Reference docs:
+- https://deepwiki.com/openai/codex
+- https://openai.com/index/unlocking-the-codex-harness/
+
+Codex Architecture Under Observation
+===================================
+session_config_freeze: Resolve requested model/runtime settings into the effective session configuration that all later turns inherit.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/thread_manager.rs, repos/codex/codex-rs/app-server/src/codex_message_processor.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: session_configured, study_probe(config_freeze.*)
+  hidden_state: config precedence winners, base instruction provenance, already-running-thread override suppression
+  probes: config_freeze, session_freeze_drift, effective_runtime_divergence
+instruction_prompt_assembly: Assemble the model-visible instruction stack for each turn, including base, developer, reconstructed, and update-derived context.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/context_manager/updates.rs, repos/codex/codex-rs/core/src/config/instructions.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/introducing-upgrades-to-codex/
+  visible_events: user_message, study_probe(instruction_channel.*)
+  hidden_state: instruction layering decisions, implicit context injection
+  probes: instruction_channel, instruction_stratification, ambient_state_leakage
+turn_lifecycle_dispatch: Create turn contexts, dispatch work into tasks, and handle interruptions, failovers, and completions.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/tasks/regular.rs, repos/codex/codex-rs/core/src/tasks/review.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/introducing-codex/
+  visible_events: turn_started, turn_complete, turn_aborted, study_probe(turn_lifecycle.*)
+  hidden_state: pending input drain behavior, task dispatch category
+  probes: turn_lifecycle, activation_threshold, chain_reaction_cycles
+context_compaction: Compact and rebuild session history under context pressure, preserving some state while potentially losing detail.
+  files: repos/codex/codex-rs/core/src/compact.rs, repos/codex/codex-rs/core/src/codex.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: context_compacted, study_probe(context_compaction.*)
+  hidden_state: history loss vs preserved actionable state, replacement-history shape
+  probes: compaction_continuity, context_pressure, rediscovery_after_compaction
+tool_mediation: Route shell, patch, MCP, and other tools through Codex mediation instead of exposing a single raw shell channel.
+  files: repos/codex/codex-rs/core/src/tools/events.rs, repos/codex/codex-rs/core/src/mcp_tool_call.rs, repos/codex/codex-rs/core/src/tools/mod.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: exec_command_begin, exec_command_end, mcp_tool_call_begin, mcp_tool_call_end, patch_apply_begin, patch_apply_end
+  hidden_state: tool routing decisions, approval path, structured output mediation
+  probes: tool_mediation, tool_mediation_tax
+persistence_resume: Persist rollout state, reconstruct prior sessions, and maintain continuity across resume and listener attachment.
+  files: repos/codex/codex-rs/core/src/rollout, repos/codex/codex-rs/core/src/state_db.rs, repos/codex/codex-rs/app-server/src/codex_message_processor.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: session_configured, study_probe(persistence_reconstruction.*)
+  hidden_state: state DB contention, baseline invalidation, listener generation behavior
+  probes: persistence_continuity, resume_staleness, listener_attach_friction
+app_server_translation: Translate between typed client requests, app-server notifications, and the legacy core event bridge.
+  files: repos/codex/codex-rs/app-server/src/codex_message_processor.rs, repos/codex/codex-rs/app-server/src/bespoke_event_handling.rs, repos/codex/codex-rs/app-server-client/src/lib.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: codex/event/*, turn/* notifications
+  hidden_state: event fanout drop behavior, typed-vs-legacy visibility gaps
+  probes: event_architecture_discontinuity, listener_backpressure
+reliability_surfaces: Capture friction introduced by Codex’s own harness machinery rather than the underlying coding task.
+  files: repos/codex/codex-rs/core/src/state_db.rs, repos/codex/codex-rs/app-server/src/in_process.rs, repos/codex/codex-rs/core/src/error.rs
+  reference_docs: https://deepwiki.com/openai/codex
+  visible_events: warning, error, stream_error, study_probe(harness_friction.*)
+  hidden_state: DB lock contention, listener attach failures, auth/MCP/runtime mismatch leakage
+  probes: harness_friction, containment_integrity
+
+Experimental Setup
+==================
+Sample size: 1
+Seed: 2x2-one-question
+Preset path: /Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets/swebench-v1.json
+Required task classes: -
+Preferred task classes: -
+Future benchmark targets: -
+Task classes: bootstrap-heavy
+macOS constraints: this study path is intentionally local-only and assumes a Mac-hosted Codex workspace.
+Validity note: SWE-bench tasks are used as live stimuli for Codex behavior rather than as the sole endpoint metric.
+
+Telemetry And Artifact Coverage
+===============================
+Run status counts: completed=4
+Task class counts: bootstrap-heavy=4
+Token totals: input=4597614 output=52799 cache_read=4268800
+Turn totals: 5 | Command totals: 404 | Tool totals: 432 | Skill events: 15 | Message metrics: 66 | Anomalies: 1
+Visible output totals: chars=22830 tokens_est=5676
+Cohort counts: gpt-5.3-codex-friendly=1, gpt-5.3-codex-pragmatic=1, gpt-5.4-friendly=1, gpt-5.4-pragmatic=1
+Tool kind totals: apply_patch=10, mcp=4, shell=202
+Skill name totals: brainstorming=3, systematic-debugging=3, using-superpowers=3, verification-before-completion=2, web-search=1, writing-plans=3
+Message category totals: decision_explanation=8, observation=8, orientation=62, planning=29, redundant_recap=2, result_framing=5, social_tone=11, task_restatement=1, tool_bridge_before=20, verification_framing=54
+Artifact coverage gaps: gradeEvents=4
+
+Official Grading Overview
+=========================
+grader_status=missing
+completed=0 resolved=0 unresolved=0 errors=0
+official_summary_path=-
+
+Observed Codex Harness Behavior
+===============================
+Config/session freezing evidence: -
+Instruction assembly evidence: -
+Context and compaction evidence: -
+Tool mediation evidence: -
+Persistence/reconstruction evidence: -
+Reliability/contention evidence: -
+Subsystem totals: ConfigFreeze=4, InstructionChannel=12, TurnLifecycle=12
+
+Externalized Coordination Lens
+=============================
+externalized_coordination_total=16
+persistence_staleness_risk_total=0
+This lens asks whether Codex keeps useful continuity through persistence, compaction, and layered instruction channels rather than relying on a single flat transcript.
+
+Regulation / Control-Rod Signals
+===============================
+control_rod_intervention_total=4
+These are harness-native regulation surfaces: compaction, config freeze, persistence, approval/listener boundaries, and similar stabilizers.
+
+Containment And Coherence
+========================
+event_discontinuity_total=0 | containment_heat_leak_total=0
+These counters estimate where the harness leaks effort into orchestration overhead or observability gaps rather than direct task progress.
+
+Task-Behavior Evidence Across Live Tasks
+=======================================
+django__django-15525 [gpt-5.3-codex-pragmatic / gpt-5.3-codex / pragmatic] | status=completed | class=bootstrap-heavy | tokens=761646 | patch=e5521f323bfaca39b934ff691654063463dfd2c60201e30392e1c48e611e12c0 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-15525 [gpt-5.3-codex-friendly / gpt-5.3-codex / friendly] | status=completed | class=bootstrap-heavy | tokens=1287624 | patch=70ef8a063bee46b54d978d5ee8c03f6bc31ae12970b6610e487f67610f8f2dd4 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-15525 [gpt-5.4-pragmatic / gpt-5.4 / pragmatic] | status=completed | class=bootstrap-heavy | tokens=770227 | patch=869ca53c38ccfcfb1cdb29d1e2a5a25025e5c2a46e45f1257b1ce7fafea30aff | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-15525 [gpt-5.4-friendly / gpt-5.4 / friendly] | status=completed | class=bootstrap-heavy | tokens=1830916 | patch=03d8dc8e6b41dba739cdb36af73a3b5886400232a02d5aef502a0b865c18d6b8 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+
+Task-Class Evidence Matrix
+==========================
+bootstrap-heavy:
+  django__django-15525: tokens=761646 compactions=0 closures=0 friction=0 useful_bps=Some(0) friction_bps=Some(7)
+  django__django-15525: tokens=1287624 compactions=0 closures=0 friction=0 useful_bps=Some(0) friction_bps=Some(3)
+  django__django-15525: tokens=770227 compactions=0 closures=0 friction=0 useful_bps=Some(0) friction_bps=Some(8)
+  django__django-15525: tokens=1830916 compactions=0 closures=0 friction=0 useful_bps=Some(0) friction_bps=Some(8)
+
+Claim-by-Claim Evidence
+=======================
+codex.compaction_rebuild
+  source: DeepWiki + Codex source
+  text: Codex is not a pure flat-loop harness because it performs native compaction and history rebuild.
+  operationalization: Inspect context-compaction probes, replacement history shape, and post-compaction rediscovery patterns.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: compaction_count=0; compaction_rediscovery_count=0
+    caveats: Needs compaction-heavy tasks for strong evidence.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: compaction_count=0; compaction_rediscovery_count=0
+    caveats: Needs compaction-heavy tasks for strong evidence.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: compaction_count=0; compaction_rediscovery_count=0
+    caveats: Needs compaction-heavy tasks for strong evidence.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: compaction_count=0; compaction_rediscovery_count=0
+    caveats: Needs compaction-heavy tasks for strong evidence.
+codex.config_freeze
+  source: Codex App Server + core
+  text: Codex behavior is materially shaped by session/config freeze at thread start.
+  operationalization: Compare requested thread-start params against effective SessionConfigured values and turn-level instruction makeup.
+  run: django__django-15525 -> evidence_consistent
+    support: config_freeze_drift_count=1
+    caveats: Some apparent drift may reflect intentional provider normalization.
+  run: django__django-15525 -> evidence_consistent
+    support: config_freeze_drift_count=1
+    caveats: Some apparent drift may reflect intentional provider normalization.
+  run: django__django-15525 -> evidence_consistent
+    support: config_freeze_drift_count=1
+    caveats: Some apparent drift may reflect intentional provider normalization.
+  run: django__django-15525 -> evidence_consistent
+    support: config_freeze_drift_count=1
+    caveats: Some apparent drift may reflect intentional provider normalization.
+codex.control_rods
+  source: Codex runtime control surfaces
+  text: Codex contains harness-native regulation layers that act like control rods, sometimes stabilizing and sometimes throttling the reaction.
+  operationalization: Track control-rod probe families across compaction, config freeze, persistence, and listener/approval boundaries.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+    caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+    caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+    caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+    caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+codex.event_architecture
+  source: Codex App Server event bridge
+  text: Codex’s queue/listener/event bridge creates visibility and discontinuity patterns that wrapper-only telemetry would miss.
+  operationalization: Compare raw legacy event streams, typed notifications, study probes, and lagged/backpressure diagnostics.
+  run: django__django-15525 -> evidence_inconclusive
+    support: event_discontinuity_count=0
+    caveats: A quiet run may not exercise listener lag or translation discontinuities.
+  run: django__django-15525 -> evidence_inconclusive
+    support: event_discontinuity_count=0
+    caveats: A quiet run may not exercise listener lag or translation discontinuities.
+  run: django__django-15525 -> evidence_inconclusive
+    support: event_discontinuity_count=0
+    caveats: A quiet run may not exercise listener lag or translation discontinuities.
+  run: django__django-15525 -> evidence_inconclusive
+    support: event_discontinuity_count=0
+    caveats: A quiet run may not exercise listener lag or translation discontinuities.
+codex.harness_overhead_tax
+  source: Codex runtime orchestration
+  text: A non-trivial share of Codex runtime cost comes from internal harness orchestration, not direct task progress.
+  operationalization: Estimate friction-token, friction-step, and harness-specific incident counts relative to direct edit/verify cycles.
+  run: django__django-15525 -> evidence_consistent
+    support: harness_friction_count=0; friction_token_proxy=542/761646; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(7)
+    caveats: Friction-token estimates are inferred from event sequencing and command duration.
+  run: django__django-15525 -> evidence_consistent
+    support: harness_friction_count=0; friction_token_proxy=453/1287624; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(3)
+    caveats: Friction-token estimates are inferred from event sequencing and command duration.
+  run: django__django-15525 -> evidence_consistent
+    support: harness_friction_count=0; friction_token_proxy=632/770227; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(8)
+    caveats: Friction-token estimates are inferred from event sequencing and command duration.
+  run: django__django-15525 -> evidence_consistent
+    support: harness_friction_count=0; friction_token_proxy=1617/1830916; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(8)
+    caveats: Friction-token estimates are inferred from event sequencing and command duration.
+codex.instruction_stratification
+  source: Codex instruction assembly path
+  text: Codex behaves more like a layered instruction stack than a single undifferentiated transcript.
+  operationalization: Track instruction-channel probe events, model-native instruction preservation, and reconstructed-context shifts after compaction or resume.
+  run: django__django-15525 -> evidence_consistent
+    support: instruction_stratification_count=3
+    caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+  run: django__django-15525 -> evidence_consistent
+    support: instruction_stratification_count=3
+    caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+  run: django__django-15525 -> evidence_consistent
+    support: instruction_stratification_count=3
+    caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+  run: django__django-15525 -> evidence_consistent
+    support: instruction_stratification_count=3
+    caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+codex.persistence_continuity
+  source: Codex rollout/state DB path
+  text: Codex persistence and resume semantics create both continuity benefits and mismatch risks.
+  operationalization: Track resume/reconstruction probes, listener attach behavior, and stale-state mismatch incidents.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+    caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+    caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+    caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+  run: django__django-15525 -> not_observable_with_current_probes
+    support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+    caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+codex.personality_policy_shape
+  source: Codex model personality support
+  text: Codex personality modes can shape observable agent policy, not only surface tone.
+  operationalization: Compare visible-output density, tool-bridge language, and verbosity-tool coupling between friendly and pragmatic cohorts under paired tasks.
+  run: django__django-15525 -> evidence_consistent
+    support: visible_output_total_tokens_est=727; tool_grounded_commentary_ratio_bps=Some(6712); tool_burst_count=29
+    caveats: Strong support requires paired cohort comparisons across the same tasks.
+  run: django__django-15525 -> evidence_consistent
+    support: visible_output_total_tokens_est=1027; tool_grounded_commentary_ratio_bps=Some(5715); tool_burst_count=43
+    caveats: Strong support requires paired cohort comparisons across the same tasks.
+  run: django__django-15525 -> evidence_consistent
+    support: visible_output_total_tokens_est=2310; tool_grounded_commentary_ratio_bps=Some(965); tool_burst_count=84
+    caveats: Strong support requires paired cohort comparisons across the same tasks.
+  run: django__django-15525 -> evidence_consistent
+    support: visible_output_total_tokens_est=1612; tool_grounded_commentary_ratio_bps=Some(2208); tool_burst_count=60
+    caveats: Strong support requires paired cohort comparisons across the same tasks.
+codex.state_verbalization
+  source: Codex behavior study
+  text: Some Codex/model combinations externalize more actionable state into visible assistant language than others.
+  operationalization: Compare message-level planning, decision, tool-bridge, and verification framing categories across models and personality modes.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(0)
+    caveats: A single run cannot by itself establish model-to-model differences.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(3252); redundant_commentary_ratio_bps=Some(0)
+    caveats: A single run cannot by itself establish model-to-model differences.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(9874); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(324)
+    caveats: A single run cannot by itself establish model-to-model differences.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(9199); restatement_ratio_bps=Some(0); redundant_commentary_ratio_bps=Some(341)
+    caveats: A single run cannot by itself establish model-to-model differences.
+codex.tool_mediation
+  source: Codex core tool orchestration
+  text: Codex tool use is mediated by an internal routing/orchestration layer rather than being equivalent to raw shell execution.
+  operationalization: Track shell vs patch vs MCP tool paths, approval routing, and structured tool-event boundaries.
+  run: django__django-15525 -> evidence_inconclusive
+    support: tool_mediation_tax_count=0
+    caveats: A given run may not exercise MCP and patch pathways equally.
+  run: django__django-15525 -> evidence_inconclusive
+    support: tool_mediation_tax_count=0
+    caveats: A given run may not exercise MCP and patch pathways equally.
+  run: django__django-15525 -> evidence_consistent
+    support: tool_mediation_tax_count=4
+    caveats: A given run may not exercise MCP and patch pathways equally.
+  run: django__django-15525 -> evidence_inconclusive
+    support: tool_mediation_tax_count=0
+    caveats: A given run may not exercise MCP and patch pathways equally.
+grounding.activation_threshold
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Useful work has an activation threshold rather than rising linearly from zero budget.
+  operationalization: Measure tokens/time to first meaningful edit, first verification, first retained patch, and compare across runs and task classes.
+  run: django__django-15525 -> evidence_consistent
+    support: first meaningful edit observed at total tokens=172770
+    caveats: Single-run evidence does not establish a full sigmoid curve.
+  run: django__django-15525 -> evidence_consistent
+    support: first meaningful edit observed at total tokens=679147
+    caveats: Single-run evidence does not establish a full sigmoid curve.
+  run: django__django-15525 -> evidence_inconclusive
+    caveats: Single-run evidence does not establish a full sigmoid curve.
+  run: django__django-15525 -> evidence_consistent
+    support: first meaningful edit observed at total tokens=510425
+    caveats: Single-run evidence does not establish a full sigmoid curve.
+grounding.anti_regularization
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Higher token budgets can anti-regularize the agent and increase redundancy, anxiety loops, or cleanup behavior.
+  operationalization: Track repeated verification, git inspection loops, cleanup-only work, and post-submit activity across task classes.
+  evidence: none captured yet
+grounding.context_vs_budget
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Context window and total task token budget are distinct constraints and should not be conflated.
+  operationalization: Track compaction thresholds, context-window-related probe data, and total token usage separately from wall time.
+  evidence: none captured yet
+grounding.control_regulation
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Long-horizon systems need explicit regulation layers that stabilize search and bound loss, rather than relying on unconstrained continuation.
+  operationalization: Inspect compaction, config freeze, persistence, approval, and listener behaviors as control-rod-like regulation mechanisms.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+    caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+    caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+    caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+  run: django__django-15525 -> evidence_consistent
+    support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+    caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+grounding.externalized_coordination
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Scaling beyond a single session often requires externalized coordination rather than only enlarging the immediate working context.
+  operationalization: Inspect whether Codex relies on persistence, rollout state, resumability, and reconstructed context rather than pure flat transcript continuation.
+  run: django__django-15525 -> evidence_consistent
+    support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+    caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+  run: django__django-15525 -> evidence_consistent
+    support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+    caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+  run: django__django-15525 -> evidence_consistent
+    support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+    caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+  run: django__django-15525 -> evidence_consistent
+    support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+    caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+grounding.flat_history_tax
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Flat-history reread imposes a major token tax on agent execution.
+  operationalization: Count repeated file reads without intervening edits, cache-read ratio, prompt growth, and rediscovery after compaction.
+  run: django__django-15525 -> evidence_consistent
+    support: repeated_read_count=0; compaction_count=0; cache_read_ratio=699776/754953
+    caveats: Repeated-read evidence is inferred from shell-level telemetry.
+  run: django__django-15525 -> evidence_consistent
+    support: repeated_read_count=0; compaction_count=0; cache_read_ratio=1215488/1273972
+    caveats: Repeated-read evidence is inferred from shell-level telemetry.
+  run: django__django-15525 -> evidence_consistent
+    support: repeated_read_count=0; compaction_count=0; cache_read_ratio=608256/757689
+    caveats: Repeated-read evidence is inferred from shell-level telemetry.
+  run: django__django-15525 -> evidence_consistent
+    support: repeated_read_count=0; compaction_count=0; cache_read_ratio=1745280/1811000
+    caveats: Repeated-read evidence is inferred from shell-level telemetry.
+grounding.layered_state
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Layered state/context is preferable to forcing a single flat session to carry all task state.
+  operationalization: Inspect instruction channels, compaction rebuilds, resume continuity, and whether Codex preserves actionable state outside the immediate turn transcript.
+  evidence: none captured yet
+grounding.state_compression_loss
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: State compression is useful but lossy; long-horizon tasks need mechanisms that preserve actionable state across compression boundaries.
+  operationalization: Inspect compaction counts, replacement-history shape, post-compaction rediscovery, and continuity failures.
+  evidence: none captured yet
+grounding.state_verbalization
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Advanced task schedulers benefit when actionable state is externalized rather than remaining hidden inside a single opaque continuation.
+  operationalization: Track visible assistant bridge language, verification framing, instruction stratification, and tool-grounded commentary ratios.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(6712); verification_grounded_commentary_ratio_bps=Some(9284)
+    caveats: Visible commentary is only a proxy for deeper state externalization.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(5715); verification_grounded_commentary_ratio_bps=Some(9600)
+    caveats: Visible commentary is only a proxy for deeper state externalization.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(9874); tool_grounded_commentary_ratio_bps=Some(965); verification_grounded_commentary_ratio_bps=Some(8649)
+    caveats: Visible commentary is only a proxy for deeper state externalization.
+  run: django__django-15525 -> evidence_consistent
+    support: actionable_commentary_ratio_bps=Some(9199); tool_grounded_commentary_ratio_bps=Some(2208); verification_grounded_commentary_ratio_bps=Some(8418)
+    caveats: Visible commentary is only a proxy for deeper state externalization.
+grounding.verification_pressure
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: External verification pressure improves effective work and stabilizes search.
+  operationalization: Measure edit-to-verification closure, changed test states, verification retry loops, and useful-work proxies on verification-heavy tasks.
+  run: django__django-15525 -> evidence_inconclusive
+    support: first_verification_tokens=None; useful_step_proxy=0/28; verification_closure_count=0
+    caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+  run: django__django-15525 -> evidence_inconclusive
+    support: first_verification_tokens=None; useful_step_proxy=0/39; verification_closure_count=0
+    caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+  run: django__django-15525 -> evidence_inconclusive
+    support: first_verification_tokens=None; useful_step_proxy=0/77; verification_closure_count=0
+    caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+  run: django__django-15525 -> evidence_inconclusive
+    support: first_verification_tokens=None; useful_step_proxy=0/58; verification_closure_count=0
+    caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+
+Where Codex Looks Similar Or Different
+=====================================
+Similar to layered-state expectations when: compaction_count_total=0 and instruction_channel_probe_total=0
+Potentially unlike pure flat-history assumptions when: config_freeze_drift_count_total=0 and persistence_probe_total=0
+Codex-native harness overhead evidence: -
+Control-rod evidence: control_rod_total=4 | externalized_coordination_total=16
+
+Threats To Validity
+===================
+macOS-only bias: the study currently assumes a local Mac-hosted Codex runtime.
+SWE-bench-only bias: live tasks are real but not representative of every future workload.
+Hidden reasoning observability limits: internal chain-of-thought remains unavailable and some evidence is inferred.
+Harness noise: listener, DB, and translation events can affect observability in ways that are not identical to reasoning failures.
+Current telemetry gaps: gradeEvents=4
+
+Run Index
+=========
+django__django-15525 | completed | bootstrap-heavy | cohort=gpt-5.3-codex-pragmatic | personality=pragmatic | tokens=761646 | visible_tokens_est=727 | probes=7 | anomalies=1 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/run-evidence.txt
+  attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/attempt-log.txt
+django__django-15525 | completed | bootstrap-heavy | cohort=gpt-5.3-codex-friendly | personality=friendly | tokens=1287624 | visible_tokens_est=1027 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/run-evidence.txt
+  attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/attempt-log.txt
+django__django-15525 | completed | bootstrap-heavy | cohort=gpt-5.4-pragmatic | personality=pragmatic | tokens=770227 | visible_tokens_est=2310 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/run-evidence.txt
+  attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/attempt-log.txt
+django__django-15525 | completed | bootstrap-heavy | cohort=gpt-5.4-friendly | personality=friendly | tokens=1830916 | visible_tokens_est=1612 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/run-evidence.txt
+  attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/attempt-log.txt
+
+Artifact Appendix
+=================
+django__django-15525:
+  record: django__django-15525
+  anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/anomalies.jsonl
+  attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/attempt-log.txt
+  claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/claim-evidence.json
+  codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/codex-probe-events.jsonl
+  commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/command-events.jsonl
+  environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/environment-plan.json
+  gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/grade-events.jsonl
+  lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/lifecycle-events.jsonl
+  messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/message-metrics.jsonl
+  patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/patch.diff
+  patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/patch-events.jsonl
+  probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/probe-events.jsonl
+  probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/probe-summary.json
+  prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/prompt.txt
+  rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/raw-agent-events.jsonl
+  rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/raw-diagnostics.jsonl
+  replay: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/replay.json
+  runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/run-evidence.txt
+  runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/run-summary.json
+  skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/skill-events.jsonl
+  tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/token-snapshots.jsonl
+  toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/tool-events.jsonl
+  turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/turn-metrics.jsonl
+  verbosityToolCoupling: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-pragmatic/django__django-15525/attempt-01/verbosity-tool-coupling.jsonl
+django__django-15525:
+  record: django__django-15525
+  anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/anomalies.jsonl
+  attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/attempt-log.txt
+  claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/claim-evidence.json
+  codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/codex-probe-events.jsonl
+  commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/command-events.jsonl
+  environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/environment-plan.json
+  gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/grade-events.jsonl
+  lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/lifecycle-events.jsonl
+  messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/message-metrics.jsonl
+  patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/patch.diff
+  patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/patch-events.jsonl
+  probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/probe-events.jsonl
+  probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/probe-summary.json
+  prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/prompt.txt
+  rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/raw-agent-events.jsonl
+  rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/raw-diagnostics.jsonl
+  replay: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/replay.json
+  runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/run-evidence.txt
+  runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/run-summary.json
+  skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/skill-events.jsonl
+  tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/token-snapshots.jsonl
+  toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/tool-events.jsonl
+  turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/turn-metrics.jsonl
+  verbosityToolCoupling: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.3-codex-friendly/django__django-15525/attempt-01/verbosity-tool-coupling.jsonl
+django__django-15525:
+  record: django__django-15525
+  anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/anomalies.jsonl
+  attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/attempt-log.txt
+  claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/claim-evidence.json
+  codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/codex-probe-events.jsonl
+  commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/command-events.jsonl
+  environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/environment-plan.json
+  gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/grade-events.jsonl
+  lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/lifecycle-events.jsonl
+  messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/message-metrics.jsonl
+  patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/patch.diff
+  patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/patch-events.jsonl
+  probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/probe-events.jsonl
+  probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/probe-summary.json
+  prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/prompt.txt
+  rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/raw-agent-events.jsonl
+  rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/raw-diagnostics.jsonl
+  replay: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/replay.json
+  runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/run-evidence.txt
+  runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/run-summary.json
+  skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/skill-events.jsonl
+  tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/token-snapshots.jsonl
+  toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/tool-events.jsonl
+  turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/turn-metrics.jsonl
+  verbosityToolCoupling: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/verbosity-tool-coupling.jsonl
+django__django-15525:
+  record: django__django-15525
+  anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/anomalies.jsonl
+  attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/attempt-log.txt
+  claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/claim-evidence.json
+  codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/codex-probe-events.jsonl
+  commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/command-events.jsonl
+  environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/environment-plan.json
+  gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/grade-events.jsonl
+  lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/lifecycle-events.jsonl
+  messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/message-metrics.jsonl
+  patch: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/patch.diff
+  patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/patch-events.jsonl
+  probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/probe-events.jsonl
+  probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/probe-summary.json
+  prompt: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/prompt.txt
+  rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/raw-agent-events.jsonl
+  rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/raw-diagnostics.jsonl
+  replay: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/replay.json
+  runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/run-evidence.txt
+  runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/run-summary.json
+  skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/skill-events.jsonl
+  tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/token-snapshots.jsonl
+  toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/tool-events.jsonl
+  turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/turn-metrics.jsonl
+  verbosityToolCoupling: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-friendly/django__django-15525/attempt-01/verbosity-tool-coupling.jsonl

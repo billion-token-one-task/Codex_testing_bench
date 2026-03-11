@@ -1,24 +1,5 @@
 {
-  "schema_version": "codex-bench.v1",
-  "campaign_id": "swebench-study-2026-03-11T15-35-40Z-4c8c79a3",
-  "experiment_id": "exp-20260311153540-0dadbe7d",
-  "experiment_name": "Codex 模型人格化行为对比研究 v1",
-  "run_id": "django__django-15525-attempt-01",
-  "instance_id": "django__django-15525",
-  "repo": "django/django",
-  "task_class": "bootstrap-heavy",
-  "paired_instance_key": "django__django-15525",
-  "cohort_id": "gpt-5.4-pragmatic",
-  "model": "gpt-5.4",
-  "provider": "openai",
-  "personality_mode": "pragmatic",
-  "prompt_style": "terse_engineer",
-  "base_commit": "fbacaa58ffc5a62456ee68b90efa13957f761ce4",
-  "worktree_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/workspace",
-  "attempt": 1,
-  "status": "completed",
-  "grading_status": "pending",
-  "artifact_paths": {
+  "artifactPaths": {
     "anomalies": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/anomalies.jsonl",
     "attemptLog": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/attempt-log.txt",
     "claimEvidence": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/claim-evidence.json",
@@ -43,5 +24,6 @@
     "toolEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/tool-events.jsonl",
     "turnMetrics": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/turn-metrics.jsonl",
     "verbosityToolCoupling": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/attempt-01/verbosity-tool-coupling.jsonl"
-  }
+  },
+  "recordPath": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-35-40Z-4c8c79a3/runs/gpt-5.4-pragmatic/django__django-15525/record.json"
 }
