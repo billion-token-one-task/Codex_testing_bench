@@ -1,0 +1,15 @@
+[package]
+name = "codex-bench-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+
+codex-bench-codex.workspace = true
+codex-bench-report.workspace = true
+codex-bench-swebench.workspace = true
+

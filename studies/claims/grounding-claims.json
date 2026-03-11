@@ -1,0 +1,35 @@
+[
+  {
+    "id": "grounding.activation_threshold",
+    "source": "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "text": "Useful work has an activation threshold rather than rising linearly from zero budget.",
+    "operationalization": "Measure tokens/time to first meaningful edit, first verification, first retained patch, and compare across runs and task classes.",
+    "required_evidence": ["activation.first_meaningful_edit", "activation.first_verification", "activation.first_patch"],
+    "caveats": ["Single-run evidence cannot establish the full curve shape."]
+  },
+  {
+    "id": "grounding.flat_history_tax",
+    "source": "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "text": "Flat-history reread imposes a major token tax on agent execution.",
+    "operationalization": "Count repeated file reads without intervening edits, cache-read ratio, prompt growth, and rediscovery after compaction.",
+    "required_evidence": ["redundancy.repeated_read", "context.cache_read_ratio", "context.prompt_growth", "context.rediscovery"],
+    "caveats": ["Repeated reads can be strategic rather than purely wasteful."]
+  },
+  {
+    "id": "grounding.state_compression_loss",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "State compression is useful but lossy; long-horizon tasks need mechanisms that preserve actionable state across compression boundaries.",
+    "operationalization": "Inspect compaction counts, replacement-history shape, post-compaction rediscovery, and continuity failures.",
+    "required_evidence": ["context.compaction", "context.rediscovery", "containment.breach"],
+    "caveats": ["Some losses are silent and therefore only partially observable."]
+  },
+  {
+    "id": "grounding.layered_state",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Layered state/context is preferable to forcing a single flat session to carry all task state.",
+    "operationalization": "Inspect instruction channels, compaction rebuilds, resume continuity, and whether Codex preserves actionable state outside the immediate turn transcript.",
+    "required_evidence": ["instruction.channel_mix", "context.compaction", "persistence.resume_path", "persistence.continuity"],
+    "caveats": ["A system can approximate layered state without naming it explicitly."]
+  }
+]
+

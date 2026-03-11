@@ -1,0 +1,16 @@
+{
+  "name": "swebench-v1",
+  "benchmark": "SWE-bench Verified",
+  "stages": [
+    { "name": "architecture-validation", "sampleSize": 1 },
+    { "name": "behavior-pilot", "sampleSize": 5 },
+    { "name": "evidence-batch", "sampleSize": 15 }
+  ],
+  "requiredTaskClasses": [
+    "bootstrap-heavy",
+    "compaction-likely",
+    "patch-heavy",
+    "verification-heavy",
+    "search-heavy"
+  ]
+}

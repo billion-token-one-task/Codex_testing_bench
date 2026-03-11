@@ -67,7 +67,6 @@ members = [
     "test-macros",
     "package-manager",
     "artifacts",
-    "codex-swebench-study",
 ]
 resolver = "2"
 

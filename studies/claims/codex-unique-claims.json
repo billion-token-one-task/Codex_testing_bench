@@ -1,0 +1,35 @@
+[
+  {
+    "id": "codex.compaction_rebuild",
+    "source": "DeepWiki + Codex source",
+    "text": "Codex is not a pure flat-loop harness because it performs native compaction and history rebuild.",
+    "operationalization": "Inspect context-compaction probes, replacement history shape, and post-compaction rediscovery patterns.",
+    "required_evidence": ["context.compaction", "context.rediscovery", "context.replacement_history"],
+    "caveats": ["A compaction mechanism can still be lossy or brittle."]
+  },
+  {
+    "id": "codex.config_freeze",
+    "source": "Codex App Server + core",
+    "text": "Codex behavior is materially shaped by session/config freeze at thread start.",
+    "operationalization": "Compare requested thread-start params against effective SessionConfigured values and turn-level instruction makeup.",
+    "required_evidence": ["config.requested_vs_effective", "instruction.channel_mix"],
+    "caveats": ["Some drift reflects provider normalization rather than hidden harness behavior."]
+  },
+  {
+    "id": "codex.tool_mediation",
+    "source": "Codex core tool orchestration",
+    "text": "Codex tool use is mediated by an internal routing/orchestration layer rather than being equivalent to raw shell execution.",
+    "operationalization": "Track shell vs patch vs MCP tool paths, approval routing, and structured tool-event boundaries.",
+    "required_evidence": ["tools.routing", "tools.approval_path", "tools.mediation_tax"],
+    "caveats": ["A single task may exercise only a subset of tool paths."]
+  },
+  {
+    "id": "codex.harness_overhead_tax",
+    "source": "Codex runtime orchestration",
+    "text": "A non-trivial share of Codex runtime cost comes from internal harness orchestration, not direct task progress.",
+    "operationalization": "Estimate friction-token, friction-step, and harness-specific incident counts relative to direct edit/verify cycles.",
+    "required_evidence": ["harness.friction", "useful_work.proxy", "tools.mediation_tax"],
+    "caveats": ["Overhead estimates are partly inferred rather than exact."]
+  }
+]
+
