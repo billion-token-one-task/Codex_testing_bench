@@ -1,86 +1,86 @@
-# Codex References
+# Codex 参考资料
 
-This bench is grounded in two things:
+这个 bench 的 grounding 来自两部分：
 
-- the local vendored Codex source under [repos/codex](/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex)
-- a small set of external architecture references used to orient probe design
+- 本地 vendored 的 Codex 源码：[repos/codex](/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex)
+- 一小组外部架构参考资料，用来帮助设计 probe
 
-## Primary External References
+## 主要外部参考
 
 - [DeepWiki Codex](https://deepwiki.com/openai/codex)
 - [OpenAI: Unlocking the Codex harness](https://openai.com/index/unlocking-the-codex-harness/)
 - [OpenAI: Introducing upgrades to Codex](https://openai.com/index/introducing-upgrades-to-codex/)
 - [OpenAI: Introducing Codex](https://openai.com/index/introducing-codex/)
 
-## How To Use These References Correctly
+## 如何正确使用这些参考
 
-These references are architecture aids, not substitutes for the local source.
+这些材料是 **架构参考**，不是本地源码的替代品。
 
-Use them to:
+它们适合用于：
 
-- orient yourself to App Server concepts
-- identify likely seams for compaction, session lifecycle, and tool orchestration
-- cross-check whether a probe direction matches the documented architecture at a high level
+- 快速建立对 App Server 概念的理解
+- 定位 compaction、session lifecycle、tool orchestration 等可能的 seam
+- 粗粒度交叉核对一个 probe 方向是否与公开架构描述相符
 
-Do not use them to:
+它们不适合用于：
 
-- override what the local vendored source actually does
-- assume that every described subsystem behaves identically in this pinned runtime
-- claim behavior without local artifact evidence
+- 覆盖本地 vendored 源码的真实实现
+- 默认假设当前 pinned runtime 与公开描述完全一致
+- 在没有本地 artifact 的情况下直接宣称行为结论
 
-## Why DeepWiki Is In The Repo Docs
+## 为什么把 DeepWiki 放进仓库文档
 
-DeepWiki is the fastest high-level orientation layer for:
+DeepWiki 是目前最快的高层架构导览之一，尤其适合帮助理解：
 
 - session lifecycle
-- App Server request/response shape
+- App Server request / response 结构
 - tool orchestration
-- context management and compaction
-- persistence/resume structure
+- context management 与 compaction
+- persistence / resume 结构
 
-That makes it useful when designing new probes or mapping local source files into the generated `codex-architecture-map.json`.
+所以它很适合在设计新 probe，或者在生成 `codex-architecture-map.json` 时做高层映射。
 
-## Bench Rule Of Thumb
+## Bench 的判定优先级
 
-When there is tension between:
+当以下三者发生张力时：
 
-- external docs
-- local vendored source
-- actual run artifacts
+- 外部文档
+- 本地 vendored 源码
+- 实际 run artifact
 
-the priority order is:
+优先级应当是：
 
-1. actual local run artifacts
-2. local vendored source
-3. external reference docs
+1. 本地真实 run artifact
+2. 本地 vendored 源码
+3. 外部参考文档
 
-## How These References Map To The Bench
+## 这些参考如何映射到 Bench
 
-The bench uses these references to shape:
+bench 会用这些参考来塑造：
 
-- the architecture map
-- raw probe families
-- claim catalogs
-- the “Codex under observation” sections of `report.txt`
+- architecture map
+- raw probe family
+- claim catalog
+- `report.txt` 中 “Codex under observation” 一类章节
 
-Typical local seams studied include:
+当前重点研究的 local seam 包括：
 
 - session/config freeze
-- instruction and prompt assembly
+- instruction 与 prompt assembly
 - turn lifecycle dispatch
-- context compaction and reconstruction
+- context compaction 与 reconstruction
 - tool mediation
-- persistence/resume
-- App Server translation/listener path
-- reliability surfaces
+- persistence / resume
+- App Server translation / listener path
+- reliability surface
 
-## Related Internal Research Direction
+## 与内部研究方向的关系
 
-The bench is not trying to prove the references right.
+这个 bench 不是为了“证明参考资料正确”。
 
-It uses them to ask better questions about:
+它是为了借这些资料提出更好的问题，例如：
 
-- whether Codex behaves more like layered state than flat transcript accumulation
-- whether compaction preserves actionable state or creates rediscovery loops
-- how much of Codex’s apparent behavior is model-driven versus harness-mediated
-- where Codex’s architecture supports or departs from long-horizon token-scheduling intuitions
+- Codex 是否比扁平 transcript 更像 layered state 系统
+- compaction 是在保留 actionable state，还是在制造 rediscovery loop
+- Codex 显现出来的行为里，有多少是模型驱动的，有多少是 harness 中介出来的
+- Codex 架构在哪些地方支持、在哪些地方偏离长程 token 调度的研究直觉

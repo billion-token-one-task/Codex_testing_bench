@@ -1,104 +1,109 @@
-# Extending The Bench
+# 扩展 Bench
 
-## Goal
+## 目标
 
-Make it straightforward to add new task suites, new probe families, and new report surfaces without turning the repo into a monolith.
+让这个仓库可以持续添加新的任务集、新的 probe 家族和新的报告形式，而不会演化成一个难以维护的巨型单体。
 
-## Extension Points
+## 扩展点
 
-The main extension interfaces live in `codex-bench-core`.
+主要扩展接口位于 `codex-bench-core`。
 
-Important boundaries:
+关键边界包括：
 
 - `BenchmarkAdapter`
-  - sample tasks
-  - prepare workspace
-  - build prompt/input bundle
-  - extract patch/output
-  - invoke grader
+  - 抽样任务
+  - 准备 workspace
+  - 构建 prompt / input bundle
+  - 提取 patch / output
+  - 调用 grader
 - `RuntimeAdapter`
-  - start session
-  - start turn
-  - drain events
-  - return runtime capture
+  - 启动 session
+  - 启动 turn
+  - 消费事件流
+  - 返回 runtime capture
 - `ProbeDeriver`
-  - derive structured evidence rows from raw artifacts
+  - 从 raw artifact 推导结构化证据行
 - `ReportRenderer`
-  - write campaign and per-run human-readable outputs
+  - 写 campaign 级和单 run 级的人类可读报告
 - `ClaimCatalog`
-  - load claim sets and score evidence labels
+  - 加载 claim 集并评估 evidence label
 
-## When To Add A New Benchmark Adapter
+## 什么时候应该新增一个 Benchmark Adapter
 
-Add a dedicated adapter if the new benchmark has at least one of these:
+如果新的 benchmark 至少满足以下一项，就应当单独做 adapter：
 
-- a different workspace materialization model
-- a different grading model
-- a different task object schema
-- a genuinely different observation regime
+- workspace 的构造方式不同
+- grading 方式不同
+- 任务对象 schema 不同
+- 它代表了一个真正不同的观察场景
 
-Examples:
+典型例子：
 
-- SWE-bench: repo patching under regression verification
-- NL2Repo: zero-to-one repository construction
-- NewtonBench: scientific experimentation and law discovery
+- SWE-bench：已有代码库中的 patch 修复与回归验证
+- NL2Repo：从自然语言规格开始的零到一仓库构建
+- NewtonBench：科学实验与规律发现
 
-## When To Reuse `repo-patch-jsonl`
+## 什么时候复用 `repo-patch-jsonl`
 
-Reuse the generic repo-patch lane if the benchmark can be normalized into:
+如果某个 benchmark 可以被归一化成以下字段：
 
 - `instance_id`
 - `repo`
 - `base_commit`
 - `problem_statement`
-- optional hints/tests/metadata
+- 可选的 hint / test / metadata
 
-That lets you reuse the same runtime, probe, and report stack without creating a full bespoke adapter too early.
+那么优先考虑复用通用的 `repo-patch-jsonl` 这条路径。
 
-## Adding A Probe Family
+这样可以在不急着创建完整 bespoke adapter 的前提下，复用同一套 runtime、probe 和 report 栈。
 
-Good probes should:
+## 新增 Probe Family 的原则
 
-- be grounded in observable artifacts
-- carry `classification` as `exact`, `inferred`, or `estimated`
-- attach `evidenceCode`
-- point back to source artifacts
-- avoid mixing interpretation with raw observation
+一个好的 probe 应该：
 
-There are two layers:
+- 扎根于可观测 artifact
+- 带上 `classification`，即 `exact`、`inferred` 或 `estimated`
+- 带上 `evidenceCode`
+- 指回源 artifact
+- 避免把解释性结论和原始观测混在一起
 
-- raw study probes emitted inside vendored Codex
-- derived probes computed in the outer bench
+bench 里有两层 probe：
 
-Prefer adding only lightweight raw probe emission inside vendored Codex. Keep heavy interpretation in `codex-bench-probes`.
+- vendored Codex 内部发出的 raw study probe
+- 外层 bench 里从 artifact 派生出的 derived probe
 
-## Adding A New Report Type
+优先原则：
 
-Current canonical human-readable outputs are:
+- 只有在必须的时候，才在 vendored Codex 内部新增轻量 raw probe
+- 重的解释工作尽量放到 `codex-bench-probes`
+
+## 新增报告类型的原则
+
+当前标准的人类可读输出是：
 
 - `report.txt`
 - `run-evidence.txt`
 - `attempt-log.txt`
 
-If you add a new report type:
+如果你要新增一种报告：
 
-- keep it deterministic
-- keep it local-only
-- make it artifact-derived
-- do not require external dashboards or collectors
+- 保持 deterministic
+- 保持 local-only
+- 保持 artifact-derived
+- 不要依赖外部 dashboard 或 collector
 
-## Documentation Expectation
+## 文档更新要求
 
-If you add:
+如果你新增了：
 
-- a benchmark adapter
-- a probe family
-- a new artifact type
-- a new report surface
+- benchmark adapter
+- probe family
+- 新 artifact 类型
+- 新报告形式
 
-you should also update:
+那么通常还应同步更新：
 
 - [README.md](/Users/kevinlin/Downloads/CodexPlusClaw/README.md)
 - [docs/probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
 - [docs/artifacts/artifact-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/artifacts/artifact-contract.md)
-- [docs/references/benchmarks.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/benchmarks.md) if the benchmark surface changed
+- [docs/references/benchmarks.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/benchmarks.md)（如果 benchmark 面发生变化）

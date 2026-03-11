@@ -1,117 +1,117 @@
-# Probe Taxonomy
+# Probe 分类体系
 
-## Goal
+## 目标
 
-The probe program exists to generate evidence about how Codex works, not just whether it solved a task.
+probe 体系的目的，是生成关于 **Codex 如何工作** 的证据，而不是只回答它有没有解出一道题。
 
-The design has two layers:
+整个设计分成两层：
 
-- raw probes emitted by study-tagged Codex runtime code
-- derived probes computed from local artifacts after the run
+- 在研究模式下由 Codex runtime 内部发出的 raw probe
+- 在 run 结束后由本地 artifact 派生出的 derived probe
 
-## Raw Codex Probe Families
+## Codex 内部 Raw Probe 家族
 
-These are emitted from inside vendored Codex only for study-tagged runs.
+这些 probe 只会在研究模式下、由 vendored Codex 内部发出。
 
 ### Config Freeze
 
-Examples:
+例子：
 
-- requested vs effective runtime
-- config precedence winner
-- model-native instruction preservation or displacement
-- override suppression on already-running threads
-- exact point where the effective session config becomes fixed
+- 请求态 runtime 与实际生效 runtime 的差异
+- config precedence 最终谁赢了
+- 模型原生指令是否被保留或替换
+- 已运行 thread 上的 override suppression
+- effective session config 在什么时间点被真正固定
 
 ### Instruction Channels
 
-Examples:
+例子：
 
-- base vs developer vs model-native vs reconstructed context
-- ambient skill or session leakage vs suppression
-- instruction makeup changes after compaction or resume
+- base / developer / model-native / reconstructed context 的相对来源
+- ambient skill 或 session 输入是否被压制或泄漏
+- compaction 或 resume 后 instruction makeup 是否发生变化
 
 ### Turn Lifecycle
 
-Examples:
+例子：
 
 - session spawn
 - turn start / end
 - active-turn registration / cleanup
-- timeout, interruption, and failover boundaries
+- timeout / interruption / failover 边界
 
 ### Context And Compaction
 
-Examples:
+例子：
 
-- compaction trigger token level
-- pre/post history size
-- compaction mode and reason
-- reinjected state after reconstruction
-- post-compaction rediscovery markers
+- compaction 触发时的 token 水位
+- 压缩前后 history 大小
+- compaction 模式与原因
+- reconstruction 后 reinjected 的状态
+- compaction 之后是否出现 rediscovery
 
 ### Tool Mediation
 
-Examples:
+例子：
 
-- shell vs patch vs MCP routing
-- approval and sandbox path
-- structured vs raw-style result propagation
-- tool begin / end boundaries
+- shell / patch / MCP 的路由路径
+- approval 与 sandbox 决策路径
+- 结构化结果传播还是 raw 风格传播
+- tool begin / end 边界
 
 ### Persistence And Reconstruction
 
-Examples:
+例子：
 
-- rollout recording mode
-- state DB usage
-- resume / fork / rebuild path
-- listener attach behavior
+- rollout recording 模式
+- state DB 使用情况
+- resume / fork / rebuild 路径
+- listener attach 行为
 
 ### Harness Friction
 
-Examples:
+例子：
 
 - state DB contention
 - listener attach failure
 - rollout writer failure
-- runtime mismatch warnings that materially affect the run
+- 会实质性影响 run 的 runtime mismatch warning
 
-## Derived Probe Families
+## 外层 Derived Probe 家族
 
-These are computed outside vendored Codex from raw artifacts.
+这些 probe 由外层 bench 从 raw artifact 计算而来。
 
-## Paper-Aligned Families
+## 与论文方向一致的 Probe 家族
 
 ### Activation Threshold
 
-- tokens/time to first meaningful edit
-- tokens/time to first verification
-- tokens/time to first retained patch
-- tokens/time to final patch
+- 到第一次有意义 edit 的 token / 时间
+- 到第一次 verification 的 token / 时间
+- 到第一次 retained patch 的 token / 时间
+- 到最终 patch 的 token / 时间
 
 ### Redundancy
 
-- repeated read without edit
-- repeated verification without code change
-- repeated git inspection
-- post-submit activity
-- cleanup-only work
+- 没有 edit 介入的重复读取
+- 没有代码变化时的重复 verification
+- 重复的 git inspection
+- post-submit 活动
+- 纯 cleanup 工作
 
 ### Context Pressure
 
-- prompt growth
-- cache-read ratio
-- compaction count and intervals
-- history growth slope
-- rediscovery after compaction
+- prompt 增长
+- cache-read 比例
+- compaction 次数与间隔
+- history 增长斜率
+- compaction 后 rediscovery
 
 ### Verification Structure
 
 - edit-to-verification closure
-- changed verification outcomes after edits
-- verification retry loops
-- externally verified work fraction
+- edit 之后 verification 状态是否发生变化
+- verification retry loop
+- 在外部强验证约束下进行的工作占比
 
 ### Useful Work vs Friction
 
@@ -121,91 +121,91 @@ These are computed outside vendored Codex from raw artifacts.
 - retained-edit ratio
 - reverted-work ratio
 
-## Codex-Native Families
+## Codex 原生 Probe 家族
 
-These are the probes most likely to generate genuinely Codex-specific conclusions.
+这些 probe 最可能产出真正 **Codex 特有** 的结论。
 
 ### Fission / Ignition
 
-- first meaningful retained work
-- time/tokens from prompt submission to first controlled code change
-- ignition mode: shell search vs patch apply vs tool-mediated edit
+- 第一次真正 retained work 出现的位置
+- 从 prompt 提交到第一次受控代码变更的时间 / token
+- ignition 的触发方式：shell search、patch apply 还是 tool-mediated edit
 
 ### Chain Reaction
 
-- edit -> verify -> edit -> verify propagation depth
-- productive reaction cycles before termination
-- whether the run becomes self-sustaining or stalls
+- `edit -> verify -> edit -> verify` 的传播深度
+- 终止前有多少个生产性 cycle
+- run 是进入自维持状态，还是很快停滞
 
 ### Control Rod
 
-- compaction as regulation
-- config freeze as regulation
-- persistence/resume as regulation
-- approval/listener boundaries as regulation
+- compaction 是否充当调节器
+- config freeze 是否充当调节器
+- persistence / resume 是否充当调节器
+- approval / listener 边界是否充当调节器
 
 ### Containment
 
-- state drift
-- coherence breaks
-- heat leakage into orchestration overhead
-- failure modes where the harness absorbs budget without producing progress
+- 状态漂移
+- 一致性破裂
+- effort 是否泄漏到 orchestration overhead
+- harness 是否在不产生任务进展的情况下吸走大量预算
 
 ### Instruction Stratification
 
-- whether Codex behaves like layered state
-- when model-native instructions dominate
-- when reconstructed context or developer instructions dominate
+- Codex 是否更像 layered state，而不是纯扁平 transcript
+- 模型原生指令何时占主导
+- reconstructed context 或 developer instructions 何时占主导
 
 ### Tool Mediation Tax
 
-- where orchestration helps
-- where it adds latency or duplicated work
-- where tool routing differs from naive raw shell expectations
+- orchestration 在哪里带来了帮助
+- 在哪里引入了延迟或重复劳动
+- tool routing 在哪里偏离了“直接 shell 执行”的朴素预期
 
 ### Persistence Half-Life
 
-- how long useful state survives after compaction or reconstruction
-- when remembered state decays into rediscovery
+- 有用状态在 compaction / reconstruction 之后还能存活多久
+- “记住的状态”在什么时候衰变成 rediscovery
 
 ### Event-Architecture Discontinuity
 
-- gaps between typed events, legacy notifications, and probe streams
-- visibility loss due to listener or translation effects
+- typed event、legacy notification 和 probe stream 之间的可见性差异
+- listener 或 translation 导致的观察盲区
 
 ### Externalized Coordination
 
-- evidence that Codex preserves and reuses state across regulation layers
-- evidence that Codex behaves more like layered coordination than a pure flat transcript consumer
+- Codex 是否能跨 regulation layer 保持并重用状态
+- Codex 是否更像 layered coordination 系统，而不是一个单纯消费平面上下文的 transcript 机器
 
-## New Human-Oriented Telemetry
+## 新增的人类友好遥测
 
-The bench now emits extra human-usable attempt artifacts:
+现在这个 bench 会额外生成几类更适合人类直接阅读的 attempt 产物：
 
 - `turn-metrics.jsonl`
-  - token deltas per turn
-  - command/tool/skill counts per turn
+  - 每个 turn 的 token 增量
+  - 每个 turn 的 command / tool / skill 计数
 - `skill-events.jsonl`
-  - explicit and inferred skill usage events
+  - 显式和推断出的 skill 使用事件
 - `attempt-log.txt`
-  - a single chronological view of lifecycle, command, tool, skill, and anomaly events
+  - 将 lifecycle、command、tool、skill 与 anomaly 串成一条线性时间日志
 
-These sit alongside:
+它们与以下文件配合使用：
 
 - `run-evidence.txt`
 - `report.txt`
 
-## Classification Labels
+## Classification 标签
 
-Every derived row should declare one of:
+每条 derived row 都应该声明以下之一：
 
 - `exact`
 - `inferred`
 - `estimated`
 
-## Claim Evidence Labels
+## Claim Evidence 标签
 
-Claim scoring is intentionally evidentiary:
+claim 的评分标签必须保持 evidentiary 风格：
 
 - `evidence_consistent`
 - `evidence_mixed`
@@ -213,4 +213,4 @@ Claim scoring is intentionally evidentiary:
 - `evidence_against`
 - `not_observable_with_current_probes`
 
-The bench should never silently blur raw observation and interpretive scoring.
+bench 不应当模糊原始观测与解释性判断之间的边界。

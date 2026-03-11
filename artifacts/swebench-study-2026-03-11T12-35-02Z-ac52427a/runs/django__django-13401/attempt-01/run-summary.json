@@ -1,0 +1,87 @@
+{
+  "instance_id": "django__django-13401",
+  "repo": "django/django",
+  "task_class": "patch-heavy",
+  "status": "completed",
+  "grading_status": "pending",
+  "raw_event_count": 2716,
+  "raw_probe_count": 7,
+  "raw_diagnostic_count": 1587,
+  "turn_count": 1,
+  "token_snapshot_count": 23,
+  "command_count": 98,
+  "tool_count": 100,
+  "skill_event_count": 6,
+  "patch_event_count": 2,
+  "patch_file_count": 2,
+  "patch_sha256": "da1400d8d907b7a004fddb3ce607edcd36e436ea4f2d61d9adbbea205dc3466a",
+  "total_input_tokens": 1006896,
+  "total_output_tokens": 13976,
+  "total_cache_read_tokens": 893952,
+  "total_tokens": 1020872,
+  "model_context_window": 258400,
+  "anomaly_count": 0,
+  "event_type_counts": {
+    "exec_command_begin": 49,
+    "exec_command_end": 49,
+    "other": 2584,
+    "patch_apply_begin": 1,
+    "patch_apply_end": 1,
+    "study_probe": 7,
+    "token_count": 23,
+    "turn_complete": 1,
+    "turn_started": 1
+  },
+  "probe_code_counts": {
+    "session_configured": 1,
+    "turn_context_built": 3,
+    "turn_context_ready": 3
+  },
+  "probe_subsystem_counts": {
+    "ConfigFreeze": 1,
+    "InstructionChannel": 3,
+    "TurnLifecycle": 3
+  },
+  "diagnostic_type_counts": {
+    "server_notification": 1587
+  },
+  "tool_kind_counts": {
+    "apply_patch": 1,
+    "shell": 49
+  },
+  "tool_name_counts": {
+    "apply_patch": 1
+  },
+  "skill_name_counts": {
+    "brainstorming": 1,
+    "dispatching-parallel-agents": 1,
+    "systematic-debugging": 1,
+    "using-superpowers": 1,
+    "verification-before-completion": 1,
+    "writing-plans": 1
+  },
+  "artifact_inventory": {
+    "anomalies": true,
+    "attemptLog": true,
+    "claimEvidence": true,
+    "codexProbeEvents": true,
+    "commandEvents": true,
+    "environmentPlan": true,
+    "gradeEvents": false,
+    "lifecycleEvents": true,
+    "patch": true,
+    "patchEvents": true,
+    "probeEvents": true,
+    "probeSummary": true,
+    "prompt": true,
+    "rawAgentEvents": true,
+    "rawDiagnostics": true,
+    "replay": true,
+    "runEvidence": true,
+    "runSummary": true,
+    "skillEvents": true,
+    "tokenSnapshots": true,
+    "toolEvents": true,
+    "turnMetrics": true
+  }
+}
