@@ -1,86 +1,207 @@
 # Bench Architecture
 
-## Goal
+## Design Goal
 
-Keep the bench readable and extensible outside the vendored Codex runtime.
+Keep the research bench legible at the repo root while preserving deep access to the vendored Codex runtime.
 
-## Boundary
+The architecture intentionally separates:
 
-- The outer bench owns orchestration, study manifests, benchmark adapters, derived probes, and reporting.
-- Vendored Codex owns runtime behavior and thin study-gated raw probe emission only.
+- outer-bench orchestration and research logic
+- vendored Codex runtime behavior
 
-## Preset And Adapter Layer
+## High-Level Boundary
 
-- Study presets live outside vendored Codex and describe:
-  - benchmark identity
-  - adapter choice
-  - stage/sample-size presets
-  - task-class coverage goals
-  - probe/report profiles
-- The current active adapters are:
-  - `swebench`
-  - `repo-patch-jsonl`
-  - `nl2repo`
-  - `newtonbench`
-- `repo-patch-jsonl` is the generic bridge for future benchmarks that can be normalized into repository patch tasks while still reusing the same Codex runtime, probe, and report stack.
+The outer bench owns:
 
-## Outer Crates
+- campaign preparation
+- benchmark adapters
+- workspace materialization
+- run orchestration
+- raw artifact collection
+- derived probes
+- claim catalogs
+- reporting
 
-- `codex-bench-core`
-  - common types
-  - artifact helpers
-  - IO helpers
-  - adapter/report traits
-- `codex-bench-codex`
-  - in-process App Server startup
-  - thread start / turn start orchestration
-  - raw event capture
-  - architecture map generation
-- `codex-bench-swebench`
-  - SWE-bench sampling
-  - generic repo-patch JSONL dataset loading
-  - workspace setup
-  - prompt construction
-  - patch extraction
-  - predictions and grading wrapper
-- `codex-bench-nl2repo`
-  - NL2Repo task discovery from vendored benchmark assets
-  - blank-repository workspace materialization
-  - local command-based grading from benchmark task bundles
-- `codex-bench-newtonbench`
-  - NewtonBench task generation from vendored physics modules
-  - local experiment-lab materialization
-  - local evaluator wrapping for discovered-law submissions
-- `codex-bench-probes`
-  - raw-to-derived probe derivation
-  - claim catalogs
-  - claim evidence labels
-- `codex-bench-report`
-  - campaign `report.txt`
-  - per-run `run-evidence.txt`
-  - replay text
-- `codex-bench-cli`
-  - `prepare`
-  - `run`
-  - `grade`
-  - `report`
-  - `replay`
-  - `inspect-codex`
+Vendored Codex owns:
 
-## Artifact Flow
+- App Server
+- agent runtime behavior
+- session/config freezing
+- prompt assembly
+- compaction and reconstruction
+- tool mediation
+- persistence and resume
+- thin study-gated raw probe emission
 
-1. `prepare`
-   - writes campaign manifest
-   - samples tasks
-   - writes architecture map and claim catalogs
-2. `run`
-   - prepares isolated worktree
-   - starts a study-tagged Codex App Server thread
-   - captures raw agent events, diagnostics, and Codex raw study probes
-   - extracts patch and writes normalized telemetry
-3. `grade`
-   - writes grader outputs
-4. `report`
-   - reads only local artifacts
-   - writes `report.txt`
-   - writes or refreshes `run-evidence.txt`
+## Why This Boundary Exists
+
+If the whole benchmark stack lived inside vendored Codex, the GitHub repo would be hard to navigate and the research layer would be tightly coupled to one runtime implementation.
+
+By keeping the bench outside:
+
+- the repo is much easier to understand
+- adapters can grow independently
+- reports and claim logic stay reusable
+- Codex patches can stay minimal and auditable
+
+## Outer Workspace
+
+The active workspace lives under [bench](/Users/kevinlin/Downloads/CodexPlusClaw/bench).
+
+### `codex-bench-core`
+
+Owns:
+
+- shared types
+- manifests
+- artifact paths
+- JSON / JSONL IO
+- adapter and renderer traits
+
+This crate is the stability layer for the rest of the bench.
+
+### `codex-bench-codex`
+
+Owns:
+
+- direct in-process App Server startup
+- thread start / turn start orchestration
+- runtime configuration for evaluated Codex runs
+- raw event capture
+- raw diagnostic capture
+- architecture-map generation
+
+This is the only outer crate that directly speaks to vendored Codex crates.
+
+### `codex-bench-swebench`
+
+Owns:
+
+- SWE-bench Verified sampling
+- repo-patch task normalization
+- worktree setup
+- prompt construction
+- patch extraction
+- grading integration
+
+### `codex-bench-nl2repo`
+
+Owns:
+
+- NL2Repo task discovery
+- blank repository setup
+- benchmark-local grading commands
+
+### `codex-bench-newtonbench`
+
+Owns:
+
+- NewtonBench task generation
+- local experiment-lab setup
+- NewtonBench evaluation wrapping
+
+### `codex-bench-probes`
+
+Owns:
+
+- raw-to-derived probe derivation
+- probe summaries
+- claim evidence derivation
+- behavioral counters and evidence labels
+
+### `codex-bench-report`
+
+Owns:
+
+- campaign `report.txt`
+- per-run `run-evidence.txt`
+- per-run `attempt-log.txt`
+- replay text
+- report-time backfilling of newer derived artifacts from older raw evidence
+
+### `codex-bench-cli`
+
+Owns the user-facing commands:
+
+- `prepare`
+- `run`
+- `bootstrap-local`
+- `warm-cache`
+- `grade`
+- `report`
+- `replay`
+- `inspect-codex`
+- `list-presets`
+
+## Data Flow
+
+### 1. Prepare
+
+`prepare` writes:
+
+- `campaign-manifest.json`
+- `selected-dataset.json`
+- `codex-architecture-map.json`
+- campaign-local claim catalogs
+
+At this point the campaign is defined but no Codex run has happened yet.
+
+### 2. Run
+
+`run` does:
+
+1. materialize a benchmark workspace
+2. start a study-tagged Codex thread
+3. capture raw App Server notifications
+4. capture raw Codex study probe events
+5. extract patch/output
+6. derive normalized telemetry
+7. write per-run summaries and human-readable evidence
+
+### 3. Grade
+
+`grade` uses the benchmark adapter's grading path and writes grader outputs back into campaign artifacts.
+
+### 4. Report
+
+`report` reads local artifacts only and produces:
+
+- campaign `report.txt`
+- refreshed per-run `run-evidence.txt`
+- refreshed per-run `attempt-log.txt`
+
+If newer derived artifact formats exist, `report` may backfill them from older raw artifacts.
+
+## Artifact Philosophy
+
+The bench intentionally keeps two layers:
+
+- raw truth
+- readable evidence
+
+Raw truth:
+
+- raw agent events
+- raw diagnostics
+- raw Codex probe events
+
+Readable evidence:
+
+- turn metrics
+- tool and skill summaries
+- probe summaries
+- run evidence
+- campaign report
+
+This is why the repo can stay GitHub-friendly without losing scientific utility.
+
+## Current Evaluation Policy
+
+For benchmark evaluation runs:
+
+- Codex web search is disabled
+- the bench aborts if a web-search event still appears
+- the study stays local-only
+- the runtime path is Codex-only
+
+Those constraints are part of the bench architecture, not just operator convention.

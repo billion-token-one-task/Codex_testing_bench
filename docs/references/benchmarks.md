@@ -2,6 +2,11 @@
 
 ## Active Local Benchmark Vendors
 
+- SWE-bench Verified
+  - local dataset snapshot: `/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/swebench-verified/verified-test.jsonl`
+  - upstream dataset: [princeton-nlp/SWE-bench_Verified](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified)
+  - role in this bench: real-repo patching under strong regression verification
+
 - NL2RepoBench
   - local vendor path: `/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/NL2RepoBench`
   - upstream: [NL2RepoBench](https://github.com/THUDM/NL2RepoBench)
@@ -11,10 +16,6 @@
   - local vendor path: `/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/NewtonBench`
   - upstream: [NewtonBench](https://github.com/HKUST-KnowComp/NewtonBench)
   - role in this bench: interactive scientific discovery and experimentation
-
-- SWE-bench Verified
-  - upstream dataset: [princeton-nlp/SWE-bench_Verified](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified)
-  - role in this bench: real-repo patching under strong regression verification
 
 ## Why These Three Together
 
@@ -27,3 +28,14 @@ Together they give the Codex research bench three complementary observation regi
 - patching in existing codebases
 - building complete systems from scratch
 - discovering latent rules in interactive environments
+
+## Adapter View
+
+Current adapter names in the bench:
+
+- `swebench`
+- `nl2repo`
+- `newtonbench`
+- `repo-patch-jsonl` as the reusable generic lane
+
+This means the benchmark docs should be read not just as benchmark references, but as the benchmark side of a reusable adapter system.

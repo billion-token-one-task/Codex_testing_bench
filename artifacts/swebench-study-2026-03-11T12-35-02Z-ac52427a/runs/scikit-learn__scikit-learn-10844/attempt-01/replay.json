@@ -1,16 +1,5 @@
 {
-  "schema_version": "codex-bench.v1",
-  "campaign_id": "swebench-study-2026-03-11T12-35-02Z-ac52427a",
-  "run_id": "scikit-learn__scikit-learn-10844-attempt-01",
-  "instance_id": "scikit-learn__scikit-learn-10844",
-  "repo": "scikit-learn/scikit-learn",
-  "task_class": "compaction-likely",
-  "base_commit": "97523985b39ecde369d83352d7c3baf403b60a22",
-  "worktree_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/workspace",
-  "attempt": 1,
-  "status": "completed",
-  "grading_status": "pending",
-  "artifact_paths": {
+  "artifactPaths": {
     "anomalies": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/anomalies.jsonl",
     "attemptLog": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/attempt-log.txt",
     "claimEvidence": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/claim-evidence.json",
@@ -33,5 +22,6 @@
     "tokenSnapshots": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/token-snapshots.jsonl",
     "toolEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/tool-events.jsonl",
     "turnMetrics": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/turn-metrics.jsonl"
-  }
+  },
+  "recordPath": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/record.json"
 }

@@ -1,128 +1,235 @@
 # Codex Testing Bench
 
-Codex Testing Bench is a Codex-only research bench for probing how the vendored Codex runtime behaves on real coding tasks such as SWE-bench Verified.
+Codex Testing Bench is a Codex-only research bench for studying how the vendored Codex runtime behaves on real tasks and benchmarks.
 
-The repo is organized so the research bench is easy to read on GitHub:
+The repo is designed around one core principle:
 
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads/CodexPlusClaw/bench) contains the active Rust-first bench workspace.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex`](/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex) contains a pinned vendored Codex runtime with only the runtime and probe-hook patches needed for this study.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks`](/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks) contains vendored external benchmark sources such as NewtonBench and NL2RepoBench.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/docs`](/Users/kevinlin/Downloads/CodexPlusClaw/docs) contains architecture, reference, and probe documentation.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/studies`](/Users/kevinlin/Downloads/CodexPlusClaw/studies) contains reusable claim catalogs and task presets.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/artifacts`](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts) is the publishable output root for campaign reports and curated run evidence.
+- the research bench should be easy to understand from the GitHub root
+- the vendored Codex tree should stay a pinned runtime target with thin study-only probe hooks
+- local artifacts should be rich enough to support serious internal research without dashboards or external telemetry systems
 
-## What This Repo Studies
+## What This Repo Is For
 
-The bench is designed to answer questions like:
+This repo is for deep empirical study of Codex as an agent harness, not just benchmark scoring.
 
-- How does Codex actually freeze runtime/session configuration at thread start?
-- How does Codex layer instructions, developer context, and reconstructed state?
+The bench is meant to help answer questions like:
+
+- How does Codex actually freeze runtime and session state?
+- How does Codex assemble instructions across model-native prompts, developer instructions, reconstructed context, and probe-time updates?
 - What does Codex compaction preserve, compress, or forget?
-- How much of Codex’s behavior comes from internal tool mediation and event plumbing rather than the underlying model alone?
-- Which directions from the attached token-budget and long-horizon scheduling papers appear in Codex behavior, and which do not?
+- How much work is done by the model versus Codex's own orchestration machinery?
+- When does Codex enter a productive edit and verification loop, and when does it burn budget in harness friction?
+- Which ideas from our token-budget and long-horizon scheduling theses appear concretely in Codex behavior?
 
-The main deliverable is not a dashboard or a polished paper. It is a rich evidence dossier:
+The main output is an evidence package:
 
 - campaign-level `report.txt`
 - per-run `run-evidence.txt`
-- raw local artifacts and normalized JSON/JSONL telemetry
+- per-run `attempt-log.txt`
+- raw and normalized local telemetry artifacts
+
+It is intentionally not a dashboard and not the final paper.
+
+## Repo Map
+
+- [bench](/Users/kevinlin/Downloads/CodexPlusClaw/bench): active outer research bench workspace
+- [repos/codex](/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex): vendored Codex runtime with thin study-gated probe patches
+- [vendor-benchmarks](/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks): vendored external benchmark assets
+- [studies](/Users/kevinlin/Downloads/CodexPlusClaw/studies): reusable claim catalogs, presets, and benchmark catalog metadata
+- [docs](/Users/kevinlin/Downloads/CodexPlusClaw/docs): architecture, references, probe taxonomy, artifact contract, and extension docs
+- [artifacts](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts): GitHub-visible campaign outputs and curated evidence
 
 ## Bench Workspace
 
-The active bench crates live under [`/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates`](/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates):
+The active crates live under [bench/crates](/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates):
 
-- `codex-bench-core`: manifests, artifacts, traits, and shared types
-- `codex-bench-codex`: direct Codex App Server integration and architecture mapping
-- `codex-bench-swebench`: SWE-bench dataset/workspace/grading adapter
-- `codex-bench-nl2repo`: NL2RepoBench adapter for from-scratch repository delivery tasks
-- `codex-bench-newtonbench`: NewtonBench adapter for interactive scientific discovery tasks
-- `codex-bench-probes`: raw-to-derived probe logic and claim evidence derivation
-- `codex-bench-report`: `report.txt`, `run-evidence.txt`, and replay rendering
-- `codex-bench-cli`: the user-facing CLI
+- `codex-bench-core`
+  - manifests, artifacts, IO helpers, traits, shared types
+- `codex-bench-codex`
+  - direct in-process Codex App Server integration
+  - raw event capture
+  - architecture map generation
+  - no-web-search runtime enforcement for benchmark runs
+- `codex-bench-swebench`
+  - SWE-bench Verified adapter
+  - repo-patch-jsonl generic adapter path
+- `codex-bench-nl2repo`
+  - NL2RepoBench adapter
+- `codex-bench-newtonbench`
+  - NewtonBench adapter
+- `codex-bench-probes`
+  - raw-to-derived probe logic
+  - claim evidence derivation
+- `codex-bench-report`
+  - `report.txt`
+  - `run-evidence.txt`
+  - `attempt-log.txt`
+  - replay text
+- `codex-bench-cli`
+  - prepare / run / grade / report / replay / inspect-codex
 
-## Study Presets And Benchmark Growth
+## Supported Benchmarks
 
-The bench now has an explicit study-preset layer so campaigns can carry:
-
-- benchmark identity and adapter choice
-- staged sample sizes
-- task-class coverage targets
-- probe and report profiles
-- forward-looking benchmark catalog targets
-
-Preset assets live under [`/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets`](/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets), and the evolving benchmark catalog lives in [`/Users/kevinlin/Downloads/CodexPlusClaw/studies/benchmarks/2026-benchmark-catalog.json`](/Users/kevinlin/Downloads/CodexPlusClaw/studies/benchmarks/2026-benchmark-catalog.json).
-
-Built-in active benchmark lanes now include:
+First-class local adapters currently exist for:
 
 - SWE-bench Verified
 - NL2RepoBench
 - NewtonBench
 
-The bench can also run any benchmark that can be normalized into the repo-patch JSONL schema:
+The bench is also designed to grow beyond those:
 
-- `instance_id`
-- `repo`
-- `base_commit`
-- `problem_statement`
-- optional hints/tests/metadata
+- `repo-patch-jsonl` is the reusable bridge for repo-based patch tasks
+- presets and adapter boundaries are meant to support future benchmark families without changing the Codex shim
 
-That gives the same Codex runtime, probe stack, and evidence reporting a reusable path for other benchmark families.
+See:
 
-## Run The Study
+- [docs/references/benchmarks.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/benchmarks.md)
+- [studies/benchmarks/2026-benchmark-catalog.json](/Users/kevinlin/Downloads/CodexPlusClaw/studies/benchmarks/2026-benchmark-catalog.json)
 
-From [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads/CodexPlusClaw/bench):
+## What Gets Measured
+
+The bench captures four layers of evidence:
+
+1. raw runtime streams
+2. Codex-internal study probes
+3. derived behavioral probes
+4. human-readable evidence reports
+
+Examples of what is captured:
+
+- token in / out / cache-read over time
+- token deltas per turn
+- command chronology
+- tool chronology
+- apply-patch activity
+- skill usage events
+- compaction and reconstruction evidence
+- instruction-channel shifts
+- config-freeze drift
+- persistence and resume effects
+- harness-friction incidents
+- claim evidence labels grounded in local artifacts
+
+See [docs/probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md).
+
+## Quick Start
+
+All commands are run from [bench](/Users/kevinlin/Downloads/CodexPlusClaw/bench).
+
+### 1. Prepare a campaign
 
 ```bash
-cargo run -p codex-bench-cli -- bootstrap-local \
-  --campaign-dir ../artifacts/<campaign-id>
-
 cargo run -p codex-bench-cli -- prepare \
   --campaign-root ../artifacts \
   --preset-path ../studies/task-presets/swebench-v1.json \
   --stage architecture-validation \
   --seed codex-study
+```
 
+### 2. Warm local assets and shared cache
+
+```bash
+cargo run -p codex-bench-cli -- bootstrap-local \
+  --campaign-dir ../artifacts/<campaign-id>
+```
+
+### 3. Run Codex on the campaign
+
+```bash
 cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
+```
 
+### 4. Grade and render the evidence dossier
+
+```bash
 cargo run -p codex-bench-cli -- grade ../artifacts/<campaign-id> \
   --command 'python -m swebench.harness.run_evaluation --predictions_path {predictions}'
 
 cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
-
-cargo run -p codex-bench-cli -- list-presets
 ```
 
-`bootstrap-local` is the preferred way to reduce end-to-end runtime before a real campaign. It:
+### 5. Inspect the results
 
-- builds `codex-bench-cli` into the repo-local Cargo target directory
-- hydrates a local SWE-bench Verified JSONL snapshot under [`/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/swebench-verified`](/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks/swebench-verified)
-- warms the shared repo object cache under [`/Users/kevinlin/Downloads/CodexPlusClaw/.local-cache/repos/swebench`](/Users/kevinlin/Downloads/CodexPlusClaw/.local-cache/repos/swebench) for the selected campaign
+- campaign report: `artifacts/<campaign-id>/reports/report.txt`
+- per-run evidence: `artifacts/<campaign-id>/runs/<instance>/attempt-01/run-evidence.txt`
+- per-run linear log: `artifacts/<campaign-id>/runs/<instance>/attempt-01/attempt-log.txt`
 
-If you already have a prepared campaign and only want the git object cache warmed:
+For a fuller walkthrough, see [docs/getting-started.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/getting-started.md).
 
-```bash
-cargo run -p codex-bench-cli -- warm-cache ../artifacts/<campaign-id>
-```
+## Evaluation Policy
 
-For the new benchmark families:
+Benchmark runs are intentionally constrained to reduce contamination and make interpretation cleaner.
 
-```bash
-cargo run -p codex-bench-cli -- prepare \
-  --campaign-root ../artifacts \
-  --preset-path ../studies/task-presets/nl2repo-v0.json \
-  --stage architecture-validation \
-  --seed codex-study
+Important current policy choices:
 
-cargo run -p codex-bench-cli -- prepare \
-  --campaign-root ../artifacts \
-  --preset-path ../studies/task-presets/newtonbench-v0.json \
-  --stage architecture-validation \
-  --seed codex-study
-```
+- benchmark runs are local-only
+- benchmark runs do not use OpenClaw
+- the evaluated Codex runtime has web search explicitly disabled
+- if Codex emits a web-search event anyway, the benchmark run fails immediately
 
-## Reference Material
+This keeps the evidence focused on Codex's harness behavior inside the repo-local runtime.
 
-- [`docs/references/codex.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/codex.md)
-- [`docs/references/benchmarks.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/benchmarks.md)
-- [`docs/architecture/bench-architecture.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/architecture/bench-architecture.md)
-- [`docs/probes/probe-taxonomy.md`](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
+## Published vs Local Artifacts
+
+The repo separates GitHub-visible evidence from machine-local heavy data.
+
+GitHub-visible:
+
+- campaign manifests
+- selected dataset snapshots
+- architecture maps
+- claim catalogs
+- `report.txt`
+- `run-evidence.txt`
+- `attempt-log.txt`
+- summary JSON artifacts
+
+Local-only:
+
+- warmed repo caches
+- worktrees and heavy prepared workspaces
+- full raw JSONL streams unless intentionally curated
+- bulky transient files
+
+See [artifacts/README.md](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/README.md) and [docs/artifacts/artifact-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/artifacts/artifact-contract.md).
+
+## Why Codex Is Vendored
+
+The bench depends on deep Codex-internal observation:
+
+- session/config freeze
+- instruction assembly
+- compaction and reconstruction
+- event/listener translation
+- tool mediation
+- persistence/resume behavior
+
+Those signals are only visible if the runtime is pinned and locally patchable.
+
+The outer bench owns orchestration, reporting, and extensibility.
+Vendored Codex owns runtime behavior and thin study-only probe emission.
+
+See [docs/architecture/bench-architecture.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/architecture/bench-architecture.md).
+
+## Key References
+
+- [docs/references/codex.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/codex.md)
+- [docs/references/benchmarks.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/benchmarks.md)
+- [DeepWiki Codex](https://deepwiki.com/openai/codex)
+- [OpenAI: Unlocking the Codex harness](https://openai.com/index/unlocking-the-codex-harness/)
+
+## Recommended Reading Order
+
+If you are new to the repo:
+
+1. [README.md](/Users/kevinlin/Downloads/CodexPlusClaw/README.md)
+2. [docs/getting-started.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/getting-started.md)
+3. [docs/architecture/bench-architecture.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/architecture/bench-architecture.md)
+4. [docs/probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
+5. [docs/artifacts/artifact-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/artifacts/artifact-contract.md)
+
+If you want to extend the system:
+
+1. [docs/architecture/bench-architecture.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/architecture/bench-architecture.md)
+2. [docs/extending-the-bench.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/extending-the-bench.md)
+3. [docs/probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
