@@ -7,6 +7,18 @@
 - [probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
 - [artifacts/artifact-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/artifacts/artifact-contract.md)
 
+## 如果你想先理解“我们在研究什么”
+
+- 先看仓库根目录的 [README.md](/Users/kevinlin/Downloads/CodexPlusClaw/README.md)
+- 再看 [probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
+- 再看 [studies/hypotheses/model-behavior-v1.json](/Users/kevinlin/Downloads/CodexPlusClaw/studies/hypotheses/model-behavior-v1.json)
+
+这一条阅读路径最适合理解：
+
+- 为什么我们要做 `gpt-5.4` vs `gpt-5.3-codex`
+- 为什么要把 `friendly` / `pragmatic` 当作一等实验变量
+- 为什么我们关心“说更多”与工具调用、验证、harness regulation 的耦合
+
 ## 参考资料
 
 - [references/codex.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/references/codex.md)
