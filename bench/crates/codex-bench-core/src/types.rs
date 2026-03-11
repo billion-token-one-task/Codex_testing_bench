@@ -4,6 +4,15 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EvidenceClassification {
+    Observed,
+    Inferred,
+    Estimated,
+    Unobservable,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrepareCampaignArgs {
     pub campaign_root: PathBuf,
@@ -60,10 +69,41 @@ pub struct ExperimentCohort {
     pub prompt_style: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BenchmarkTaskClassProfile {
+    pub task_class: String,
+    pub expected_verification_strength: String,
+    pub expected_context_pressure: String,
+    pub expected_tool_mix: Vec<String>,
+    pub expected_bootstrap_risk: String,
+    pub expected_language_need: String,
+    #[serde(default)]
+    pub language_profile_hint: Option<String>,
+    #[serde(default)]
+    pub tool_profile_hint: Option<String>,
+    #[serde(default)]
+    pub interaction_style_hint: Option<String>,
+    #[serde(default)]
+    pub default_analysis_overrides: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BenchmarkResearchProfile {
+    pub benchmark_name: String,
+    pub benchmark_adapter: String,
+    pub summary: String,
+    #[serde(default)]
+    pub benchmark_notes: Vec<String>,
+    #[serde(default)]
+    pub task_class_profiles: Vec<BenchmarkTaskClassProfile>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CampaignManifest {
     pub schema_version: String,
     pub campaign_id: String,
+    #[serde(default)]
+    pub campaign_status: String,
     #[serde(default)]
     pub experiment_id: String,
     #[serde(default)]
@@ -106,6 +146,12 @@ pub struct CampaignManifest {
     pub hypothesis_catalog_path: Option<PathBuf>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub experiment_lock_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub benchmark_research_profile_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_report_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_report_generated_at: Option<String>,
     pub selected_instances: Vec<SelectedInstance>,
 }
 
@@ -157,6 +203,10 @@ pub struct RunManifest {
     pub worktree_dir: PathBuf,
     pub attempt: u32,
     pub status: String,
+    #[serde(default)]
+    pub derivations_status: String,
+    #[serde(default)]
+    pub evidence_status: String,
     pub grading_status: String,
     pub artifact_paths: BTreeMap<String, PathBuf>,
 }
@@ -205,6 +255,8 @@ pub struct ProbeEventRow {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProbeSummary {
+    #[serde(default)]
+    pub observability_contract_version: Option<String>,
     pub exact_probe_count: usize,
     pub inferred_probe_count: usize,
     pub estimated_probe_count: usize,
@@ -286,6 +338,8 @@ pub struct ProbeSummary {
     pub tokens_before_first_tool: Option<i64>,
     #[serde(default)]
     pub visible_text_before_first_tool_chars: Option<usize>,
+    #[serde(default)]
+    pub field_classifications: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -300,6 +354,8 @@ pub struct ClaimEvidence {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RunSummary {
+    #[serde(default)]
+    pub observability_contract_version: Option<String>,
     pub instance_id: String,
     pub repo: String,
     pub task_class: String,
@@ -391,6 +447,10 @@ pub struct RunSummary {
     pub message_category_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub artifact_inventory: BTreeMap<String, bool>,
+    #[serde(default)]
+    pub artifact_roles: BTreeMap<String, String>,
+    #[serde(default)]
+    pub field_classifications: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

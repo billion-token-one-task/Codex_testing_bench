@@ -4,6 +4,20 @@
 
 定义每个 campaign 和每个 run 应该产出什么，哪些文件适合公开放在 GitHub 上，哪些只应保留在本地。
 
+同时，这份文档现在也定义：
+
+- 哪些 artifact 是 `raw truth`
+- 哪些 artifact 是 `derived evidence`
+- 哪些 artifact 是 `derived summary`
+- 哪些 artifact 是给研究者直接阅读的 `human-readable dossier`
+
+这一层的分类应与：
+
+- [Codex 可观测面契约](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-observability-contract.md)
+- [codex-observability-map.json](/Users/kevinlin/Downloads/CodexPlusClaw/studies/observability/codex-observability-map.json)
+
+保持一致。
+
 ## Campaign 级别产物
 
 期望存在的 campaign 级文件：
@@ -15,6 +29,7 @@
 - `codex-unique-claims.json`
 - `model-catalog-snapshot.json`
 - `experiment-lock.json`
+- `benchmark-research-profile.json`
 - `studies/hypotheses/model-behavior-v1.json` 的 campaign 引用
 - `predictions.jsonl`
 - `grader.json`
@@ -22,6 +37,15 @@
 - `reports/model-comparison.md`
 - `reports/verbosity-analysis.md`
 - `reports/tool-language-coupling.md`
+- `reports/linguistic-profile.md`
+- `reports/phrase-and-tone-analysis.md`
+- `reports/bridge-language-analysis.md`
+- `reports/tool-inventory.md`
+- `reports/tool-route-analysis.md`
+- `reports/personality-analysis.md`
+- `reports/personality-mechanism-analysis.md`
+- `reports/instruction-stratification-analysis.md`
+- `reports/cohort-pair-analysis.md`
 - `datasets/*.csv`
 
 这些文件回答的是：
@@ -59,6 +83,73 @@
 - `run-evidence.txt`
 - `attempt-log.txt`
 - `replay.json`
+
+目前重点 CSV 包括：
+
+- `campaign_runs.csv`
+- `claim_evidence.csv`
+- `model_pair_deltas.csv`
+- `task_class_summary.csv`
+- `turn_metrics.csv`
+- `message_metrics.csv`
+- `message_lexical_summary.csv`
+- `message_discourse_summary.csv`
+- `message_style.csv`
+- `cohort_lexical_summary.csv`
+- `model_phrase_deltas.csv`
+- `personality_phrase_deltas.csv`
+- `tool_usage.csv`
+- `tool_inventory.csv`
+- `tool_route_summary.csv`
+- `tool_by_turn.csv`
+- `verbosity_tool_coupling.csv`
+
+## Artifact 角色分类
+
+### Raw truth
+
+这些文件最接近 Codex 原生输出，是 ground truth：
+
+- `raw-agent-events.jsonl`
+- `raw-diagnostics.jsonl`
+- `codex-probe-events.jsonl`
+- `patch.diff`
+
+### Derived evidence
+
+这些文件来自 bench 后处理，但仍然紧贴原始事件：
+
+- `lifecycle-events.jsonl`
+- `token-snapshots.jsonl`
+- `turn-metrics.jsonl`
+- `message-metrics.jsonl`
+- `command-events.jsonl`
+- `tool-events.jsonl`
+- `skill-events.jsonl`
+- `patch-events.jsonl`
+- `grade-events.jsonl`
+- `anomalies.jsonl`
+- `verbosity-tool-coupling.jsonl`
+- `probe-events.jsonl`
+
+### Derived summary
+
+这些文件用于 campaign 级归纳与报告：
+
+- `probe-summary.json`
+- `claim-evidence.json`
+- `run-summary.json`
+
+### Human-readable dossier
+
+这些文件是研究者第一眼应该打开的文件：
+
+- `run-evidence.txt`
+- `attempt-log.txt`
+- `replay.json`
+- `reports/*.md`
+- `reports/report.txt`
+- `datasets/*.csv`
 
 ## 人类阅读的优先顺序
 
@@ -107,6 +198,21 @@ raw JSONL 仍然是 source of truth，但它们不是给人类第一眼打开的
 
 这是有意设计的。它允许旧 campaign 在 **不重跑 Codex** 的情况下获得更好的证据产物。
 
+## 连续输出线
+
+当前目标行为是：
+
+- `run` 完成后自动生成：
+  - campaign 级 `report.txt`
+  - Markdown 专题
+  - `datasets/*.csv`
+- `grade` 完成后自动 ingest 官方评分结果并自动刷新这些产物
+
+因此：
+
+- `report` 命令应被视作重建 / 回填入口
+- 但不是正常工作流里唯一生成报告的入口
+
 ## 失败语义
 
 artifact 完整性本身就是解释的一部分。
@@ -119,3 +225,13 @@ artifact 完整性本身就是解释的一部分。
 - 某个 run 是否缺失特定的 normalized 文件
 
 缺失 artifact 应被视为 **evidence gap**，而不是被静默忽略。
+
+## 字段级 classification
+
+summary、Markdown 与 CSV 中的字段，也应尽量能够区分：
+
+- `observed`
+- `inferred`
+- `estimated`
+
+如果某个字段本质上是推断层，就不应当在报告里被写成 Codex 原生直接给出的事实。

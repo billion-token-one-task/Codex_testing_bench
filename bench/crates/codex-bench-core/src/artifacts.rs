@@ -60,6 +60,38 @@ pub fn attempt_artifact_paths(attempt_dir: &Path) -> BTreeMap<String, PathBuf> {
     ])
 }
 
+pub fn artifact_role_map_for_attempt() -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("prompt".to_string(), "derived_input".to_string()),
+        ("environmentPlan".to_string(), "derived_input".to_string()),
+        ("rawAgentEvents".to_string(), "raw_truth".to_string()),
+        ("rawDiagnostics".to_string(), "raw_truth".to_string()),
+        ("codexProbeEvents".to_string(), "raw_truth".to_string()),
+        ("lifecycleEvents".to_string(), "derived_evidence".to_string()),
+        ("tokenSnapshots".to_string(), "derived_evidence".to_string()),
+        ("turnMetrics".to_string(), "derived_evidence".to_string()),
+        ("messageMetrics".to_string(), "derived_evidence".to_string()),
+        ("commandEvents".to_string(), "derived_evidence".to_string()),
+        ("toolEvents".to_string(), "derived_evidence".to_string()),
+        ("skillEvents".to_string(), "derived_evidence".to_string()),
+        ("patchEvents".to_string(), "derived_evidence".to_string()),
+        ("gradeEvents".to_string(), "derived_evidence".to_string()),
+        ("anomalies".to_string(), "derived_evidence".to_string()),
+        (
+            "verbosityToolCoupling".to_string(),
+            "derived_evidence".to_string(),
+        ),
+        ("probeEvents".to_string(), "derived_evidence".to_string()),
+        ("probeSummary".to_string(), "derived_summary".to_string()),
+        ("claimEvidence".to_string(), "derived_summary".to_string()),
+        ("patch".to_string(), "raw_truth".to_string()),
+        ("runSummary".to_string(), "derived_summary".to_string()),
+        ("runEvidence".to_string(), "human_readable_dossier".to_string()),
+        ("attemptLog".to_string(), "human_readable_dossier".to_string()),
+        ("replay".to_string(), "human_readable_dossier".to_string()),
+    ])
+}
+
 pub fn artifact_map_for_attempt(attempt_dir: &Path) -> BTreeMap<String, PathBuf> {
     attempt_artifact_paths(attempt_dir)
 }

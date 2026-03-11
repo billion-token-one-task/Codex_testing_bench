@@ -1,11 +1,12 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::types::{
-    CampaignManifest, ClaimCatalogEntry, DatasetRecord, ProbeEventRow, ProbeSummary, RunSummary,
-    StudyArchitectureSubsystem,
+    BenchmarkResearchProfile, CampaignManifest, ClaimCatalogEntry, DatasetRecord, ProbeEventRow,
+    ProbeSummary, RunSummary, StudyArchitectureSubsystem,
 };
 
 #[async_trait]
@@ -21,6 +22,50 @@ pub trait BenchmarkAdapter {
     async fn prepare_campaign(&self, campaign_root: &Path) -> Result<PathBuf>;
     async fn run_campaign(&self, campaign_dir: &Path) -> Result<()>;
     async fn grade_campaign(&self, campaign_dir: &Path) -> Result<()>;
+
+    fn benchmark_research_profile(&self) -> BenchmarkResearchProfile {
+        BenchmarkResearchProfile::default()
+    }
+
+    fn task_classification(&self, _record: &DatasetRecord) -> Option<String> {
+        None
+    }
+
+    fn expected_verification_strength(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn expected_context_pressure(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn expected_tool_mix(&self, _task_class: &str) -> Vec<String> {
+        Vec::new()
+    }
+
+    fn expected_bootstrap_risk(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn expected_language_need(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn language_profile_hint(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn tool_profile_hint(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn interaction_style_hint(&self, _task_class: &str) -> Option<String> {
+        None
+    }
+
+    fn default_analysis_overrides(&self, _task_class: &str) -> BTreeMap<String, String> {
+        BTreeMap::new()
+    }
 }
 
 pub trait ProbeDeriver {

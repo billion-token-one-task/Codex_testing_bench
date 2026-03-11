@@ -34,6 +34,7 @@ cargo run -p codex-bench-cli -- prepare \
 - campaign 局部拷贝的 claim catalog
 - `model-catalog-snapshot.json`
 - `experiment-lock.json`
+- `benchmark-research-profile.json`
 
 如果 preset 含有多 cohort 定义，那么这里会一次性展开出多个 `model × personality` 运行组；同一个 `instance_id` 会在不同 cohort 下形成配对样本。
 
@@ -61,6 +62,32 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 - `artifacts/<campaign-id>/runs/<instance>/manifest.json`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/`
 
+`run` 完成后会自动生成 campaign 级报告与数据集，不需要再手动先执行一次 `report`：
+
+- `reports/report.txt`
+- `reports/model-comparison.md`
+- `reports/verbosity-analysis.md`
+- `reports/tool-language-coupling.md`
+- `reports/linguistic-profile.md`
+- `reports/phrase-and-tone-analysis.md`
+- `reports/bridge-language-analysis.md`
+- `reports/tool-inventory.md`
+- `reports/tool-route-analysis.md`
+- `reports/cohort-pair-analysis.md`
+- `reports/personality-mechanism-analysis.md`
+- `reports/instruction-stratification-analysis.md`
+- `datasets/*.csv`
+
+重要的是：这些 `datasets/*.csv` 现在不再只是简单 pass-through，而是会自动包含：
+
+- `message_style.csv`
+- `cohort_lexical_summary.csv`
+- `model_phrase_deltas.csv`
+- `personality_phrase_deltas.csv`
+- `tool_inventory.csv`
+- `tool_route_summary.csv`
+- `tool_by_turn.csv`
+
 ### 4. 进行评分
 
 以 SWE-bench 为例：
@@ -69,6 +96,12 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 cargo run -p codex-bench-cli -- grade ../artifacts/<campaign-id> \
   --command 'python -m swebench.harness.run_evaluation --predictions_path {predictions}'
 ```
+
+`grade` 完成后会自动：
+
+- ingest 官方 grading 结果回 `campaign-manifest.json` / `run manifest`
+- 更新各题 `grading_status`
+- 自动刷新 campaign 级 Markdown 与 `datasets/*.csv`
 
 ### 5. 生成 evidence dossier
 
@@ -82,6 +115,9 @@ cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 - `artifacts/<campaign-id>/reports/model-comparison.md`
 - `artifacts/<campaign-id>/reports/verbosity-analysis.md`
 - `artifacts/<campaign-id>/reports/tool-language-coupling.md`
+- `artifacts/<campaign-id>/reports/linguistic-profile.md`
+- `artifacts/<campaign-id>/reports/tool-inventory.md`
+- `artifacts/<campaign-id>/reports/cohort-pair-analysis.md`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/run-evidence.txt`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/attempt-log.txt`
 - `artifacts/<campaign-id>/datasets/*.csv`

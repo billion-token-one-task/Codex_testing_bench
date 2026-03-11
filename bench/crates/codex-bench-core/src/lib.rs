@@ -8,7 +8,8 @@ pub mod types;
 pub mod workspace;
 
 pub use artifacts::{
-    attempt_artifact_paths, artifact_inventory_for_attempt, artifact_map_for_attempt,
+    artifact_role_map_for_attempt, attempt_artifact_paths, artifact_inventory_for_attempt,
+    artifact_map_for_attempt,
     patch_file_count,
 };
 pub use commands::{command_capture, render_command, run_command};

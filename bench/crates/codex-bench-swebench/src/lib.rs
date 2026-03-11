@@ -6,13 +6,14 @@ use anyhow::{Context, Result, anyhow, bail};
 use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
-    CampaignManifest, CodexRunRequest, DatasetRecord, ExperimentCohort, PrepareCampaignArgs,
-    RunManifest, SelectedInstance, RunSummary, StudyCohortPreset, attempt_artifact_paths,
-    default_swebench_preset_path, ensure_absolute_dir, load_study_preset, preferred_python,
-    read_json, write_json_pretty, write_jsonl,
+    BenchmarkResearchProfile, BenchmarkTaskClassProfile, CampaignManifest, CodexRunRequest,
+    DatasetRecord, ExperimentCohort, PrepareCampaignArgs, RunManifest, RunSummary,
+    SelectedInstance, StudyCohortPreset, attempt_artifact_paths, default_swebench_preset_path,
+    ensure_absolute_dir, load_study_preset, preferred_python, read_json, write_json_pretty,
+    write_jsonl,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
-use codex_bench_report::render_run_evidence;
+use codex_bench_report::{render_campaign_report, render_run_evidence};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 use tokio::process::Command;
@@ -90,6 +91,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let cohorts = resolve_cohorts(&preset, &args);
     let model_catalog_snapshot_path = campaign_dir.join("model-catalog-snapshot.json");
     let experiment_lock_path = campaign_dir.join("experiment-lock.json");
+    let benchmark_research_profile_path = campaign_dir.join("benchmark-research-profile.json");
     let hypothesis_catalog_path = repo_root.join(MODEL_BEHAVIOR_HYPOTHESES);
     write_model_catalog_snapshot(&repo_root, &cohorts, &model_catalog_snapshot_path)?;
     write_json_pretty(
@@ -134,6 +136,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let manifest = CampaignManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
+        campaign_status: "prepared".to_string(),
         experiment_id,
         experiment_name,
         created_at: Utc::now().to_rfc3339(),
@@ -167,11 +170,18 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         model_catalog_snapshot_path: Some(model_catalog_snapshot_path),
         hypothesis_catalog_path: Some(hypothesis_catalog_path),
         experiment_lock_path: Some(experiment_lock_path),
+        benchmark_research_profile_path: Some(benchmark_research_profile_path.clone()),
+        last_report_path: None,
+        last_report_generated_at: None,
         selected_instances,
     };
 
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     write_json_pretty(&campaign_dir.join("selected-dataset.json"), &selected_records)?;
+    write_json_pretty(
+        &benchmark_research_profile_path,
+        &swebench_benchmark_research_profile(),
+    )?;
     write_architecture_map(&campaign_dir)?;
     write_claim_catalog_assets(
         &campaign_dir,
@@ -181,12 +191,107 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     Ok(campaign_dir)
 }
 
+fn swebench_benchmark_research_profile() -> BenchmarkResearchProfile {
+    BenchmarkResearchProfile {
+        benchmark_name: "SWE-bench Verified".to_string(),
+        benchmark_adapter: "swebench".to_string(),
+        summary: "Repository-grounded software maintenance benchmark with strong verification pressure, moderate-to-high bootstrap risk, and rich tool-mediated debugging/edit/test loops.".to_string(),
+        benchmark_notes: vec![
+            "SWE-bench is suitable for observing Codex search-edit-verify cycles under realistic repository state.".to_string(),
+            "Official grading failures must be separated from solver behavior because environment reconstruction cost is often large.".to_string(),
+            "Different repos induce very different bootstrap tax and context pressure, so task-class-aware analysis is mandatory.".to_string(),
+        ],
+        task_class_profiles: vec![
+            BenchmarkTaskClassProfile {
+                task_class: "bootstrap-heavy".to_string(),
+                expected_verification_strength: "high".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string(), "apply_patch".to_string()],
+                expected_bootstrap_risk: "high".to_string(),
+                expected_language_need: "medium".to_string(),
+                language_profile_hint: Some("Expect more environment diagnosis, dependency narration, and confidence hedging around setup steps.".to_string()),
+                tool_profile_hint: Some("Shell-heavy with repeated environment inspection, install, and test invocations.".to_string()),
+                interaction_style_hint: Some("Likely to expose harness overhead and control-rod behavior before productive edits stabilize.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_bootstrap_tax".to_string(), "true".to_string()),
+                    ("interpret_grader_failures_as_solver_failures".to_string(), "false".to_string()),
+                ]),
+            },
+            BenchmarkTaskClassProfile {
+                task_class: "verification-heavy".to_string(),
+                expected_verification_strength: "very_high".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string(), "apply_patch".to_string()],
+                expected_bootstrap_risk: "medium".to_string(),
+                expected_language_need: "high".to_string(),
+                language_profile_hint: Some("Expect verification framing, confidence claims, and result interpretation language to rise.".to_string()),
+                tool_profile_hint: Some("Frequent test commands and alternating patch/test micro-cycles.".to_string()),
+                interaction_style_hint: Some("Best regime for measuring language-to-verification closure and actionable narration.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_verification_grounded_commentary".to_string(), "true".to_string()),
+                ]),
+            },
+            BenchmarkTaskClassProfile {
+                task_class: "search-heavy".to_string(),
+                expected_verification_strength: "medium".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string()],
+                expected_bootstrap_risk: "low".to_string(),
+                expected_language_need: "high".to_string(),
+                language_profile_hint: Some("Expect orientation, observation, and decision-explanation language around repo exploration.".to_string()),
+                tool_profile_hint: Some("High grep/find/read density before the first controlled change.".to_string()),
+                interaction_style_hint: Some("Useful for testing whether models narrate exploration or remain silent operators.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_activation_threshold".to_string(), "true".to_string()),
+                ]),
+            },
+            BenchmarkTaskClassProfile {
+                task_class: "patch-heavy".to_string(),
+                expected_verification_strength: "medium".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["apply_patch".to_string(), "shell".to_string()],
+                expected_bootstrap_risk: "low".to_string(),
+                expected_language_need: "medium".to_string(),
+                language_profile_hint: Some("Expect decision explanation and result framing around retained edits.".to_string()),
+                tool_profile_hint: Some("Patch application becomes the key controlled-change signal.".to_string()),
+                interaction_style_hint: Some("Good regime for comparing silent patch bursts versus narrated patch bursts.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_patch_bursts".to_string(), "true".to_string()),
+                ]),
+            },
+            BenchmarkTaskClassProfile {
+                task_class: "compaction-likely".to_string(),
+                expected_verification_strength: "medium".to_string(),
+                expected_context_pressure: "high".to_string(),
+                expected_tool_mix: vec!["shell".to_string(), "apply_patch".to_string()],
+                expected_bootstrap_risk: "medium".to_string(),
+                expected_language_need: "high".to_string(),
+                language_profile_hint: Some("Expect recap, bridge language, and rediscovery signs if state continuity degrades.".to_string()),
+                tool_profile_hint: Some("Long search/edit/test sequences with higher chance of repeated reads or verification loops.".to_string()),
+                interaction_style_hint: Some("Most relevant class for compaction continuity and persistence half-life probes.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_compaction_continuity".to_string(), "true".to_string()),
+                ]),
+            },
+        ],
+    }
+}
+
 pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Result<()> {
-    let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    manifest.campaign_status = "running".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     for selected in &manifest.selected_instances {
         run_instance(&manifest, selected, refresh_repo_cache).await?;
     }
     write_predictions_jsonl(&manifest, campaign_dir).await?;
+    manifest.campaign_status = "run_completed".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
+    let report_path = render_campaign_report(campaign_dir)?;
+    manifest.campaign_status = "report_generated".to_string();
+    manifest.last_report_path = Some(report_path);
+    manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     Ok(())
 }
 
@@ -262,7 +367,7 @@ for row in dataset:
 }
 
 pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Result<()> {
-    let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     let predictions_path = campaign_dir.join("predictions.jsonl");
     if !predictions_path.exists() {
         write_predictions_jsonl(&manifest, campaign_dir).await?;
@@ -271,25 +376,69 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
     let reports_dir = campaign_dir.join("reports");
     fs::create_dir_all(&reports_dir)?;
     let grader_path = reports_dir.join("grader.json");
+    manifest.campaign_status = "grading".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
 
     if let Some(command_template) = command {
-        let command = command_template.replace("{predictions}", &predictions_path.display().to_string());
-        let output = Command::new("zsh")
-            .arg("-lc")
-            .arg(command)
-            .current_dir(campaign_dir)
-            .output()
-            .await?;
+        let predictions_dir = campaign_dir.join("predictions");
+        let official_root = reports_dir.join("official");
+        fs::create_dir_all(&official_root)?;
+        let cohort_ids = if manifest.cohorts.is_empty() {
+            vec!["default".to_string()]
+        } else {
+            manifest
+                .cohorts
+                .iter()
+                .map(|cohort| cohort.cohort_id.clone())
+                .collect::<Vec<_>>()
+        };
+        let mut cohort_results = Vec::new();
+        for cohort_id in cohort_ids {
+            let cohort_predictions_path = predictions_dir.join(format!("{cohort_id}.jsonl"));
+            if !cohort_predictions_path.exists() {
+                continue;
+            }
+            let cohort_official_dir = official_root.join(&cohort_id);
+            fs::create_dir_all(&cohort_official_dir)?;
+            let command = command_template
+                .replace("{predictions}", &cohort_predictions_path.display().to_string());
+            let output = Command::new("zsh")
+                .arg("-lc")
+                .arg(command)
+                .current_dir(&cohort_official_dir)
+                .output()
+                .await?;
+            let cohort_grader_path = cohort_official_dir.join("grader.json");
+            write_json_pretty(
+                &cohort_grader_path,
+                &json!({
+                    "cohortId": cohort_id,
+                    "status": if output.status.success() { "ok" } else { "failed" },
+                    "exitCode": output.status.code(),
+                    "stdout": String::from_utf8_lossy(&output.stdout),
+                    "stderr": String::from_utf8_lossy(&output.stderr),
+                }),
+            )?;
+            let official_summary_path = find_official_summary_path(&cohort_official_dir)?;
+            if let Some(summary_path) = official_summary_path.as_ref() {
+                ingest_official_grading(&manifest, campaign_dir, &cohort_id, summary_path)?;
+            }
+            cohort_results.push(json!({
+                "cohortId": cohort_id,
+                "graderPath": cohort_grader_path,
+                "officialSummaryPath": official_summary_path,
+                "status": if output.status.success() { "ok" } else { "failed" },
+                "exitCode": output.status.code(),
+            }));
+        }
         write_json_pretty(
             &grader_path,
             &json!({
-                "status": if output.status.success() { "ok" } else { "failed" },
-                "exitCode": output.status.code(),
-                "stdout": String::from_utf8_lossy(&output.stdout),
-                "stderr": String::from_utf8_lossy(&output.stderr),
+                "status": "completed",
+                "cohorts": cohort_results,
             }),
         )?;
-        ingest_official_grading(&manifest, campaign_dir)?;
+        manifest.campaign_status = "graded".to_string();
     } else {
         write_json_pretty(
             &grader_path,
@@ -298,14 +447,26 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
                 "message": "No grading command was provided. Supply --command with a {predictions} placeholder to invoke the official SWE-bench harness locally."
             }),
         )?;
+        manifest.campaign_status = "run_completed".to_string();
     }
+    let report_path = render_campaign_report(campaign_dir)?;
+    manifest.last_report_path = Some(report_path);
+    manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
+    manifest.campaign_status = if manifest.campaign_status == "graded" {
+        "graded_report_generated".to_string()
+    } else {
+        "report_generated".to_string()
+    };
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     Ok(())
 }
 
-fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> Result<()> {
-    let Some(official_summary_path) = find_official_summary_path(campaign_dir)? else {
-        return Ok(());
-    };
+fn ingest_official_grading(
+    manifest: &CampaignManifest,
+    campaign_dir: &Path,
+    cohort_id: &str,
+    official_summary_path: &Path,
+) -> Result<()> {
     let official_summary: Value = read_json(&official_summary_path)?;
 
     let resolved_ids = value_string_set(&official_summary, "resolved_ids");
@@ -314,6 +475,9 @@ fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> 
     let completed_ids = value_string_set(&official_summary, "completed_ids");
 
     for selected in &manifest.selected_instances {
+        if selected.cohort_id != cohort_id {
+            continue;
+        }
         let grading_status = if resolved_ids.contains(&selected.instance_id) {
             "resolved"
         } else if unresolved_ids.contains(&selected.instance_id) {
@@ -330,6 +494,7 @@ fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> 
         if run_manifest_path.exists() {
             let mut run_manifest: RunManifest = read_json(&run_manifest_path)?;
             run_manifest.grading_status = grading_status.to_string();
+            run_manifest.evidence_status = "run_evidence_generated".to_string();
             write_json_pretty(&run_manifest_path, &run_manifest)?;
         }
 
@@ -344,6 +509,7 @@ fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> 
         let per_instance_report = find_official_instance_report(campaign_dir, manifest, &selected.instance_id);
         let grade_row = json!({
             "instanceId": selected.instance_id,
+            "cohortId": selected.cohort_id,
             "gradingStatus": grading_status,
             "officialSummaryPath": official_summary_path,
             "officialInstanceReportPath": per_instance_report,
@@ -355,8 +521,7 @@ fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> 
     Ok(())
 }
 
-fn find_official_summary_path(campaign_dir: &Path) -> Result<Option<PathBuf>> {
-    let official_dir = campaign_dir.join("reports").join("official");
+fn find_official_summary_path(official_dir: &Path) -> Result<Option<PathBuf>> {
     if !official_dir.exists() {
         return Ok(None);
     }
@@ -466,6 +631,8 @@ async fn run_instance(
         worktree_dir: worktree_dir.clone(),
         attempt: 1,
         status: "running".to_string(),
+        derivations_status: "pending".to_string(),
+        evidence_status: "pending".to_string(),
         grading_status: "pending".to_string(),
         artifact_paths: artifact_paths.clone(),
     };
@@ -516,6 +683,8 @@ async fn run_instance(
     }
     let finished_manifest = RunManifest {
         status: summary.status.clone(),
+        derivations_status: "completed".to_string(),
+        evidence_status: "run_evidence_generated".to_string(),
         artifact_paths,
         ..run_manifest
     };

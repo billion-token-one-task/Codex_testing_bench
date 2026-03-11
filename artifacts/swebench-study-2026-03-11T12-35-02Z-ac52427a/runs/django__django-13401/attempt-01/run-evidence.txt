@@ -86,106 +86,106 @@ seq=223 kind=command_skill_access skill=dispatching-parallel-agents scope=- enab
 
 Tool Usage
 ==========
-seq=114 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=115 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=120 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=121 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=122 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=123 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=124 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=125 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=126 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=127 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=223 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=224 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=225 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=226 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=227 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=228 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=229 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=234 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=131
-seq=332 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=333 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=337 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=338 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=339 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=340 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=341 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=342 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=438 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=439 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=440 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=441 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=442 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=444 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=69
-seq=532 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=533 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=0
-seq=534 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=537 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=133
-seq=661 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=662 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=664 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=665 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=666 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=667 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=672 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=4194
-seq=673 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=4194
-seq=764 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=767 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=126
-seq=768 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=769 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=880 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=881 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=882 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=893 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=68
-seq=895 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=896 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1035 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1036 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1041 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1042 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1043 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1044 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1170 phase=begin kind=apply_patch name=apply_patch server=- tool=- success=- duration_ms=0
-seq=1172 phase=end kind=apply_patch name=apply_patch server=- tool=- success=false duration_ms=0
-seq=1250 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1251 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1252 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1253 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1374 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1375 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1376 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1377 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1378 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1379 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1502 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1503 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1504 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1505 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1515 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1516 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1517 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1520 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=124
-seq=1622 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1623 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1669 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=1491
-seq=1670 phase=end kind=shell name=shell server=- tool=- success=false duration_ms=1492
-seq=1786 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1787 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1788 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1789 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1790 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1791 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1877 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1878 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=0
-seq=1883 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1884 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1892 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=586
-seq=1893 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=587
-seq=1992 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1993 phase=begin kind=shell name=shell server=- tool=- success=- duration_ms=0
-seq=1996 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=235
-seq=2037 phase=end kind=shell name=shell server=- tool=- success=true duration_ms=1323
+seq=114 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_3jiui2TWOwzlDGKweZb4NWoN server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=115 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_3jiui2TWOwzlDGKweZb4NWoN server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=4207
+seq=120 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ivgF3p1lP4ESQLVKoP6jZ8oa server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=121 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ivgF3p1lP4ESQLVKoP6jZ8oa server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=6371
+seq=122 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_9g1ScnTOn7vLpzJv8s1LwNQk server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=123 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_uPURmD4zWaqQB67q6xwIQ9qY server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=124 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_9Qy2xuH0AK3ZStsRqEI9Z9zQ server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=125 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_9g1ScnTOn7vLpzJv8s1LwNQk server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=3266
+seq=126 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_uPURmD4zWaqQB67q6xwIQ9qY server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=4201
+seq=127 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_9Qy2xuH0AK3ZStsRqEI9Z9zQ server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=4690
+seq=223 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Vtzi3lysqHx0YrHrR4mNe6GE server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=224 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Vtzi3lysqHx0YrHrR4mNe6GE server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=6104
+seq=225 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_zURuMuCyKEjpXuMRYWLx88RH server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=226 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_zURuMuCyKEjpXuMRYWLx88RH server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2825
+seq=227 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_jgFsu96kJYfRRAajL2ujwSl0 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=228 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_jgFsu96kJYfRRAajL2ujwSl0 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1971
+seq=229 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_hWkTy0KSZWNzGFh0tw4OibaR server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=234 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_hWkTy0KSZWNzGFh0tw4OibaR server=- tool=- success=false duration_ms=131 preceded_tokens=0 output_size=1372
+seq=332 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_IA1g486826ubAmwB8NLtvvhx server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=333 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_IA1g486826ubAmwB8NLtvvhx server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2879
+seq=337 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Q2eS26CYsEaR2yyokQiXz0Rp server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=338 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_I6EfxTsTLCQVijAJKZ1Nty1m server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=339 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_I6EfxTsTLCQVijAJKZ1Nty1m server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=6907
+seq=340 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Q2eS26CYsEaR2yyokQiXz0Rp server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=174
+seq=341 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_pFqCKYNjzJrDb4TEd4YOOrRu server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=342 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_pFqCKYNjzJrDb4TEd4YOOrRu server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=6166
+seq=438 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_HLFCYIN9ytBnQSmEZErfIjKB server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=439 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_HLFCYIN9ytBnQSmEZErfIjKB server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=3047
+seq=440 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_7mVfPqzycPRVeN4l2LtPvSCF server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=441 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_7mVfPqzycPRVeN4l2LtPvSCF server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=3940
+seq=442 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_FSQOhVfmdJF6Lv9XeBky4dDu server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=444 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_FSQOhVfmdJF6Lv9XeBky4dDu server=- tool=- success=true duration_ms=69 preceded_tokens=0 output_size=22
+seq=532 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_FhqVoWUws466rjJ5CtfSboSe server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=533 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_FhqVoWUws466rjJ5CtfSboSe server=- tool=- success=false duration_ms=0 preceded_tokens=0 output_size=57
+seq=534 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_3ifV07fdHjSFlztfcddeFBS0 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=537 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_3ifV07fdHjSFlztfcddeFBS0 server=- tool=- success=false duration_ms=133 preceded_tokens=0 output_size=1368
+seq=661 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_7Qf2Bgc6DVD0aHNG7Jd5DDk6 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=662 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_7Qf2Bgc6DVD0aHNG7Jd5DDk6 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=381
+seq=664 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_hTUd8DdWjxaHnnScJW9oY3ls server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=665 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_hTUd8DdWjxaHnnScJW9oY3ls server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=528
+seq=666 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_P9jSQMeZ0kTR7WlNI8oQUaPz server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=667 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ZawDN8dzHmYO9hGdOfRIbTFM server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=672 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_P9jSQMeZ0kTR7WlNI8oQUaPz server=- tool=- success=false duration_ms=4194 preceded_tokens=0 output_size=690
+seq=673 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ZawDN8dzHmYO9hGdOfRIbTFM server=- tool=- success=false duration_ms=4194 preceded_tokens=0 output_size=0
+seq=764 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_2EZUC0jami8svRLP2bdNAySU server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=767 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_2EZUC0jami8svRLP2bdNAySU server=- tool=- success=true duration_ms=126 preceded_tokens=0 output_size=39
+seq=768 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_soJZon8E7E78GqYM1CmL3jKN server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=769 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_soJZon8E7E78GqYM1CmL3jKN server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=147
+seq=880 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ePbDxabbioNRXwiIE9u1Fnw8 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=881 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ePbDxabbioNRXwiIE9u1Fnw8 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=5198
+seq=882 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_GxIsIRr5eB9GdpFNNXOJgR1A server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=893 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_GxIsIRr5eB9GdpFNNXOJgR1A server=- tool=- success=true duration_ms=68 preceded_tokens=0 output_size=2027
+seq=895 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ewjjGRSNr9nyWDVAGSJlpXXJ server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=896 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ewjjGRSNr9nyWDVAGSJlpXXJ server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1165
+seq=1035 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_C9PW3VFFadtetWi0SGoZZZYH server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1036 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_C9PW3VFFadtetWi0SGoZZZYH server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1284
+seq=1041 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_rb1fEv6QFgVn4CRohaw2R8Wz server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1042 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_rBIAORfZdQmpwfss91vOrhwu server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1043 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_rb1fEv6QFgVn4CRohaw2R8Wz server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=4570
+seq=1044 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_rBIAORfZdQmpwfss91vOrhwu server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=4518
+seq=1170 phase=begin kind=apply_patch name=apply_patch route=apply_patch turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_jgTmfBpKxhzfrlU70za7FbTO server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1172 phase=end kind=apply_patch name=apply_patch route=apply_patch turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_jgTmfBpKxhzfrlU70za7FbTO server=- tool=- success=false duration_ms=0 preceded_tokens=0 output_size=0
+seq=1250 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_GgFlwwnuKUoNySIZa8a8bPGz server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1251 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_tipBNMSKlmYv0SdG09gVtztt server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1252 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_tipBNMSKlmYv0SdG09gVtztt server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=1253 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_GgFlwwnuKUoNySIZa8a8bPGz server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=1374 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_R5rzTn1ve0rdXDUOrxGBcWJO server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1375 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_R5rzTn1ve0rdXDUOrxGBcWJO server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2566
+seq=1376 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_39iV9JtUGyisJJG1VWFqS65I server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1377 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ifTZ0A868tLytyp8SrJlVykm server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1378 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_39iV9JtUGyisJJG1VWFqS65I server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1812
+seq=1379 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ifTZ0A868tLytyp8SrJlVykm server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1869
+seq=1502 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Vi1MmwTF3qMXVkCAzoYS9ejO server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1503 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_Vi1MmwTF3qMXVkCAzoYS9ejO server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=3508
+seq=1504 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_VRNdhf044BgIkjMHQyrw5XZ7 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1505 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_VRNdhf044BgIkjMHQyrw5XZ7 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=5592
+seq=1515 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_KAWxcNC3AplVdZqyfay9lI9l server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1516 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_KAWxcNC3AplVdZqyfay9lI9l server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=1517 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ZBAZgmB5zTXLxXsfWl2ABKvl server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1520 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_ZBAZgmB5zTXLxXsfWl2ABKvl server=- tool=- success=false duration_ms=124 preceded_tokens=0 output_size=673
+seq=1622 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_tUsedsimjXk1O9eQSaGviDgt server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1623 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_lWc3xmfvGJqvbzd8h8opNOUO server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1669 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_lWc3xmfvGJqvbzd8h8opNOUO server=- tool=- success=false duration_ms=1491 preceded_tokens=0 output_size=4973
+seq=1670 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_tUsedsimjXk1O9eQSaGviDgt server=- tool=- success=false duration_ms=1492 preceded_tokens=0 output_size=4973
+seq=1786 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_QTEDFZrK50zbfbQHbx2WHvu0 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1787 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_QTEDFZrK50zbfbQHbx2WHvu0 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=9041
+seq=1788 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_HhSB1fESxJci6TY9iCCBKBST server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1789 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_HhSB1fESxJci6TY9iCCBKBST server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=8844
+seq=1790 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_2WCGEue2kpvcE1KDfOVbeqdo server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1791 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_2WCGEue2kpvcE1KDfOVbeqdo server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2776
+seq=1877 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_v482psvMlv2VkIJmv1YPSBHk server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1878 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_v482psvMlv2VkIJmv1YPSBHk server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=1883 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_BASf8cRFJZWHb4bDBVLNEA0d server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1884 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_MwLeW0SH1ZkSVIWdR6rKVhxD server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1892 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_MwLeW0SH1ZkSVIWdR6rKVhxD server=- tool=- success=true duration_ms=586 preceded_tokens=0 output_size=518
+seq=1893 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_BASf8cRFJZWHb4bDBVLNEA0d server=- tool=- success=true duration_ms=587 preceded_tokens=0 output_size=514
+seq=1992 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_24Epa3j9pH97eiIDj8fMqbfp server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1993 phase=begin kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_aakDqI1RpfQmXNZrHK1VEyve server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=1996 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_aakDqI1RpfQmXNZrHK1VEyve server=- tool=- success=true duration_ms=235 preceded_tokens=0 output_size=70
+seq=2037 phase=end kind=shell name=shell route=exec_command turn=019cdcf0-04b4-7eb3-97d4-861b19544077 call=call_24Epa3j9pH97eiIDj8fMqbfp server=- tool=- success=true duration_ms=1323 preceded_tokens=0 output_size=450
 
 Verbosity × Tool Coupling
 =========================

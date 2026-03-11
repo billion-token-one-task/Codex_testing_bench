@@ -1,7 +1,9 @@
 Study Header
 ============
 Campaign: swebench-study-2026-03-11T12-35-02Z-ac52427a
-Experiment:  ()
+Campaign status: 
+Report stage: 求解后报告
+Experiment: swebench-study-2026-03-11T12-35-02Z-ac52427a (legacy-campaign)
 Created: 2026-03-11T12:35:03.084294+00:00
 Benchmark: SWE-bench Verified (swebench)
 Preset: swebench-v1 [behavior-pilot]
@@ -129,11 +131,11 @@ These counters estimate where the harness leaks effort into orchestration overhe
 
 Task-Behavior Evidence Across Live Tasks
 =======================================
-django__django-13401 [ /  / -] | status=completed | class=patch-heavy | tokens=1020872 | patch=da1400d8d907b7a004fddb3ce607edcd36e436ea4f2d61d9adbbea205dc3466a | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
-django__django-16454 [ /  / -] | status=completed | class=search-heavy | tokens=1144377 | patch=1aaad315e5b23e9397174b53fb2373b0b19dcbb3197d3e333308e2ba0ab6a725 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
-django__django-16938 [ /  / -] | status=completed | class=verification-heavy | tokens=1115393 | patch=dab90d2053b36a44144fc949b0566b9366b704824f663624d196269d0ef4646d | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
-matplotlib__matplotlib-25122 [ /  / -] | status=completed | class=bootstrap-heavy | tokens=2544474 | patch=5aac233471a9ec93aabf82fbd10992b615545d3ac66821a46c4db818d9549701 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
-scikit-learn__scikit-learn-10844 [ /  / -] | status=completed | class=compaction-likely | tokens=901853 | patch=0023347b64bac9fbf5b65ec5b1d21df5c70129441475914621290b56b76fa3b5 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-13401 [default / gpt-5.4 / -] | status=completed | class=patch-heavy | tokens=1020872 | patch=da1400d8d907b7a004fddb3ce607edcd36e436ea4f2d61d9adbbea205dc3466a | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-16454 [default / gpt-5.4 / -] | status=completed | class=search-heavy | tokens=1144377 | patch=1aaad315e5b23e9397174b53fb2373b0b19dcbb3197d3e333308e2ba0ab6a725 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+django__django-16938 [default / gpt-5.4 / -] | status=completed | class=verification-heavy | tokens=1115393 | patch=dab90d2053b36a44144fc949b0566b9366b704824f663624d196269d0ef4646d | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+matplotlib__matplotlib-25122 [default / gpt-5.4 / -] | status=completed | class=bootstrap-heavy | tokens=2544474 | patch=5aac233471a9ec93aabf82fbd10992b615545d3ac66821a46c4db818d9549701 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
+scikit-learn__scikit-learn-10844 [default / gpt-5.4 / -] | status=completed | class=compaction-likely | tokens=901853 | patch=0023347b64bac9fbf5b65ec5b1d21df5c70129441475914621290b56b76fa3b5 | compactions=0 | repeated_git=0 | repeated_verify=0 | config_drift=1 | friction=0
 
 Task-Class Evidence Matrix
 ==========================
@@ -435,15 +437,15 @@ Current telemetry gaps: gradeEvents=5
 
 Run Index
 =========
-django__django-13401 | completed | patch-heavy | cohort= | personality=- | tokens=1020872 | visible_tokens_est=1246 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-13401/attempt-01/run-evidence.txt
+django__django-13401 | completed | patch-heavy | cohort=default | personality=- | tokens=1020872 | visible_tokens_est=1246 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-13401/attempt-01/run-evidence.txt
   attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-13401/attempt-01/attempt-log.txt
-django__django-16454 | completed | search-heavy | cohort= | personality=- | tokens=1144377 | visible_tokens_est=1127 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16454/attempt-01/run-evidence.txt
+django__django-16454 | completed | search-heavy | cohort=default | personality=- | tokens=1144377 | visible_tokens_est=1127 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16454/attempt-01/run-evidence.txt
   attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16454/attempt-01/attempt-log.txt
-django__django-16938 | completed | verification-heavy | cohort= | personality=- | tokens=1115393 | visible_tokens_est=1036 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16938/attempt-01/run-evidence.txt
+django__django-16938 | completed | verification-heavy | cohort=default | personality=- | tokens=1115393 | visible_tokens_est=1036 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16938/attempt-01/run-evidence.txt
   attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/django__django-16938/attempt-01/attempt-log.txt
-matplotlib__matplotlib-25122 | completed | bootstrap-heavy | cohort= | personality=- | tokens=2544474 | visible_tokens_est=1102 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/matplotlib__matplotlib-25122/attempt-01/run-evidence.txt
+matplotlib__matplotlib-25122 | completed | bootstrap-heavy | cohort=default | personality=- | tokens=2544474 | visible_tokens_est=1102 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/matplotlib__matplotlib-25122/attempt-01/run-evidence.txt
   attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/matplotlib__matplotlib-25122/attempt-01/attempt-log.txt
-scikit-learn__scikit-learn-10844 | completed | compaction-likely | cohort= | personality=- | tokens=901853 | visible_tokens_est=877 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/run-evidence.txt
+scikit-learn__scikit-learn-10844 | completed | compaction-likely | cohort=default | personality=- | tokens=901853 | visible_tokens_est=877 | probes=7 | anomalies=0 | evidence=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/run-evidence.txt
   attempt_log=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T12-35-02Z-ac52427a/runs/scikit-learn__scikit-learn-10844/attempt-01/attempt-log.txt
 
 Artifact Appendix

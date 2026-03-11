@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -6,12 +6,13 @@ use anyhow::{Result, anyhow, bail};
 use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
-    CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest,
-    SelectedInstance, attempt_artifact_paths, command_capture, ensure_absolute_dir, git_commit_all,
-    init_git_workspace, preferred_python, read_json, reset_dir, write_json_pretty,
+    BenchmarkResearchProfile, BenchmarkTaskClassProfile, CampaignManifest, CodexRunRequest,
+    DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance, attempt_artifact_paths,
+    command_capture, ensure_absolute_dir, git_commit_all, init_git_workspace, preferred_python,
+    read_json, reset_dir, write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
-use codex_bench_report::render_run_evidence;
+use codex_bench_report::{render_campaign_report, render_run_evidence};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use tokio::process::Command;
@@ -44,6 +45,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let campaign_dir = campaign_root.join(&campaign_id);
     fs::create_dir_all(campaign_dir.join("reports"))?;
     fs::create_dir_all(campaign_dir.join("runs"))?;
+    let benchmark_research_profile_path = campaign_dir.join("benchmark-research-profile.json");
     let repo_cache_root = args
         .repo_cache_root
         .clone()
@@ -85,6 +87,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let manifest = CampaignManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
+        campaign_status: "prepared".to_string(),
         experiment_id: format!("exp-{}", short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))),
         experiment_name: args
             .experiment_name
@@ -124,11 +127,18 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         model_catalog_snapshot_path: None,
         hypothesis_catalog_path: None,
         experiment_lock_path: None,
+        benchmark_research_profile_path: Some(benchmark_research_profile_path.clone()),
+        last_report_path: None,
+        last_report_generated_at: None,
         selected_instances,
     };
 
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     write_json_pretty(&campaign_dir.join("selected-dataset.json"), &selected_records)?;
+    write_json_pretty(
+        &benchmark_research_profile_path,
+        &newtonbench_benchmark_research_profile(),
+    )?;
     write_architecture_map(&campaign_dir)?;
     write_claim_catalog_assets(
         &campaign_dir,
@@ -138,16 +148,69 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     Ok(campaign_dir)
 }
 
+fn newtonbench_benchmark_research_profile() -> BenchmarkResearchProfile {
+    BenchmarkResearchProfile {
+        benchmark_name: BENCHMARK_NAME.to_string(),
+        benchmark_adapter: BENCHMARK_ADAPTER.to_string(),
+        summary: "Scientific-discovery benchmark focused on iterative experimentation, numerical verification, and hypothesis refinement rather than repository patch-only maintenance.".to_string(),
+        benchmark_notes: vec![
+            "NewtonBench is valuable for observing experiment-loop narration, result framing, and confidence calibration.".to_string(),
+            "Tool and language coupling should be interpreted as experiment orchestration rather than classic bug-fix workflow.".to_string(),
+        ],
+        task_class_profiles: vec![
+            BenchmarkTaskClassProfile {
+                task_class: "verification-heavy".to_string(),
+                expected_verification_strength: "very_high".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string()],
+                expected_bootstrap_risk: "low".to_string(),
+                expected_language_need: "high".to_string(),
+                language_profile_hint: Some("Expect observation, hypothesis revision, and result framing language around experiment loops.".to_string()),
+                tool_profile_hint: Some("Command usage should center on experiment execution, data inspection, and submission packaging.".to_string()),
+                interaction_style_hint: Some("Best suited for studying verification framing and confidence calibration.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_scientific_verification_language".to_string(), "true".to_string()),
+                ]),
+            },
+            BenchmarkTaskClassProfile {
+                task_class: "search-heavy".to_string(),
+                expected_verification_strength: "medium".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string()],
+                expected_bootstrap_risk: "low".to_string(),
+                expected_language_need: "medium".to_string(),
+                language_profile_hint: Some("Expect less repository-navigation language and more experiment-scoping language.".to_string()),
+                tool_profile_hint: Some("May show fewer patch tools and more iterative command bursts.".to_string()),
+                interaction_style_hint: Some("Useful for contrasting software-engineering narration with scientific-task narration.".to_string()),
+                default_analysis_overrides: BTreeMap::from([
+                    ("prioritize_result_framing".to_string(), "true".to_string()),
+                ]),
+            },
+        ],
+    }
+}
+
 pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
-    let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    manifest.campaign_status = "running".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     for selected in &manifest.selected_instances {
         run_instance(&manifest, selected).await?;
     }
+    manifest.campaign_status = "run_completed".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
+    let report_path = render_campaign_report(campaign_dir)?;
+    manifest.campaign_status = "report_generated".to_string();
+    manifest.last_report_path = Some(report_path);
+    manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     Ok(())
 }
 
 pub async fn grade_campaign(campaign_dir: &Path) -> Result<()> {
-    let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
+    manifest.campaign_status = "grading".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     let mut rows = Vec::<Value>::new();
     let mut exact_pass = 0usize;
     let mut numeric_pass = 0usize;
@@ -221,6 +284,13 @@ pub async fn grade_campaign(campaign_dir: &Path) -> Result<()> {
             "results": rows,
         }),
     )?;
+    manifest.campaign_status = "graded".to_string();
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
+    let report_path = render_campaign_report(campaign_dir)?;
+    manifest.campaign_status = "graded_report_generated".to_string();
+    manifest.last_report_path = Some(report_path);
+    manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
+    write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
     Ok(())
 }
 
@@ -274,6 +344,8 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
         worktree_dir: workspace_dir.clone(),
         attempt: 1,
         status: "running".to_string(),
+        derivations_status: "pending".to_string(),
+        evidence_status: "pending".to_string(),
         grading_status: "pending".to_string(),
         artifact_paths: artifact_paths.clone(),
     };
@@ -324,6 +396,8 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
     }
     let finished_manifest = RunManifest {
         status: summary.status.clone(),
+        derivations_status: "completed".to_string(),
+        evidence_status: "run_evidence_generated".to_string(),
         artifact_paths,
         ..run_manifest
     };

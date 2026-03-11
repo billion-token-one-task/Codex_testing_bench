@@ -6,13 +6,16 @@ use anyhow::{Result, anyhow};
 use codex_app_server_protocol::JSONRPCNotification;
 use codex_bench_codex::decode_legacy_notification;
 use codex_bench_core::{
-    CampaignManifest, ClaimCatalogEntry, ClaimEvidence, DatasetRecord, ProbeSummary, RunSummary,
-    SelectedInstance, StudyArchitectureSubsystem, artifact_inventory_for_attempt,
+    BenchmarkResearchProfile, CampaignManifest, ClaimCatalogEntry, ClaimEvidence, DatasetRecord,
+    ProbeSummary, RunSummary, SelectedInstance, StudyArchitectureSubsystem,
+    artifact_inventory_for_attempt,
     artifact_map_for_attempt, read_json, read_jsonl_values, write_json_pretty,
 };
 use codex_bench_probes::derive_run_outputs;
 use codex_protocol::protocol::{Event, StudyProbeEvent};
 use serde_json::Value;
+
+const REPORT_OBSERVABILITY_CONTRACT_VERSION: &str = "codex-observability.v3";
 
 #[derive(Debug, Clone)]
 struct ClaimDescriptor {
@@ -49,6 +52,11 @@ pub fn render_campaign_report(campaign_dir: &Path) -> Result<PathBuf> {
         read_json(&campaign_dir.join("grounding-claims.json"))?;
     let codex_claims: Vec<ClaimCatalogEntry> =
         read_json(&campaign_dir.join("codex-unique-claims.json"))?;
+    let benchmark_research_profile: Option<BenchmarkResearchProfile> = manifest
+        .benchmark_research_profile_path
+        .as_ref()
+        .filter(|path| path.exists())
+        .and_then(|path| read_json(path).ok());
 
     let mut bundles = Vec::new();
     for selected in &manifest.selected_instances {
@@ -89,6 +97,7 @@ pub fn render_campaign_report(campaign_dir: &Path) -> Result<PathBuf> {
         campaign_dir,
         &manifest,
         &architecture_map,
+        benchmark_research_profile.as_ref(),
         &grounding_claims,
         &codex_claims,
         &load_official_grading_overview(campaign_dir),
@@ -97,7 +106,12 @@ pub fn render_campaign_report(campaign_dir: &Path) -> Result<PathBuf> {
     let report_path = campaign_dir.join("reports").join("report.txt");
     fs::create_dir_all(report_path.parent().expect("report path has parent"))?;
     fs::write(&report_path, report)?;
-    write_supporting_reports(campaign_dir, &manifest, &bundles)?;
+    write_supporting_reports(
+        campaign_dir,
+        &manifest,
+        benchmark_research_profile.as_ref(),
+        &bundles,
+    )?;
     write_datasets(campaign_dir, &manifest, &bundles)?;
     Ok(report_path)
 }
@@ -114,8 +128,31 @@ fn ensure_attempt_derivations(
     let skill_events_missing = !attempt_dir.join("skill-events.jsonl").exists();
     let message_metrics_missing = !attempt_dir.join("message-metrics.jsonl").exists();
     let coupling_missing = !attempt_dir.join("verbosity-tool-coupling.jsonl").exists();
+    let message_rows =
+        read_jsonl_values(&attempt_dir.join("message-metrics.jsonl")).unwrap_or_default();
+    let message_schema_outdated = message_rows
+        .iter()
+        .find(|value| value.get("messageId").is_some())
+        .map(|value| value.get("hedgingScoreBps").is_none())
+        .unwrap_or(true);
+    let tool_rows = read_jsonl_values(&attempt_dir.join("tool-events.jsonl")).unwrap_or_default();
+    let tool_schema_outdated = tool_rows
+        .iter()
+        .find(|value| value.get("phase").and_then(Value::as_str) == Some("begin"))
+        .map(|value| value.get("toolRoute").is_none())
+        .unwrap_or(true);
+    let observability_version_outdated =
+        current_summary.observability_contract_version.as_deref()
+            != Some(REPORT_OBSERVABILITY_CONTRACT_VERSION);
 
-    if !turn_metrics_missing && !skill_events_missing && !message_metrics_missing && !coupling_missing {
+    if !turn_metrics_missing
+        && !skill_events_missing
+        && !message_metrics_missing
+        && !coupling_missing
+        && !message_schema_outdated
+        && !tool_schema_outdated
+        && !observability_version_outdated
+    {
         return Ok(current_summary);
     }
 
@@ -584,6 +621,7 @@ fn render_campaign_report_text(
     campaign_dir: &Path,
     manifest: &CampaignManifest,
     architecture_map: &[StudyArchitectureSubsystem],
+    benchmark_research_profile: Option<&BenchmarkResearchProfile>,
     grounding_claims: &[ClaimCatalogEntry],
     codex_claims: &[ClaimCatalogEntry],
     grading_overview: &OfficialGradingOverview,
@@ -593,6 +631,15 @@ fn render_campaign_report_text(
     lines.push("Study Header".to_string());
     lines.push("============".to_string());
     lines.push(format!("Campaign: {}", manifest.campaign_id));
+    lines.push(format!("Campaign status: {}", manifest.campaign_status));
+    lines.push(format!(
+        "Report stage: {}",
+        if manifest.campaign_status.contains("graded") {
+            "已评分报告"
+        } else {
+            "求解后报告"
+        }
+    ));
     lines.push(format!(
         "Experiment: {} ({})",
         display_or(&manifest.experiment_name, &manifest.campaign_id),
@@ -646,6 +693,17 @@ fn render_campaign_report_text(
     lines.push("Reference docs:".to_string());
     for doc in &manifest.reference_documents {
         lines.push(format!("- {doc}"));
+    }
+    if let Some(profile) = benchmark_research_profile {
+        lines.push(format!(
+            "Benchmark research profile: {}",
+            manifest
+                .benchmark_research_profile_path
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .unwrap_or_else(|| "-".to_string())
+        ));
+        lines.push(format!("Benchmark profile summary: {}", profile.summary));
     }
     lines.push(String::new());
 
@@ -702,6 +760,12 @@ fn render_campaign_report_text(
     ));
     lines.push("macOS constraints: this study path is intentionally local-only and assumes a Mac-hosted Codex workspace.".to_string());
     lines.push("Validity note: SWE-bench tasks are used as live stimuli for Codex behavior rather than as the sole endpoint metric.".to_string());
+    if let Some(profile) = benchmark_research_profile {
+        lines.push("Benchmark research notes:".to_string());
+        for note in &profile.benchmark_notes {
+            lines.push(format!("- {note}"));
+        }
+    }
     lines.push(String::new());
 
     let mut total_input = 0i64;
@@ -1038,6 +1102,7 @@ fn render_campaign_report_text(
 fn write_supporting_reports(
     campaign_dir: &Path,
     manifest: &CampaignManifest,
+    benchmark_research_profile: Option<&BenchmarkResearchProfile>,
     bundles: &[RunReportBundle],
 ) -> Result<()> {
     let reports_dir = campaign_dir.join("reports");
@@ -1120,17 +1185,654 @@ fn write_supporting_reports(
 
     fs::write(
         reports_dir.join("personality-analysis.md"),
-        "# personality 分析\n\n该文件聚合 cohort 的 personality、可见输出、桥接语言和工具使用耦合证据。\n",
+        render_personality_analysis(manifest, bundles),
     )?;
     fs::write(
         reports_dir.join("task-class-analysis.md"),
-        "# 任务类型分析\n\n请结合 `report.txt` 和 `datasets/task_class_summary.csv` 查看不同 task class 的差异。\n",
+        render_task_class_analysis(bundles, benchmark_research_profile),
     )?;
     fs::write(
         reports_dir.join("methods-appendix.md"),
         "# 方法附录\n\n本研究以用户可见输出为“说更多”的主观测面，并结合 Codex 原始 probe、tool/patch/verification 时序构造耦合证据。\n",
     )?;
+    fs::write(
+        reports_dir.join("tool-inventory.md"),
+        render_tool_inventory_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("tool-route-analysis.md"),
+        render_tool_route_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("linguistic-profile.md"),
+        render_linguistic_profile_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("phrase-and-tone-analysis.md"),
+        render_phrase_and_tone_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("bridge-language-analysis.md"),
+        render_bridge_language_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("personality-mechanism-analysis.md"),
+        render_personality_mechanism_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("instruction-stratification-analysis.md"),
+        render_instruction_stratification_report(bundles),
+    )?;
+    fs::write(
+        reports_dir.join("cohort-pair-analysis.md"),
+        render_cohort_pair_report(bundles),
+    )?;
     Ok(())
+}
+
+fn render_personality_analysis(manifest: &CampaignManifest, bundles: &[RunReportBundle]) -> String {
+    let mut lines = vec!["# personality 分析".to_string(), String::new()];
+    lines.push(format!(
+        "实验：{} ({})",
+        display_or(&manifest.experiment_name, &manifest.campaign_id),
+        display_or(&manifest.experiment_id, "legacy-campaign")
+    ));
+    lines.push(String::new());
+    for bundle in bundles {
+        lines.push(format!(
+            "## {} / {}",
+            bundle.selected.instance_id, bundle.selected.cohort_id
+        ));
+        lines.push(format!(
+            "- model/personality: {}/{}",
+            display_or(&bundle.selected.model, &manifest.model),
+            bundle.selected.personality_mode.as_deref().unwrap_or("-")
+        ));
+        lines.push(format!(
+            "- visible_output_total_tokens_est={} | social_tone_ratio_bps={:?} | tool_burst_count={} | micro_narrated_tool_burst_count={}",
+            bundle.summary.visible_output_total_tokens_est,
+            bundle.probe_summary.social_tone_ratio_bps,
+            bundle.probe_summary.tool_burst_count,
+            bundle.probe_summary.micro_narrated_tool_burst_count
+        ));
+        lines.push(format!(
+            "- instruction_shift_count={} | config_freeze_drift_count={}",
+            bundle.probe_summary.instruction_shift_count,
+            bundle.probe_summary.config_freeze_drift_count
+        ));
+        lines.push(String::new());
+    }
+    lines.join("\n")
+}
+
+fn render_task_class_analysis(
+    bundles: &[RunReportBundle],
+    benchmark_research_profile: Option<&BenchmarkResearchProfile>,
+) -> String {
+    let mut rollup = BTreeMap::<String, (usize, i64, usize, usize, usize, usize, usize, usize)>::new();
+    for bundle in bundles {
+        let entry = rollup
+            .entry(bundle.summary.task_class.clone())
+            .or_insert((0, 0, 0, 0, 0, 0, 0, 0));
+        entry.0 += 1;
+        entry.1 += bundle.summary.visible_output_total_tokens_est;
+        entry.2 += bundle.summary.tool_count;
+        entry.3 += bundle.summary.command_count;
+        entry.4 += bundle.probe_summary.control_rod_compaction_count
+            + bundle.probe_summary.control_rod_config_freeze_count
+            + bundle.probe_summary.control_rod_persistence_count;
+        entry.5 += bundle
+            .summary
+            .message_category_counts
+            .get("tool_bridge_before")
+            .copied()
+            .unwrap_or_default()
+            + bundle
+                .summary
+                .message_category_counts
+                .get("tool_bridge_after")
+                .copied()
+                .unwrap_or_default();
+        entry.6 += bundle
+            .summary
+            .message_category_counts
+            .get("verification_framing")
+            .copied()
+            .unwrap_or_default()
+            + bundle
+                .summary
+                .message_category_counts
+                .get("result_framing")
+                .copied()
+                .unwrap_or_default();
+        entry.7 += bundle.probe_summary.harness_friction_count;
+    }
+    let mut lines = vec!["# 任务类型分析".to_string(), String::new()];
+    for (task_class, (count, visible_tokens, tools, commands, control_rods, bridge_msgs, verification_msgs, harness_friction)) in rollup {
+        lines.push(format!("## {}", task_class));
+        lines.push(format!(
+            "- run_count={} | visible_output_total_tokens_est={} | tool_count={} | command_count={} | control_rod_events={} | bridge_messages={} | verification_messages={} | harness_friction_events={}",
+            count, visible_tokens, tools, commands, control_rods, bridge_msgs, verification_msgs, harness_friction
+        ));
+        if let Some(profile) = benchmark_research_profile
+            .and_then(|profile| profile.task_class_profiles.iter().find(|entry| entry.task_class == task_class))
+        {
+            lines.push(format!(
+                "- benchmark_hints: verification_strength={} | context_pressure={} | bootstrap_risk={} | language_need={}",
+                profile.expected_verification_strength,
+                profile.expected_context_pressure,
+                profile.expected_bootstrap_risk,
+                profile.expected_language_need
+            ));
+            lines.push(format!(
+                "- expected_tool_mix={}",
+                if profile.expected_tool_mix.is_empty() {
+                    "-".to_string()
+                } else {
+                    profile.expected_tool_mix.join(", ")
+                }
+            ));
+            if let Some(hint) = &profile.language_profile_hint {
+                lines.push(format!("- language_profile_hint={hint}"));
+            }
+            if let Some(hint) = &profile.tool_profile_hint {
+                lines.push(format!("- tool_profile_hint={hint}"));
+            }
+            if let Some(hint) = &profile.interaction_style_hint {
+                lines.push(format!("- interaction_style_hint={hint}"));
+            }
+        }
+        lines.push(String::new());
+    }
+    lines
+        .into_iter()
+        .chain([
+            "请结合 `datasets/task_class_summary.csv` 查看每类任务的更细粒度聚合。".to_string(),
+        ])
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_tool_inventory_report(bundles: &[RunReportBundle]) -> String {
+    let inventory = aggregate_tool_inventory(bundles);
+    let mut lines = vec!["# 工具清单".to_string(), String::new()];
+    for ((cohort_id, kind, name), stats) in inventory {
+        lines.push(format!(
+            "- cohort=`{}` kind=`{}` name=`{}` calls={} successes={} failures={} total_output_size={} median_duration_ms={}",
+            cohort_id,
+            kind,
+            name,
+            stats.call_count,
+            stats.success_count,
+            stats.failure_count,
+            stats.total_output_size,
+            median_i64(&stats.durations_ms)
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_tool_route_report(bundles: &[RunReportBundle]) -> String {
+    let routes = aggregate_tool_routes(bundles);
+    let mut lines = vec!["# Tool Route 分析".to_string(), String::new()];
+    for ((cohort_id, route), count) in routes {
+        lines.push(format!("- cohort=`{}` route=`{}` count={}", cohort_id, route, count));
+    }
+    lines.join("\n")
+}
+
+fn render_linguistic_profile_report(bundles: &[RunReportBundle]) -> String {
+    let profiles = aggregate_linguistic_profiles(bundles);
+    let mut lines = vec!["# 语言画像".to_string(), String::new()];
+    for profile in profiles {
+        lines.push(format!("## {}", profile.cohort_id));
+        lines.push(format!(
+            "- top_words: {}",
+            render_ranked_terms(&profile.top_words)
+        ));
+        lines.push(format!(
+            "- top_bigrams: {}",
+            render_ranked_terms(&profile.top_bigrams)
+        ));
+        lines.push(format!(
+            "- top_trigrams: {}",
+            render_ranked_terms(&profile.top_trigrams)
+        ));
+        lines.push(format!(
+            "- discourse_counts: {}",
+            render_count_map(&profile.discourse_counts)
+        ));
+        lines.push(String::new());
+    }
+    lines.join("\n")
+}
+
+fn render_phrase_and_tone_report(bundles: &[RunReportBundle]) -> String {
+    let profiles = aggregate_linguistic_profiles(bundles);
+    let mut lines = vec!["# 短语与语气分析".to_string(), String::new()];
+    for profile in profiles {
+        lines.push(format!("## {}", profile.cohort_id));
+        lines.push(format!("- social_tone_messages={}", profile.social_tone_messages));
+        lines.push(format!("- verification_messages={}", profile.verification_messages));
+        lines.push(format!("- tool_bridge_messages={}", profile.tool_bridge_messages));
+        lines.push(format!("- planning_messages={}", profile.planning_messages));
+        lines.push(String::new());
+    }
+    lines.join("\n")
+}
+
+fn render_bridge_language_report(bundles: &[RunReportBundle]) -> String {
+    let profiles = aggregate_linguistic_profiles(bundles);
+    let mut lines = vec!["# 桥接语言分析".to_string(), String::new()];
+    for profile in profiles {
+        lines.push(format!("## {}", profile.cohort_id));
+        lines.push(format!(
+            "- tool_bridge_before={} | tool_bridge_after={} | verification_framing={} | result_framing={} | decision_explanation={}",
+            profile.discourse_counts.get("tool_bridge_before").copied().unwrap_or_default(),
+            profile.discourse_counts.get("tool_bridge_after").copied().unwrap_or_default(),
+            profile.discourse_counts.get("verification_framing").copied().unwrap_or_default(),
+            profile.discourse_counts.get("result_framing").copied().unwrap_or_default(),
+            profile.discourse_counts.get("decision_explanation").copied().unwrap_or_default()
+        ));
+        lines.push(String::new());
+    }
+    lines.join("\n")
+}
+
+fn render_personality_mechanism_report(bundles: &[RunReportBundle]) -> String {
+    let mut lines = vec!["# Personality 机制分析".to_string(), String::new()];
+    for bundle in bundles {
+        lines.push(format!(
+            "- `{}` / `{}`: social_tone_ratio_bps={:?}, instruction_shift_count={}, tool_grounded_commentary_ratio_bps={:?}, verification_grounded_commentary_ratio_bps={:?}",
+            bundle.selected.instance_id,
+            bundle.selected.cohort_id,
+            bundle.probe_summary.social_tone_ratio_bps,
+            bundle.probe_summary.instruction_shift_count,
+            bundle.probe_summary.tool_grounded_commentary_ratio_bps,
+            bundle.probe_summary.verification_grounded_commentary_ratio_bps
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_instruction_stratification_report(bundles: &[RunReportBundle]) -> String {
+    let mut lines = vec!["# 指令分层分析".to_string(), String::new()];
+    for bundle in bundles {
+        lines.push(format!(
+            "- `{}` / `{}`: instruction_shift_count={}, instruction_stratification_count={}, config_freeze_drift_count={}",
+            bundle.selected.instance_id,
+            bundle.selected.cohort_id,
+            bundle.probe_summary.instruction_shift_count,
+            bundle.probe_summary.instruction_stratification_count,
+            bundle.probe_summary.config_freeze_drift_count
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_cohort_pair_report(bundles: &[RunReportBundle]) -> String {
+    let mut by_pair = BTreeMap::<String, Vec<&RunReportBundle>>::new();
+    for bundle in bundles {
+        by_pair
+            .entry(bundle.selected.paired_instance_key.clone())
+            .or_default()
+            .push(bundle);
+    }
+    let mut lines = vec!["# Cohort 成对差分".to_string(), String::new()];
+    for (pair_key, mut items) in by_pair {
+        items.sort_by(|a, b| a.selected.cohort_id.cmp(&b.selected.cohort_id));
+        lines.push(format!("## {}", pair_key));
+        for bundle in items {
+            lines.push(format!(
+                "- {}: visible_output_total_tokens_est={} | tool_count={} | command_count={} | social_tone_ratio_bps={:?}",
+                bundle.selected.cohort_id,
+                bundle.summary.visible_output_total_tokens_est,
+                bundle.summary.tool_count,
+                bundle.summary.command_count,
+                bundle.probe_summary.social_tone_ratio_bps
+            ));
+        }
+        lines.push(String::new());
+    }
+    lines.join("\n")
+}
+
+#[derive(Debug, Clone, Default)]
+struct ToolInventoryStats {
+    call_count: usize,
+    success_count: usize,
+    failure_count: usize,
+    total_output_size: usize,
+    durations_ms: Vec<i64>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct LinguisticProfile {
+    cohort_id: String,
+    top_words: Vec<(String, usize)>,
+    top_bigrams: Vec<(String, usize)>,
+    top_trigrams: Vec<(String, usize)>,
+    discourse_counts: BTreeMap<String, usize>,
+    social_tone_messages: usize,
+    verification_messages: usize,
+    tool_bridge_messages: usize,
+    planning_messages: usize,
+}
+
+#[derive(Debug, Clone)]
+struct PairPhraseDeltaRow {
+    pair_kind: String,
+    left_cohort: String,
+    right_cohort: String,
+    grouping_key: String,
+    term_type: String,
+    term: String,
+    left_count: usize,
+    right_count: usize,
+    delta: i64,
+}
+
+fn aggregate_tool_inventory(
+    bundles: &[RunReportBundle],
+) -> BTreeMap<(String, String, String), ToolInventoryStats> {
+    let mut inventory = BTreeMap::<(String, String, String), ToolInventoryStats>::new();
+    for bundle in bundles {
+        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        for value in read_jsonl_values(&path).unwrap_or_default() {
+            if value.get("phase").and_then(Value::as_str) == Some("begin") {
+                let key = (
+                    bundle.selected.cohort_id.clone(),
+                    value.get("kind").and_then(Value::as_str).unwrap_or("-").to_string(),
+                    value.get("name").and_then(Value::as_str).unwrap_or("-").to_string(),
+                );
+                let stats = inventory.entry(key).or_default();
+                stats.call_count += 1;
+                if let Some(success) = value.get("success").and_then(Value::as_bool) {
+                    if success {
+                        stats.success_count += 1;
+                    } else {
+                        stats.failure_count += 1;
+                    }
+                }
+            } else if value.get("phase").and_then(Value::as_str) == Some("end") {
+                let key = (
+                    bundle.selected.cohort_id.clone(),
+                    value.get("kind").and_then(Value::as_str).unwrap_or("-").to_string(),
+                    value.get("name").and_then(Value::as_str).unwrap_or("-").to_string(),
+                );
+                let stats = inventory.entry(key).or_default();
+                if let Some(success) = value.get("success").and_then(Value::as_bool) {
+                    if success {
+                        stats.success_count += 1;
+                    } else {
+                        stats.failure_count += 1;
+                    }
+                }
+                stats.total_output_size += value.get("outputSize").and_then(Value::as_u64).unwrap_or_default() as usize;
+                if let Some(duration) = value.get("durationMs").and_then(Value::as_i64) {
+                    stats.durations_ms.push(duration);
+                }
+            }
+        }
+    }
+    inventory
+}
+
+fn aggregate_tool_routes(bundles: &[RunReportBundle]) -> BTreeMap<(String, String), usize> {
+    let mut routes = BTreeMap::new();
+    for bundle in bundles {
+        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        for value in read_jsonl_values(&path).unwrap_or_default() {
+            if value.get("phase").and_then(Value::as_str) != Some("begin")
+                && value.get("phase").and_then(Value::as_str) != Some("call")
+            {
+                continue;
+            }
+            let key = (
+                bundle.selected.cohort_id.clone(),
+                value.get("toolRoute").and_then(Value::as_str).unwrap_or("-").to_string(),
+            );
+            *routes.entry(key).or_insert(0usize) += 1;
+        }
+    }
+    routes
+}
+
+fn aggregate_linguistic_profiles(bundles: &[RunReportBundle]) -> Vec<LinguisticProfile> {
+    let mut by_cohort_words = BTreeMap::<String, BTreeMap<String, usize>>::new();
+    let mut by_cohort_bigrams = BTreeMap::<String, BTreeMap<String, usize>>::new();
+    let mut by_cohort_trigrams = BTreeMap::<String, BTreeMap<String, usize>>::new();
+    let mut by_cohort_discourse = BTreeMap::<String, BTreeMap<String, usize>>::new();
+    let mut by_cohort_social = BTreeMap::<String, usize>::new();
+    let mut by_cohort_verification = BTreeMap::<String, usize>::new();
+    let mut by_cohort_tool_bridge = BTreeMap::<String, usize>::new();
+    let mut by_cohort_planning = BTreeMap::<String, usize>::new();
+
+    for bundle in bundles {
+        let path = bundle.selected.run_dir.join("attempt-01").join("message-metrics.jsonl");
+        for value in read_jsonl_values(&path).unwrap_or_default() {
+            let cohort_id = bundle.selected.cohort_id.clone();
+            let text = value.get("message").and_then(Value::as_str).unwrap_or("");
+            let tokens = tokenize_for_research(text);
+            for token in &tokens {
+                *by_cohort_words
+                    .entry(cohort_id.clone())
+                    .or_default()
+                    .entry(token.clone())
+                    .or_insert(0) += 1;
+            }
+            for gram in make_ngrams(&tokens, 2) {
+                *by_cohort_bigrams
+                    .entry(cohort_id.clone())
+                    .or_default()
+                    .entry(gram)
+                    .or_insert(0) += 1;
+            }
+            for gram in make_ngrams(&tokens, 3) {
+                *by_cohort_trigrams
+                    .entry(cohort_id.clone())
+                    .or_default()
+                    .entry(gram)
+                    .or_insert(0) += 1;
+            }
+            for category in value
+                .get("categories")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
+                *by_cohort_discourse
+                    .entry(cohort_id.clone())
+                    .or_default()
+                    .entry(category.to_string())
+                    .or_insert(0) += 1;
+                match category {
+                    "social_tone" => *by_cohort_social.entry(cohort_id.clone()).or_insert(0) += 1,
+                    "verification_framing" | "result_framing" => {
+                        *by_cohort_verification.entry(cohort_id.clone()).or_insert(0) += 1
+                    }
+                    "tool_bridge_before" | "tool_bridge_after" => {
+                        *by_cohort_tool_bridge.entry(cohort_id.clone()).or_insert(0) += 1
+                    }
+                    "planning" => *by_cohort_planning.entry(cohort_id.clone()).or_insert(0) += 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    let cohort_ids = by_cohort_words
+        .keys()
+        .chain(by_cohort_discourse.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    cohort_ids
+        .into_iter()
+        .map(|cohort_id| LinguisticProfile {
+            cohort_id: cohort_id.clone(),
+            top_words: top_n_terms(by_cohort_words.remove(&cohort_id).unwrap_or_default(), 20),
+            top_bigrams: top_n_terms(by_cohort_bigrams.remove(&cohort_id).unwrap_or_default(), 12),
+            top_trigrams: top_n_terms(by_cohort_trigrams.remove(&cohort_id).unwrap_or_default(), 8),
+            discourse_counts: by_cohort_discourse.remove(&cohort_id).unwrap_or_default(),
+            social_tone_messages: by_cohort_social.remove(&cohort_id).unwrap_or_default(),
+            verification_messages: by_cohort_verification.remove(&cohort_id).unwrap_or_default(),
+            tool_bridge_messages: by_cohort_tool_bridge.remove(&cohort_id).unwrap_or_default(),
+            planning_messages: by_cohort_planning.remove(&cohort_id).unwrap_or_default(),
+        })
+        .collect()
+}
+
+fn top_term_map(terms: &[(String, usize)]) -> BTreeMap<String, usize> {
+    terms.iter().cloned().collect()
+}
+
+fn compute_phrase_deltas(
+    bundles: &[RunReportBundle],
+    mode: &str,
+) -> Vec<PairPhraseDeltaRow> {
+    let profiles = aggregate_linguistic_profiles(bundles)
+        .into_iter()
+        .map(|profile| (profile.cohort_id.clone(), profile))
+        .collect::<BTreeMap<_, _>>();
+    let mut rows = Vec::new();
+
+    let mut grouped = BTreeMap::<String, Vec<&RunReportBundle>>::new();
+    for bundle in bundles {
+        let key = match mode {
+            "model" => format!(
+                "{}::{}",
+                bundle.selected.instance_id,
+                bundle
+                    .selected
+                    .personality_mode
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string())
+            ),
+            "personality" => {
+                format!("{}::{}", bundle.selected.instance_id, bundle.selected.model)
+            }
+            _ => continue,
+        };
+        grouped.entry(key).or_default().push(bundle);
+    }
+
+    for (grouping_key, items) in grouped {
+        for left_idx in 0..items.len() {
+            for right_idx in (left_idx + 1)..items.len() {
+                let left = items[left_idx];
+                let right = items[right_idx];
+                let comparable = match mode {
+                    "model" => left.selected.model != right.selected.model
+                        && left.selected.personality_mode == right.selected.personality_mode,
+                    "personality" => left.selected.model == right.selected.model
+                        && left.selected.personality_mode != right.selected.personality_mode,
+                    _ => false,
+                };
+                if !comparable {
+                    continue;
+                }
+
+                let Some(left_profile) = profiles.get(&left.selected.cohort_id) else {
+                    continue;
+                };
+                let Some(right_profile) = profiles.get(&right.selected.cohort_id) else {
+                    continue;
+                };
+
+                let lexical_families = vec![
+                    ("word", top_term_map(&left_profile.top_words), top_term_map(&right_profile.top_words)),
+                    ("bigram", top_term_map(&left_profile.top_bigrams), top_term_map(&right_profile.top_bigrams)),
+                    ("trigram", top_term_map(&left_profile.top_trigrams), top_term_map(&right_profile.top_trigrams)),
+                ];
+
+                for (term_type, left_map, right_map) in lexical_families {
+                    let terms = left_map
+                        .keys()
+                        .chain(right_map.keys())
+                        .cloned()
+                        .collect::<BTreeSet<_>>();
+                    for term in terms {
+                        let left_count = left_map.get(&term).copied().unwrap_or_default();
+                        let right_count = right_map.get(&term).copied().unwrap_or_default();
+                        if left_count == 0 && right_count == 0 {
+                            continue;
+                        }
+                        rows.push(PairPhraseDeltaRow {
+                            pair_kind: mode.to_string(),
+                            left_cohort: left.selected.cohort_id.clone(),
+                            right_cohort: right.selected.cohort_id.clone(),
+                            grouping_key: grouping_key.clone(),
+                            term_type: term_type.to_string(),
+                            term,
+                            left_count,
+                            right_count,
+                            delta: right_count as i64 - left_count as i64,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    rows.sort_by(|a, b| {
+        a.grouping_key
+            .cmp(&b.grouping_key)
+            .then_with(|| a.left_cohort.cmp(&b.left_cohort))
+            .then_with(|| a.right_cohort.cmp(&b.right_cohort))
+            .then_with(|| a.term_type.cmp(&b.term_type))
+            .then_with(|| b.delta.abs().cmp(&a.delta.abs()))
+            .then_with(|| a.term.cmp(&b.term))
+    });
+    rows
+}
+
+fn tokenize_for_research(text: &str) -> Vec<String> {
+    text.to_lowercase()
+        .split(|ch: char| !ch.is_alphanumeric())
+        .filter(|token| token.len() >= 3)
+        .filter(|token| !token.chars().any(|ch| ch.is_ascii_digit()))
+        .filter(|token| !token.contains("users") && !token.contains("downloads") && !token.contains("codexplusclaw"))
+        .filter(|token| !matches!(*token, "the" | "and" | "for" | "with" | "that" | "this" | "then" | "from" | "into" | "have" | "will" | "just" | "about" | "after" | "before" | "using" | "need" | "next" | "let" | "lets" | "our" | "you" | "your" | "are" | "was" | "were" | "has" | "had" | "workspace" | "artifacts" | "runs" | "attempt" | "path" | "file" | "swebench" | "study" | "kevinlin" | "friendly" | "pragmatic" | "gpt"))
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn make_ngrams(tokens: &[String], n: usize) -> Vec<String> {
+    if tokens.len() < n {
+        return Vec::new();
+    }
+    tokens
+        .windows(n)
+        .map(|window| window.join(" "))
+        .collect()
+}
+
+fn top_n_terms(map: BTreeMap<String, usize>, limit: usize) -> Vec<(String, usize)> {
+    let mut terms = map.into_iter().collect::<Vec<_>>();
+    terms.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    terms.truncate(limit);
+    terms
+}
+
+fn render_ranked_terms(terms: &[(String, usize)]) -> String {
+    if terms.is_empty() {
+        return "-".to_string();
+    }
+    terms
+        .iter()
+        .map(|(term, count)| format!("{term}({count})"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn median_i64(values: &[i64]) -> i64 {
+    if values.is_empty() {
+        return 0;
+    }
+    let mut sorted = values.to_vec();
+    sorted.sort_unstable();
+    sorted[sorted.len() / 2]
 }
 
 fn display_or<'a>(value: &'a str, fallback: &'a str) -> &'a str {
@@ -1161,6 +1863,33 @@ fn write_datasets(
     let mut task_rollup = BTreeMap::<String, (usize, i64, i64, usize, usize)>::new();
     let mut model_pair_deltas = vec![
         "paired_instance_key,cohort_id,model,personality_mode,total_tokens,visible_output_total_tokens_est,tool_count,command_count".to_string()
+    ];
+    let mut message_lexical_summary = vec![
+        "cohort_id,term_type,term,count".to_string()
+    ];
+    let mut cohort_lexical_summary = vec![
+        "cohort_id,top_word_mass,top_bigram_mass,top_trigram_mass,social_tone_messages,verification_messages,tool_bridge_messages,planning_messages".to_string()
+    ];
+    let mut message_discourse_summary = vec![
+        "cohort_id,category,count".to_string()
+    ];
+    let mut message_style = vec![
+        "instance_id,cohort_id,message_id,turn_id,seq,hedging_score_bps,confidence_score_bps,collaboration_tone_score_bps,directive_score_bps,reflective_score_bps,formality_score_bps,empathy_alignment_score_bps,content_word_count,function_word_count,type_token_ratio_bps,lexical_diversity_score_bps".to_string()
+    ];
+    let mut model_phrase_deltas = vec![
+        "pair_kind,grouping_key,left_cohort,right_cohort,term_type,term,left_count,right_count,delta".to_string()
+    ];
+    let mut personality_phrase_deltas = vec![
+        "pair_kind,grouping_key,left_cohort,right_cohort,term_type,term,left_count,right_count,delta".to_string()
+    ];
+    let mut tool_inventory = vec![
+        "cohort_id,kind,name,call_count,success_count,failure_count,total_output_size,median_duration_ms".to_string()
+    ];
+    let mut tool_route_summary = vec![
+        "cohort_id,tool_route,count".to_string()
+    ];
+    let mut tool_by_turn = vec![
+        "instance_id,cohort_id,turn_id,kind,name,tool_route,phase,seq,call_id,duration_ms,success,preceded_by_commentary_tokens,output_size".to_string()
     ];
 
     for bundle in bundles {
@@ -1225,6 +1954,127 @@ fn write_datasets(
     fs::write(datasets_dir.join("claim_evidence.csv"), claim_rows.join("\n"))?;
     fs::write(datasets_dir.join("model_pair_deltas.csv"), model_pair_deltas.join("\n"))?;
     fs::write(datasets_dir.join("task_class_summary.csv"), task_class_summary.join("\n"))?;
+
+    for ((cohort_id, kind, name), stats) in aggregate_tool_inventory(bundles) {
+        tool_inventory.push(csv_row(&[
+            &cohort_id,
+            &kind,
+            &name,
+            &stats.call_count.to_string(),
+            &stats.success_count.to_string(),
+            &stats.failure_count.to_string(),
+            &stats.total_output_size.to_string(),
+            &median_i64(&stats.durations_ms).to_string(),
+        ]));
+    }
+    for ((cohort_id, route), count) in aggregate_tool_routes(bundles) {
+        tool_route_summary.push(csv_row(&[&cohort_id, &route, &count.to_string()]));
+    }
+    for profile in aggregate_linguistic_profiles(bundles) {
+        let top_word_mass = profile.top_words.iter().map(|(_, count)| *count).sum::<usize>();
+        let top_bigram_mass = profile.top_bigrams.iter().map(|(_, count)| *count).sum::<usize>();
+        let top_trigram_mass = profile.top_trigrams.iter().map(|(_, count)| *count).sum::<usize>();
+        cohort_lexical_summary.push(csv_row(&[
+            &profile.cohort_id,
+            &top_word_mass.to_string(),
+            &top_bigram_mass.to_string(),
+            &top_trigram_mass.to_string(),
+            &profile.social_tone_messages.to_string(),
+            &profile.verification_messages.to_string(),
+            &profile.tool_bridge_messages.to_string(),
+            &profile.planning_messages.to_string(),
+        ]));
+        for (term, count) in profile.top_words {
+            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "word", &term, &count.to_string()]));
+        }
+        for (term, count) in profile.top_bigrams {
+            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "bigram", &term, &count.to_string()]));
+        }
+        for (term, count) in profile.top_trigrams {
+            message_lexical_summary.push(csv_row(&[&profile.cohort_id, "trigram", &term, &count.to_string()]));
+        }
+        for (category, count) in profile.discourse_counts {
+            message_discourse_summary.push(csv_row(&[&profile.cohort_id, &category, &count.to_string()]));
+        }
+    }
+    for bundle in bundles {
+        let message_path = bundle.selected.run_dir.join("attempt-01").join("message-metrics.jsonl");
+        for value in read_jsonl_values(&message_path).unwrap_or_default() {
+            message_style.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                value.get("messageId").and_then(Value::as_str).unwrap_or(""),
+                value.get("turnId").and_then(Value::as_str).unwrap_or(""),
+                &value.get("seq").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                &value.get("hedgingScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("confidenceScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("collaborationToneScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("directiveScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("reflectiveScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("formalityScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("empathyAlignmentScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("contentWordCount").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                &value.get("functionWordCount").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                &value.get("typeTokenRatioBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("lexicalDiversityScoreBps").and_then(Value::as_i64).unwrap_or_default().to_string(),
+            ]));
+        }
+        let path = bundle.selected.run_dir.join("attempt-01").join("tool-events.jsonl");
+        for value in read_jsonl_values(&path).unwrap_or_default() {
+            tool_by_turn.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                value.get("turnId").and_then(Value::as_str).unwrap_or(""),
+                value.get("kind").and_then(Value::as_str).unwrap_or(""),
+                value.get("name").and_then(Value::as_str).unwrap_or(""),
+                value.get("toolRoute").and_then(Value::as_str).unwrap_or(""),
+                value.get("phase").and_then(Value::as_str).unwrap_or(""),
+                &value.get("seq").and_then(Value::as_u64).unwrap_or_default().to_string(),
+                value.get("callId").and_then(Value::as_str).unwrap_or(""),
+                &value.get("durationMs").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("success").and_then(Value::as_bool).unwrap_or(false).to_string(),
+                &value.get("precededByCommentaryTokens").and_then(Value::as_i64).unwrap_or_default().to_string(),
+                &value.get("outputSize").and_then(Value::as_u64).unwrap_or_default().to_string(),
+            ]));
+        }
+    }
+
+    for row in compute_phrase_deltas(bundles, "model") {
+        model_phrase_deltas.push(csv_row(&[
+            &row.pair_kind,
+            &row.grouping_key,
+            &row.left_cohort,
+            &row.right_cohort,
+            &row.term_type,
+            &row.term,
+            &row.left_count.to_string(),
+            &row.right_count.to_string(),
+            &row.delta.to_string(),
+        ]));
+    }
+    for row in compute_phrase_deltas(bundles, "personality") {
+        personality_phrase_deltas.push(csv_row(&[
+            &row.pair_kind,
+            &row.grouping_key,
+            &row.left_cohort,
+            &row.right_cohort,
+            &row.term_type,
+            &row.term,
+            &row.left_count.to_string(),
+            &row.right_count.to_string(),
+            &row.delta.to_string(),
+        ]));
+    }
+
+    fs::write(datasets_dir.join("message_lexical_summary.csv"), message_lexical_summary.join("\n"))?;
+    fs::write(datasets_dir.join("cohort_lexical_summary.csv"), cohort_lexical_summary.join("\n"))?;
+    fs::write(datasets_dir.join("message_discourse_summary.csv"), message_discourse_summary.join("\n"))?;
+    fs::write(datasets_dir.join("message_style.csv"), message_style.join("\n"))?;
+    fs::write(datasets_dir.join("model_phrase_deltas.csv"), model_phrase_deltas.join("\n"))?;
+    fs::write(datasets_dir.join("personality_phrase_deltas.csv"), personality_phrase_deltas.join("\n"))?;
+    fs::write(datasets_dir.join("tool_inventory.csv"), tool_inventory.join("\n"))?;
+    fs::write(datasets_dir.join("tool_route_summary.csv"), tool_route_summary.join("\n"))?;
+    fs::write(datasets_dir.join("tool_by_turn.csv"), tool_by_turn.join("\n"))?;
 
     write_pass_through_dataset(
         &datasets_dir.join("turn_metrics.csv"),
@@ -1454,15 +2304,20 @@ fn format_command_event(value: &Value) -> String {
 
 fn format_tool_event(value: &Value) -> String {
     format!(
-        "seq={} phase={} kind={} name={} server={} tool={} success={} duration_ms={}",
+        "seq={} phase={} kind={} name={} route={} turn={} call={} server={} tool={} success={} duration_ms={} preceded_tokens={} output_size={}",
         value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
         value.get("phase").and_then(Value::as_str).unwrap_or("-"),
         value.get("kind").and_then(Value::as_str).unwrap_or("-"),
         value.get("name").and_then(Value::as_str).unwrap_or("-"),
+        value.get("toolRoute").and_then(Value::as_str).unwrap_or("-"),
+        value.get("turnId").and_then(Value::as_str).unwrap_or("-"),
+        value.get("callId").and_then(Value::as_str).unwrap_or("-"),
         value.get("server").and_then(Value::as_str).unwrap_or("-"),
         value.get("tool").and_then(Value::as_str).unwrap_or("-"),
         value.get("success").and_then(Value::as_bool).map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
         value.get("durationMs").and_then(Value::as_i64).unwrap_or_default(),
+        value.get("precededByCommentaryTokens").and_then(Value::as_i64).unwrap_or_default(),
+        value.get("outputSize").and_then(Value::as_u64).unwrap_or_default(),
     )
 }
 
@@ -1574,4 +2429,363 @@ fn format_grade_event(value: &Value) -> String {
             .and_then(Value::as_str)
             .unwrap_or("-"),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codex_bench_core::{EvidenceClassification, SelectedInstance};
+    use serde_json::json;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time works")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("codex-bench-report-{label}-{nanos}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    fn write_jsonl(path: &Path, rows: &[Value]) {
+        let contents = rows
+            .iter()
+            .map(|row| serde_json::to_string(row).expect("json row"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(path, contents).expect("write jsonl");
+    }
+
+    fn sample_bundle(
+        root: &Path,
+        cohort_id: &str,
+        model: &str,
+        personality_mode: &str,
+        message: &str,
+        categories: &[&str],
+        tool_route: &str,
+        tool_name: &str,
+    ) -> RunReportBundle {
+        let run_dir = root.join(cohort_id).join("demo__repo-1");
+        let attempt_dir = run_dir.join("attempt-01");
+        fs::create_dir_all(&attempt_dir).expect("create attempt dir");
+
+        write_jsonl(
+            &attempt_dir.join("message-metrics.jsonl"),
+            &[json!({
+                "messageId": format!("{cohort_id}-m1"),
+                "turnId": "turn-1",
+                "seq": 1,
+                "message": message,
+                "categories": categories,
+                "hedgingScoreBps": 1200,
+                "confidenceScoreBps": 3400,
+                "collaborationToneScoreBps": 1800,
+                "directiveScoreBps": 900,
+                "reflectiveScoreBps": 1500,
+                "formalityScoreBps": 1000,
+                "empathyAlignmentScoreBps": 800,
+                "contentWordCount": 8,
+                "functionWordCount": 4,
+                "typeTokenRatioBps": 7500,
+                "lexicalDiversityScoreBps": 7500
+            })],
+        );
+        write_jsonl(
+            &attempt_dir.join("tool-events.jsonl"),
+            &[json!({
+                "phase": "begin",
+                "kind": "shell",
+                "name": tool_name,
+                "toolRoute": tool_route,
+                "turnId": "turn-1",
+                "seq": 1,
+                "callId": format!("{cohort_id}-call-1"),
+                "durationMs": 42,
+                "success": true,
+                "precededByCommentaryTokens": 24,
+                "outputSize": 16
+            })],
+        );
+
+        RunReportBundle {
+            selected: SelectedInstance {
+                instance_id: "demo__repo-1".to_string(),
+                repo: "demo/repo".to_string(),
+                task_class: "verification-heavy".to_string(),
+                run_dir: run_dir.clone(),
+                paired_instance_key: "demo__repo-1".to_string(),
+                cohort_id: cohort_id.to_string(),
+                model: model.to_string(),
+                provider: "openai".to_string(),
+                personality_mode: Some(personality_mode.to_string()),
+                prompt_style: Some("research_exploratory".to_string()),
+            },
+            record: DatasetRecord {
+                instance_id: "demo__repo-1".to_string(),
+                repo: "demo/repo".to_string(),
+                base_commit: "abc123".to_string(),
+                patch: None,
+                test_patch: None,
+                problem_statement: "Investigate the failing verification path".to_string(),
+                hints_text: None,
+                version: None,
+                environment_setup_commit: None,
+                fail_to_pass: Vec::new(),
+                pass_to_pass: Vec::new(),
+                raw: Value::Null,
+            },
+            summary: RunSummary {
+                observability_contract_version: Some(REPORT_OBSERVABILITY_CONTRACT_VERSION.to_string()),
+                instance_id: "demo__repo-1".to_string(),
+                repo: "demo/repo".to_string(),
+                task_class: "verification-heavy".to_string(),
+                paired_instance_key: Some("demo__repo-1".to_string()),
+                cohort_id: Some(cohort_id.to_string()),
+                model: Some(model.to_string()),
+                provider: Some("openai".to_string()),
+                personality_mode: Some(personality_mode.to_string()),
+                prompt_style: Some("research_exploratory".to_string()),
+                status: "completed".to_string(),
+                grading_status: "grader_not_run".to_string(),
+                tool_count: 1,
+                command_count: 1,
+                total_tokens: Some(1000),
+                visible_output_total_tokens_est: 200,
+                field_classifications: BTreeMap::from([
+                    (
+                        "visible_output_total_tokens_est".to_string(),
+                        format!("{:?}", EvidenceClassification::Observed).to_lowercase(),
+                    ),
+                ]),
+                ..RunSummary::default()
+            },
+            probe_summary: ProbeSummary::default(),
+            claim_evidence: vec![ClaimEvidence {
+                claim_id: "H1".to_string(),
+                label: "evidence_consistent".to_string(),
+                supporting_evidence: vec!["more visible output".to_string()],
+                conflicting_evidence: Vec::new(),
+                relevant_runs: vec!["demo__repo-1".to_string()],
+                caveats: Vec::new(),
+            }],
+            artifact_paths: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn aggregate_linguistic_profiles_collects_words_and_discourse() {
+        let root = temp_dir("linguistic-profile");
+        let bundles = vec![
+            sample_bundle(
+                &root,
+                "gpt-5.4-friendly",
+                "gpt-5.4",
+                "friendly",
+                "Let's verify the fix and explain the result clearly.",
+                &["planning", "verification_framing", "social_tone"],
+                "exec_command",
+                "shell",
+            ),
+            sample_bundle(
+                &root,
+                "gpt-5.3-codex-pragmatic",
+                "gpt-5.3-codex",
+                "pragmatic",
+                "Verify the fix and report the result.",
+                &["planning", "verification_framing"],
+                "apply_patch",
+                "apply_patch",
+            ),
+        ];
+
+        let profiles = aggregate_linguistic_profiles(&bundles);
+        assert_eq!(profiles.len(), 2);
+        let friendly = profiles
+            .iter()
+            .find(|profile| profile.cohort_id == "gpt-5.4-friendly")
+            .expect("friendly profile");
+        assert!(friendly.top_words.iter().any(|(term, _)| term == "verify"));
+        assert_eq!(
+            friendly.discourse_counts.get("social_tone").copied().unwrap_or_default(),
+            1
+        );
+    }
+
+    #[test]
+    fn compute_phrase_deltas_compares_model_and_personality_pairs() {
+        let root = temp_dir("phrase-deltas");
+        let bundles = vec![
+            sample_bundle(
+                &root,
+                "gpt-5.4-friendly",
+                "gpt-5.4",
+                "friendly",
+                "Let's verify the fix and explain the result clearly.",
+                &["planning", "verification_framing", "social_tone"],
+                "exec_command",
+                "shell",
+            ),
+            sample_bundle(
+                &root,
+                "gpt-5.3-codex-friendly",
+                "gpt-5.3-codex",
+                "friendly",
+                "Let's verify the fix.",
+                &["planning", "verification_framing", "social_tone"],
+                "exec_command",
+                "shell",
+            ),
+            sample_bundle(
+                &root,
+                "gpt-5.4-pragmatic",
+                "gpt-5.4",
+                "pragmatic",
+                "Verify the fix.",
+                &["planning", "verification_framing"],
+                "exec_command",
+                "shell",
+            ),
+        ];
+
+        let model_rows = compute_phrase_deltas(&bundles, "model");
+        assert!(model_rows.iter().any(|row| {
+            row.grouping_key == "demo__repo-1::friendly"
+                && row.left_cohort != row.right_cohort
+                && row.term == "explain"
+        }));
+
+        let personality_rows = compute_phrase_deltas(&bundles, "personality");
+        assert!(personality_rows.iter().any(|row| {
+            row.grouping_key == "demo__repo-1::gpt-5.4"
+                && row.left_cohort != row.right_cohort
+        }));
+    }
+
+    #[test]
+    fn render_task_class_analysis_includes_benchmark_hints() {
+        let root = temp_dir("task-class-analysis");
+        let bundles = vec![sample_bundle(
+            &root,
+            "gpt-5.4-friendly",
+            "gpt-5.4",
+            "friendly",
+            "Let's verify the fix and explain the result clearly.",
+            &["planning", "verification_framing", "social_tone", "tool_bridge_before"],
+            "exec_command",
+            "shell",
+        )];
+
+        let profile = BenchmarkResearchProfile {
+            benchmark_name: "SWE-bench Verified".to_string(),
+            benchmark_adapter: "swebench".to_string(),
+            summary: "Repo patching benchmark".to_string(),
+            benchmark_notes: vec!["local only".to_string()],
+            task_class_profiles: vec![codex_bench_core::BenchmarkTaskClassProfile {
+                task_class: "verification-heavy".to_string(),
+                expected_verification_strength: "strong".to_string(),
+                expected_context_pressure: "medium".to_string(),
+                expected_tool_mix: vec!["shell".to_string(), "apply_patch".to_string()],
+                expected_bootstrap_risk: "medium".to_string(),
+                expected_language_need: "high".to_string(),
+                language_profile_hint: Some("needs explicit verification narration".to_string()),
+                tool_profile_hint: Some("shell-heavy".to_string()),
+                interaction_style_hint: Some("explain before verify".to_string()),
+                default_analysis_overrides: BTreeMap::new(),
+            }],
+        };
+
+        let rendered = render_task_class_analysis(&bundles, Some(&profile));
+        assert!(rendered.contains("verification-heavy"));
+        assert!(rendered.contains("needs explicit verification narration"));
+        assert!(rendered.contains("shell-heavy"));
+        assert!(rendered.contains("explain before verify"));
+    }
+
+    #[test]
+    fn write_datasets_outputs_extended_research_csvs() {
+        let campaign_dir = temp_dir("write-datasets");
+        let bundles = vec![
+            sample_bundle(
+                &campaign_dir,
+                "gpt-5.4-friendly",
+                "gpt-5.4",
+                "friendly",
+                "Let's verify the fix and explain the result clearly.",
+                &["planning", "verification_framing", "social_tone", "tool_bridge_before"],
+                "exec_command",
+                "shell",
+            ),
+            sample_bundle(
+                &campaign_dir,
+                "gpt-5.3-codex-friendly",
+                "gpt-5.3-codex",
+                "friendly",
+                "Let's verify the fix.",
+                &["planning", "verification_framing", "social_tone"],
+                "apply_patch",
+                "apply_patch",
+            ),
+        ];
+        let manifest = CampaignManifest {
+            schema_version: "v1".to_string(),
+            campaign_id: "campaign-1".to_string(),
+            campaign_status: "report_generated".to_string(),
+            experiment_id: "experiment-1".to_string(),
+            experiment_name: "model-personality".to_string(),
+            created_at: "2026-03-12T00:00:00Z".to_string(),
+            campaign_root: campaign_dir.clone(),
+            repo_cache_root: campaign_dir.join("repo-cache"),
+            benchmark_name: "SWE-bench Verified".to_string(),
+            benchmark_adapter: "swebench".to_string(),
+            preset_name: "swebench-v1".to_string(),
+            preset_path: campaign_dir.join("preset.json"),
+            stage_name: Some("architecture-validation".to_string()),
+            probe_profile: "default".to_string(),
+            report_profile: "default".to_string(),
+            model: "gpt-5.4".to_string(),
+            provider: "openai".to_string(),
+            personality_mode: Some("friendly".to_string()),
+            prompt_style: Some("research_exploratory".to_string()),
+            comparison_axes: vec!["model".to_string(), "personality".to_string()],
+            cohorts: Vec::new(),
+            seed: "seed".to_string(),
+            sample_size: 1,
+            study_mode: "codex_behavior".to_string(),
+            required_task_classes: Vec::new(),
+            preferred_task_classes: Vec::new(),
+            future_benchmarks: Vec::new(),
+            grounding_documents: Vec::new(),
+            reference_documents: Vec::new(),
+            model_catalog_snapshot_path: None,
+            hypothesis_catalog_path: None,
+            experiment_lock_path: None,
+            benchmark_research_profile_path: None,
+            last_report_path: None,
+            last_report_generated_at: None,
+            selected_instances: bundles.iter().map(|bundle| bundle.selected.clone()).collect(),
+        };
+
+        write_datasets(&campaign_dir, &manifest, &bundles).expect("write datasets");
+
+        let datasets_dir = campaign_dir.join("datasets");
+        for required in [
+            "campaign_runs.csv",
+            "message_lexical_summary.csv",
+            "message_discourse_summary.csv",
+            "message_style.csv",
+            "tool_inventory.csv",
+            "tool_route_summary.csv",
+            "tool_by_turn.csv",
+            "model_phrase_deltas.csv",
+            "personality_phrase_deltas.csv",
+            "cohort_lexical_summary.csv",
+        ] {
+            assert!(
+                datasets_dir.join(required).exists(),
+                "expected dataset {required} to exist"
+            );
+        }
+    }
 }

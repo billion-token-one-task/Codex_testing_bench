@@ -17,6 +17,11 @@
 
 这些材料是 **架构参考**，不是本地源码的替代品。
 
+在当前研究工作流里，它们最重要的作用之一，是帮助我们建立：
+
+- [Codex 可观测面契约](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-observability-contract.md)
+- [结构化 observability map](/Users/kevinlin/Downloads/CodexPlusClaw/studies/observability/codex-observability-map.json)
+
 它们适合用于：
 
 - 快速建立对 App Server 概念的理解
@@ -28,6 +33,12 @@
 - 覆盖本地 vendored 源码的真实实现
 - 默认假设当前 pinned runtime 与公开描述完全一致
 - 在没有本地 artifact 的情况下直接宣称行为结论
+
+所以当前仓库的推荐顺序是：
+
+1. 先读本地 artifact
+2. 再看本地 vendored 源码
+3. 最后用这些外部资料帮助解释 seam 和 probe 设计
 
 ## 为什么把 DeepWiki 放进仓库文档
 
@@ -75,6 +86,11 @@ bench 会用这些参考来塑造：
 - persistence / resume
 - App Server translation / listener path
 - reliability surface
+
+并且这些 seam 现在都已经被明确映射进：
+
+- [codex-observability-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-observability-contract.md)
+- [codex-observability-map.json](/Users/kevinlin/Downloads/CodexPlusClaw/studies/observability/codex-observability-map.json)
 
 ## 与内部研究方向的关系
 

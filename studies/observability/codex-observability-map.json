@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "scope": "vendored_codex_runtime",
+  "policy": {
+    "ground_truth_priority": [
+      "local_run_artifacts",
+      "local_vendored_source",
+      "external_architecture_references"
+    ],
+    "classification_levels": [
+      "observed",
+      "inferred",
+      "estimated",
+      "unobservable"
+    ]
+  },
+  "subsystems": [
+    {
+      "id": "session_config_freeze",
+      "classification": "observed",
+      "purpose": "线程启动与恢复时冻结有效 runtime 配置，并暴露 requested vs active mismatch。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/app-server/src/codex_message_processor.rs",
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/app-server-protocol/src/protocol/v2.rs"
+      ],
+      "directly_observable": [
+        "thread_start.model",
+        "thread_start.model_provider",
+        "thread_start.service_tier",
+        "thread_start.cwd",
+        "thread_start.approval_policy",
+        "thread_start.sandbox",
+        "thread_start.personality",
+        "thread_start.experimental_raw_events",
+        "thread_start.persist_extended_history",
+        "requested_vs_active_mismatch_details"
+      ],
+      "bench_guidance": "personality requested/effective、config freeze drift 可以直接研究；更细的内部 precedence branch 仍需谨慎。"
+    },
+    {
+      "id": "turn_lifecycle",
+      "classification": "observed",
+      "purpose": "描述 turn 开始、结束、中止与上下文窗口信息。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "TurnStarted.turn_id",
+        "TurnStarted.model_context_window",
+        "TurnStarted.collaboration_mode_kind",
+        "TurnComplete.turn_id",
+        "TurnComplete.last_agent_message",
+        "TurnAborted"
+      ]
+    },
+    {
+      "id": "token_accounting",
+      "classification": "observed",
+      "purpose": "提供 session 累积 token 与最近一次 token 增量。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "TokenCount.info.total_token_usage",
+        "TokenCount.info.last_token_usage",
+        "TokenCount.info.model_context_window",
+        "TokenCount.rate_limits"
+      ],
+      "stable_derivations": [
+        "turn_input_tokens",
+        "turn_output_tokens",
+        "turn_cached_input_tokens",
+        "turn_total_tokens"
+      ]
+    },
+    {
+      "id": "assistant_output",
+      "classification": "observed",
+      "purpose": "提供用户可见文本输出与 reasoning 相关流。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "AgentMessage",
+        "AgentMessageDelta",
+        "AgentReasoning",
+        "AgentReasoningDelta",
+        "AgentReasoningRawContent",
+        "AgentReasoningRawContentDelta"
+      ],
+      "stable_derivations": [
+        "message_length_metrics",
+        "message_discourse_categories",
+        "verbosity_tool_coupling"
+      ],
+      "caveats": [
+        "用户可见输出与 hidden CoT 不是一回事。",
+        "reasoning 相关流是否纳入研究，取决于实验 policy。"
+      ]
+    },
+    {
+      "id": "tool_exec_shell",
+      "classification": "observed",
+      "purpose": "提供 shell/exec 工具调用的开始、输出、结束信息。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "ExecCommandBegin.call_id",
+        "ExecCommandBegin.turn_id",
+        "ExecCommandBegin.command",
+        "ExecCommandBegin.cwd",
+        "ExecCommandBegin.parsed_cmd",
+        "ExecCommandBegin.source",
+        "ExecCommandEnd.stdout",
+        "ExecCommandEnd.stderr",
+        "ExecCommandEnd.aggregated_output",
+        "ExecCommandEnd.exit_code",
+        "ExecCommandEnd.duration",
+        "ExecCommandEnd.formatted_output",
+        "ExecCommandEnd.status"
+      ]
+    },
+    {
+      "id": "tool_mcp",
+      "classification": "observed",
+      "purpose": "提供 MCP 工具调用的 server/tool/arguments/result/duration。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "McpToolCallBegin.call_id",
+        "McpToolCallBegin.invocation.server",
+        "McpToolCallBegin.invocation.tool",
+        "McpToolCallBegin.invocation.arguments",
+        "McpToolCallEnd.duration",
+        "McpToolCallEnd.result"
+      ]
+    },
+    {
+      "id": "patch_apply",
+      "classification": "observed",
+      "purpose": "提供 patch apply 生命周期、changes 与成功状态。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "PatchApplyBegin.call_id",
+        "PatchApplyBegin.turn_id",
+        "PatchApplyBegin.auto_approved",
+        "PatchApplyBegin.changes",
+        "PatchApplyEnd.stdout",
+        "PatchApplyEnd.stderr",
+        "PatchApplyEnd.success",
+        "PatchApplyEnd.status"
+      ]
+    },
+    {
+      "id": "skills_catalog",
+      "classification": "observed",
+      "purpose": "列出当前可用 skill catalog 与 skill metadata。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "ListSkillsResponse.skills[].name",
+        "ListSkillsResponse.skills[].path",
+        "ListSkillsResponse.skills[].scope",
+        "ListSkillsResponse.skills[].enabled",
+        "ListSkillsResponse.skills[].dependencies"
+      ],
+      "caveats": [
+        "原生协议当前不等于直接提供每次实际 skill use 事件。"
+      ]
+    },
+    {
+      "id": "context_compaction",
+      "classification": "observed",
+      "purpose": "暴露 compaction、rollback 与相关 study probe。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "ContextCompacted",
+        "ThreadRolledBack",
+        "StudyProbeEvent{subsystem=context_compaction}"
+      ],
+      "stable_derivations": [
+        "compaction_count",
+        "post_compaction_rediscovery_patterns"
+      ]
+    },
+    {
+      "id": "collaboration_and_subagents",
+      "classification": "observed",
+      "purpose": "暴露多 agent / collaboration 生命周期事件。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs"
+      ],
+      "directly_observable": [
+        "CollabAgentSpawnBegin",
+        "CollabAgentSpawnEnd",
+        "CollabAgentInteractionBegin",
+        "CollabAgentInteractionEnd",
+        "CollabWaitingBegin",
+        "CollabWaitingEnd",
+        "CollabResumeBegin",
+        "CollabResumeEnd"
+      ]
+    },
+    {
+      "id": "study_probe_layer",
+      "classification": "observed",
+      "purpose": "研究模式下注入的轻量级原生 raw probe。",
+      "source_files": [
+        "/Users/kevinlin/Downloads/CodexPlusClaw/repos/codex/codex-rs/protocol/src/protocol.rs",
+        "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-codex/src/runtime.rs"
+      ],
+      "directly_observable": [
+        "StudyMetadata.campaign_id",
+        "StudyMetadata.run_id",
+        "StudyMetadata.instance_id",
+        "StudyMetadata.repo",
+        "StudyMetadata.attempt",
+        "StudyMetadata.study_mode",
+        "StudyMetadata.task_class",
+        "StudyProbeEvent.subsystem",
+        "StudyProbeEvent.code",
+        "StudyProbeEvent.classification",
+        "StudyProbeEvent.turn_id",
+        "StudyProbeEvent.payload"
+      ]
+    }
+  ],
+  "weakly_inferred": [
+    {
+      "name": "skill_actual_usage",
+      "reason": "当前没有统一原生 SkillUsedEvent；现有 bench 多从 shell/file access 痕迹推导。"
+    },
+    {
+      "name": "instruction_layer_shift",
+      "reason": "可由 requested/effective personality、developer/base instructions、study probes 部分恢复，但不是完整原生事件流。"
+    },
+    {
+      "name": "tool_mediation_tax",
+      "reason": "属于分析概念，不是原生协议字段。"
+    },
+    {
+      "name": "harness_overhead_tax",
+      "reason": "需结合 runtime、tool、grading、bootstrap 多层事件推导。"
+    },
+    {
+      "name": "persistence_continuity_vs_staleness",
+      "reason": "可基于 resume/compaction/rebuild 与 rediscovery 现象推导，但非直接字段。"
+    }
+  ],
+  "unobservable": [
+    {
+      "name": "full_hidden_chain_of_thought",
+      "reason": "不能把 visible reasoning 流等同于完整 hidden CoT。"
+    },
+    {
+      "name": "all_internal_routing_branches",
+      "reason": "当前并非每个内部 orchestration decision 都有稳定原生事件。"
+    },
+    {
+      "name": "native_skill_use_event",
+      "reason": "当前 vendored runtime 没有统一稳定的每次 skill use 原生事件。"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 Study Header
 ============
 Campaign: swebench-study-2026-03-11T15-35-40Z-4c8c79a3
+Campaign status: 
+Report stage: 求解后报告
 Experiment: Codex 模型人格化行为对比研究 v1 (exp-20260311153540-0dadbe7d)
 Created: 2026-03-11T15:35:40.782241+00:00
 Benchmark: SWE-bench Verified (swebench)
