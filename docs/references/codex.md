@@ -10,6 +10,7 @@
 - [DeepWiki Codex](https://deepwiki.com/openai/codex)
 - [OpenAI: Unlocking the Codex harness](https://openai.com/index/unlocking-the-codex-harness/)
 - [OpenAI: Introducing upgrades to Codex](https://openai.com/index/introducing-upgrades-to-codex/)
+- [OpenAI: Introducing the Codex app](https://openai.com/index/introducing-the-codex-app/)
 - [OpenAI: Introducing Codex](https://openai.com/index/introducing-codex/)
 
 ## 如何正确使用这些参考
@@ -66,6 +67,7 @@ bench 会用这些参考来塑造：
 当前重点研究的 local seam 包括：
 
 - session/config freeze
+- model/personality 支持与 instruction 注入
 - instruction 与 prompt assembly
 - turn lifecycle dispatch
 - context compaction 与 reconstruction

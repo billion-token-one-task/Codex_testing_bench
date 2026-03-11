@@ -116,6 +116,18 @@ pub fn grounding_claims(token_budget_doc: &Path, scheduler_doc: &Path) -> Vec<Cl
             ],
             caveats: vec!["Some regulation layers may stabilize runs while also introducing distortion or suppression.".to_string()],
         },
+        ClaimCatalogEntry {
+            id: "grounding.state_verbalization".to_string(),
+            source: scheduler_doc.display().to_string(),
+            text: "Advanced task schedulers benefit when actionable state is externalized rather than remaining hidden inside a single opaque continuation.".to_string(),
+            operationalization: "Track visible assistant bridge language, verification framing, instruction stratification, and tool-grounded commentary ratios.".to_string(),
+            required_evidence: vec![
+                "verbosity.tool_grounded".to_string(),
+                "verbosity.verification_grounded".to_string(),
+                "instruction.stratification".to_string(),
+            ],
+            caveats: vec!["Visible language is only a proxy for deeper internal state management.".to_string()],
+        },
     ]
 }
 
@@ -216,6 +228,30 @@ pub fn codex_unique_claims() -> Vec<ClaimCatalogEntry> {
                 "containment.heat_leak".to_string(),
             ],
             caveats: vec!["This is a harness-level interpretation grounded in observable behavior, not an implementation claim from upstream docs.".to_string()],
+        },
+        ClaimCatalogEntry {
+            id: "codex.personality_policy_shape".to_string(),
+            source: "Codex model personality support".to_string(),
+            text: "Codex personality modes can shape observable agent policy, not only surface tone.".to_string(),
+            operationalization: "Compare visible-output density, tool-bridge language, and verbosity-tool coupling between friendly and pragmatic cohorts under paired tasks.".to_string(),
+            required_evidence: vec![
+                "personality.requested_vs_effective".to_string(),
+                "verbosity.tool_grounded".to_string(),
+                "verbosity.tool_coupling".to_string(),
+            ],
+            caveats: vec!["Strong support requires paired multi-cohort experiments rather than a single run.".to_string()],
+        },
+        ClaimCatalogEntry {
+            id: "codex.state_verbalization".to_string(),
+            source: "Codex behavior study".to_string(),
+            text: "Some Codex/model combinations externalize more actionable state into visible assistant language than others.".to_string(),
+            operationalization: "Compare message-level planning, decision, tool-bridge, and verification framing categories across models and personality modes.".to_string(),
+            required_evidence: vec![
+                "verbosity.actionable".to_string(),
+                "verbosity.tool_grounded".to_string(),
+                "verbosity.verification_grounded".to_string(),
+            ],
+            caveats: vec!["This captures visible state verbalization, not hidden chain-of-thought.".to_string()],
         },
     ]
 }

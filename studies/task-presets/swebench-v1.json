@@ -2,8 +2,47 @@
   "name": "swebench-v1",
   "benchmark": "SWE-bench Verified",
   "benchmark_adapter": "swebench",
+  "experiment_name": "Codex 模型人格化行为对比研究 v1",
   "probe_profile": "codex-deep-probe.v1",
   "report_profile": "evidence-dossier.v1",
+  "comparison_axes": [
+    "model",
+    "personality"
+  ],
+  "cohorts": [
+    {
+      "id": "gpt-5.3-codex-pragmatic",
+      "label": "gpt-5.3-codex × pragmatic",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "id": "gpt-5.3-codex-friendly",
+      "label": "gpt-5.3-codex × friendly",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality": "friendly",
+      "prompt_style": "warm_collaborative"
+    },
+    {
+      "id": "gpt-5.4-pragmatic",
+      "label": "gpt-5.4 × pragmatic",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "id": "gpt-5.4-friendly",
+      "label": "gpt-5.4 × friendly",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality": "friendly",
+      "prompt_style": "warm_collaborative"
+    }
+  ],
   "stages": [
     {
       "name": "architecture-validation",

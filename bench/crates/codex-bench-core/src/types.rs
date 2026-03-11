@@ -12,6 +12,12 @@ pub struct PrepareCampaignArgs {
     pub dataset_jsonl: Option<PathBuf>,
     pub model: String,
     pub provider: String,
+    #[serde(default)]
+    pub personality: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
+    #[serde(default)]
+    pub experiment_name: Option<String>,
     pub repo_cache_root: Option<PathBuf>,
     pub preset_path: Option<PathBuf>,
     pub stage: Option<String>,
@@ -43,9 +49,25 @@ pub struct DatasetRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExperimentCohort {
+    pub cohort_id: String,
+    pub label: String,
+    pub model: String,
+    pub provider: String,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CampaignManifest {
     pub schema_version: String,
     pub campaign_id: String,
+    #[serde(default)]
+    pub experiment_id: String,
+    #[serde(default)]
+    pub experiment_name: String,
     pub created_at: String,
     pub campaign_root: PathBuf,
     pub repo_cache_root: PathBuf,
@@ -59,6 +81,14 @@ pub struct CampaignManifest {
     pub report_profile: String,
     pub model: String,
     pub provider: String,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
+    #[serde(default)]
+    pub comparison_axes: Vec<String>,
+    #[serde(default)]
+    pub cohorts: Vec<ExperimentCohort>,
     pub seed: String,
     pub sample_size: usize,
     pub study_mode: String,
@@ -70,6 +100,12 @@ pub struct CampaignManifest {
     pub future_benchmarks: Vec<String>,
     pub grounding_documents: Vec<String>,
     pub reference_documents: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_catalog_snapshot_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hypothesis_catalog_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub experiment_lock_path: Option<PathBuf>,
     pub selected_instances: Vec<SelectedInstance>,
 }
 
@@ -79,16 +115,44 @@ pub struct SelectedInstance {
     pub repo: String,
     pub task_class: String,
     pub run_dir: PathBuf,
+    #[serde(default)]
+    pub paired_instance_key: String,
+    #[serde(default)]
+    pub cohort_id: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub provider: String,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunManifest {
     pub schema_version: String,
     pub campaign_id: String,
+    #[serde(default)]
+    pub experiment_id: String,
+    #[serde(default)]
+    pub experiment_name: String,
     pub run_id: String,
     pub instance_id: String,
     pub repo: String,
     pub task_class: String,
+    #[serde(default)]
+    pub paired_instance_key: String,
+    #[serde(default)]
+    pub cohort_id: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub provider: String,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
     pub base_commit: String,
     pub worktree_dir: PathBuf,
     pub attempt: u32,
@@ -192,6 +256,36 @@ pub struct ProbeSummary {
     pub useful_token_proxy_bps: Option<i64>,
     pub friction_token_proxy_bps: Option<i64>,
     pub harness_overhead_proxy_bps: Option<i64>,
+    #[serde(default)]
+    pub visible_output_total_chars: usize,
+    #[serde(default)]
+    pub visible_output_total_tokens_est: i64,
+    #[serde(default)]
+    pub visible_output_message_count: usize,
+    #[serde(default)]
+    pub actionable_commentary_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub tool_grounded_commentary_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub verification_grounded_commentary_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub restatement_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub redundant_commentary_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub speculation_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub social_tone_ratio_bps: Option<i64>,
+    #[serde(default)]
+    pub tool_burst_count: usize,
+    #[serde(default)]
+    pub silent_tool_burst_count: usize,
+    #[serde(default)]
+    pub micro_narrated_tool_burst_count: usize,
+    #[serde(default)]
+    pub tokens_before_first_tool: Option<i64>,
+    #[serde(default)]
+    pub visible_text_before_first_tool_chars: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +303,18 @@ pub struct RunSummary {
     pub instance_id: String,
     pub repo: String,
     pub task_class: String,
+    #[serde(default)]
+    pub paired_instance_key: Option<String>,
+    #[serde(default)]
+    pub cohort_id: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
     pub status: String,
     pub grading_status: String,
     #[serde(default)]
@@ -228,6 +334,8 @@ pub struct RunSummary {
     #[serde(default)]
     pub skill_event_count: usize,
     #[serde(default)]
+    pub message_metric_count: usize,
+    #[serde(default)]
     pub patch_event_count: usize,
     #[serde(default)]
     pub patch_file_count: usize,
@@ -246,6 +354,26 @@ pub struct RunSummary {
     #[serde(default)]
     pub anomaly_count: usize,
     #[serde(default)]
+    pub visible_output_total_chars: usize,
+    #[serde(default)]
+    pub visible_output_total_tokens_est: i64,
+    #[serde(default)]
+    pub visible_output_sentence_count: usize,
+    #[serde(default)]
+    pub visible_output_paragraph_count: usize,
+    #[serde(default)]
+    pub visible_output_bullet_count: usize,
+    #[serde(default)]
+    pub visible_output_codeblock_count: usize,
+    #[serde(default)]
+    pub visible_output_per_turn_tokens_est: Option<i64>,
+    #[serde(default)]
+    pub visible_output_per_tool_call_tokens_est: Option<i64>,
+    #[serde(default)]
+    pub visible_output_per_patch_event_tokens_est: Option<i64>,
+    #[serde(default)]
+    pub visible_output_per_verification_event_tokens_est: Option<i64>,
+    #[serde(default)]
     pub event_type_counts: BTreeMap<String, usize>,
     #[serde(default)]
     pub probe_code_counts: BTreeMap<String, usize>,
@@ -260,6 +388,8 @@ pub struct RunSummary {
     #[serde(default)]
     pub skill_name_counts: BTreeMap<String, usize>,
     #[serde(default)]
+    pub message_category_counts: BTreeMap<String, usize>,
+    #[serde(default)]
     pub artifact_inventory: BTreeMap<String, bool>,
 }
 
@@ -267,6 +397,12 @@ pub struct RunSummary {
 pub struct CodexRunRequest {
     pub model: String,
     pub provider: String,
+    #[serde(default)]
+    pub personality_mode: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
+    #[serde(default)]
+    pub cohort_id: Option<String>,
     pub run_id: String,
     pub repo: String,
     pub instance_id: String,

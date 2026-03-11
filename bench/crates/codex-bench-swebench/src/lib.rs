@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -6,9 +6,10 @@ use anyhow::{Context, Result, anyhow, bail};
 use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
-    CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance,
-    attempt_artifact_paths, default_swebench_preset_path, ensure_absolute_dir, load_study_preset,
-    preferred_python, read_json, write_json_pretty,
+    CampaignManifest, CodexRunRequest, DatasetRecord, ExperimentCohort, PrepareCampaignArgs,
+    RunManifest, SelectedInstance, RunSummary, StudyCohortPreset, attempt_artifact_paths,
+    default_swebench_preset_path, ensure_absolute_dir, load_study_preset, preferred_python,
+    read_json, write_json_pretty, write_jsonl,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::render_run_evidence;
@@ -23,6 +24,8 @@ pub const SCHEDULER_DOC: &str =
     "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md";
 pub const DEEPWIKI_DOC: &str = "https://deepwiki.com/openai/codex";
 pub const OPENAI_HARNESS_DOC: &str = "https://openai.com/index/unlocking-the-codex-harness/";
+pub const MODEL_BEHAVIOR_HYPOTHESES: &str =
+    "studies/hypotheses/model-behavior-v1.json";
 
 pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
@@ -45,6 +48,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     fs::create_dir_all(campaign_dir.join("runs"))?;
     let repo_cache_root = args
         .repo_cache_root
+        .clone()
         .map(|path| ensure_absolute_dir(&path))
         .transpose()?
         .unwrap_or_else(|| default_shared_repo_cache_root(&repo_root));
@@ -73,22 +77,65 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         &preset.preferred_task_classes,
     );
 
+    let experiment_name = args
+        .experiment_name
+        .clone()
+        .or_else(|| preset.experiment_name.clone())
+        .unwrap_or_else(|| format!("{} model behavior study", preset.name));
+    let experiment_id = format!(
+        "exp-{}-{}",
+        Utc::now().format("%Y%m%d%H%M%S"),
+        short_hash(&format!("{}:{}", experiment_name, args.seed))
+    );
+    let cohorts = resolve_cohorts(&preset, &args);
+    let model_catalog_snapshot_path = campaign_dir.join("model-catalog-snapshot.json");
+    let experiment_lock_path = campaign_dir.join("experiment-lock.json");
+    let hypothesis_catalog_path = repo_root.join(MODEL_BEHAVIOR_HYPOTHESES);
+    write_model_catalog_snapshot(&repo_root, &cohorts, &model_catalog_snapshot_path)?;
+    write_json_pretty(
+        &experiment_lock_path,
+        &json!({
+            "experimentId": experiment_id,
+            "experimentName": experiment_name,
+            "seed": args.seed,
+            "benchmark": preset.benchmark,
+            "benchmarkAdapter": preset.benchmark_adapter,
+            "cohorts": cohorts,
+            "webSearchPolicy": "disabled",
+            "sandboxPolicy": "workspace-write-no-network",
+            "studyMode": STUDY_MODE,
+        }),
+    )?;
+
     let mut selected_instances = Vec::new();
-    for record in &selected_records {
-        let run_dir = campaign_dir.join("runs").join(&record.instance_id);
-        fs::create_dir_all(&run_dir)?;
-        write_json_pretty(&run_dir.join("record.json"), record)?;
-        selected_instances.push(SelectedInstance {
-            instance_id: record.instance_id.clone(),
-            repo: record.repo.clone(),
-            task_class: classify_task(record),
-            run_dir,
-        });
+    for cohort in &cohorts {
+        for record in &selected_records {
+            let run_dir = campaign_dir
+                .join("runs")
+                .join(&cohort.cohort_id)
+                .join(&record.instance_id);
+            fs::create_dir_all(&run_dir)?;
+            write_json_pretty(&run_dir.join("record.json"), record)?;
+            selected_instances.push(SelectedInstance {
+                instance_id: record.instance_id.clone(),
+                repo: record.repo.clone(),
+                task_class: classify_task(record),
+                run_dir,
+                paired_instance_key: record.instance_id.clone(),
+                cohort_id: cohort.cohort_id.clone(),
+                model: cohort.model.clone(),
+                provider: cohort.provider.clone(),
+                personality_mode: cohort.personality_mode.clone(),
+                prompt_style: cohort.prompt_style.clone(),
+            });
+        }
     }
 
     let manifest = CampaignManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
+        experiment_id,
+        experiment_name,
         created_at: Utc::now().to_rfc3339(),
         campaign_root: campaign_dir.clone(),
         repo_cache_root,
@@ -101,14 +148,25 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         report_profile: preset.report_profile.clone(),
         model: args.model,
         provider: args.provider,
+        personality_mode: args.personality.clone(),
+        prompt_style: args.prompt_style.clone(),
+        comparison_axes: if preset.comparison_axes.is_empty() {
+            vec!["model".to_string(), "personality".to_string()]
+        } else {
+            preset.comparison_axes.clone()
+        },
+        cohorts,
         seed: args.seed,
-        sample_size: selected_instances.len(),
+        sample_size: selected_records.len(),
         study_mode: STUDY_MODE.to_string(),
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
         grounding_documents: vec![TOKEN_BUDGET_DOC.to_string(), SCHEDULER_DOC.to_string()],
         reference_documents: vec![DEEPWIKI_DOC.to_string(), OPENAI_HARNESS_DOC.to_string()],
+        model_catalog_snapshot_path: Some(model_catalog_snapshot_path),
+        hypothesis_catalog_path: Some(hypothesis_catalog_path),
+        experiment_lock_path: Some(experiment_lock_path),
         selected_instances,
     };
 
@@ -216,7 +274,12 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
 
     if let Some(command_template) = command {
         let command = command_template.replace("{predictions}", &predictions_path.display().to_string());
-        let output = Command::new("zsh").arg("-lc").arg(command).output().await?;
+        let output = Command::new("zsh")
+            .arg("-lc")
+            .arg(command)
+            .current_dir(campaign_dir)
+            .output()
+            .await?;
         write_json_pretty(
             &grader_path,
             &json!({
@@ -226,6 +289,7 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
                 "stderr": String::from_utf8_lossy(&output.stderr),
             }),
         )?;
+        ingest_official_grading(&manifest, campaign_dir)?;
     } else {
         write_json_pretty(
             &grader_path,
@@ -236,6 +300,110 @@ pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Res
         )?;
     }
     Ok(())
+}
+
+fn ingest_official_grading(manifest: &CampaignManifest, campaign_dir: &Path) -> Result<()> {
+    let Some(official_summary_path) = find_official_summary_path(campaign_dir)? else {
+        return Ok(());
+    };
+    let official_summary: Value = read_json(&official_summary_path)?;
+
+    let resolved_ids = value_string_set(&official_summary, "resolved_ids");
+    let unresolved_ids = value_string_set(&official_summary, "unresolved_ids");
+    let error_ids = value_string_set(&official_summary, "error_ids");
+    let completed_ids = value_string_set(&official_summary, "completed_ids");
+
+    for selected in &manifest.selected_instances {
+        let grading_status = if resolved_ids.contains(&selected.instance_id) {
+            "resolved"
+        } else if unresolved_ids.contains(&selected.instance_id) {
+            "unresolved"
+        } else if error_ids.contains(&selected.instance_id) {
+            "error"
+        } else if completed_ids.contains(&selected.instance_id) {
+            "completed"
+        } else {
+            "pending"
+        };
+
+        let run_manifest_path = selected.run_dir.join("manifest.json");
+        if run_manifest_path.exists() {
+            let mut run_manifest: RunManifest = read_json(&run_manifest_path)?;
+            run_manifest.grading_status = grading_status.to_string();
+            write_json_pretty(&run_manifest_path, &run_manifest)?;
+        }
+
+        let attempt_dir = selected.run_dir.join("attempt-01");
+        let summary_path = attempt_dir.join("run-summary.json");
+        if summary_path.exists() {
+            let mut summary: RunSummary = read_json(&summary_path)?;
+            summary.grading_status = grading_status.to_string();
+            write_json_pretty(&summary_path, &summary)?;
+        }
+
+        let per_instance_report = find_official_instance_report(campaign_dir, manifest, &selected.instance_id);
+        let grade_row = json!({
+            "instanceId": selected.instance_id,
+            "gradingStatus": grading_status,
+            "officialSummaryPath": official_summary_path,
+            "officialInstanceReportPath": per_instance_report,
+            "classification": "exact",
+        });
+        write_jsonl(&attempt_dir.join("grade-events.jsonl"), &[grade_row])?;
+    }
+
+    Ok(())
+}
+
+fn find_official_summary_path(campaign_dir: &Path) -> Result<Option<PathBuf>> {
+    let official_dir = campaign_dir.join("reports").join("official");
+    if !official_dir.exists() {
+        return Ok(None);
+    }
+    let mut candidates = fs::read_dir(&official_dir)?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("json"))
+        .collect::<Vec<_>>();
+    candidates.sort();
+    Ok(candidates.pop())
+}
+
+fn find_official_instance_report(
+    campaign_dir: &Path,
+    manifest: &CampaignManifest,
+    instance_id: &str,
+) -> Option<PathBuf> {
+    let model_dir = manifest.model.replace('/', "__");
+    let candidate_roots = [
+        campaign_dir.join("logs").join("run_evaluation"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../..")
+            .join("bench")
+            .join("logs")
+            .join("run_evaluation"),
+    ];
+    for root in candidate_roots {
+        let path = root
+            .join(&manifest.campaign_id)
+            .join(&model_dir)
+            .join(instance_id)
+            .join("report.json");
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn value_string_set(value: &Value, key: &str) -> BTreeSet<String> {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(ToOwned::to_owned)
+        .collect()
 }
 
 async fn run_instance(
@@ -257,7 +425,7 @@ async fn run_instance(
     )
     .await?;
 
-    let prompt = build_prompt(&record);
+    let prompt = build_prompt(&record, selected.personality_mode.as_deref(), selected.prompt_style.as_deref());
     fs::write(attempt_dir.join("prompt.txt"), &prompt)?;
     write_json_pretty(
         &attempt_dir.join("environment-plan.json"),
@@ -267,8 +435,11 @@ async fn run_instance(
             "environmentSetupCommit": record.environment_setup_commit,
             "worktreeDir": worktree_dir,
             "taskClass": selected.task_class,
-            "requestedModel": manifest.model,
-            "requestedProvider": manifest.provider,
+            "requestedModel": selected.model,
+            "requestedProvider": selected.provider,
+            "requestedPersonality": selected.personality_mode,
+            "promptStyle": selected.prompt_style,
+            "cohortId": selected.cohort_id,
             "groundingDocuments": manifest.grounding_documents,
             "referenceDocuments": manifest.reference_documents,
         }),
@@ -279,10 +450,18 @@ async fn run_instance(
     let run_manifest = RunManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: manifest.campaign_id.clone(),
+        experiment_id: manifest.experiment_id.clone(),
+        experiment_name: manifest.experiment_name.clone(),
         run_id: run_id.clone(),
         instance_id: record.instance_id.clone(),
         repo: record.repo.clone(),
         task_class: selected.task_class.clone(),
+        paired_instance_key: selected.paired_instance_key.clone(),
+        cohort_id: selected.cohort_id.clone(),
+        model: selected.model.clone(),
+        provider: selected.provider.clone(),
+        personality_mode: selected.personality_mode.clone(),
+        prompt_style: selected.prompt_style.clone(),
         base_commit: record.base_commit.clone(),
         worktree_dir: worktree_dir.clone(),
         attempt: 1,
@@ -293,8 +472,11 @@ async fn run_instance(
     write_json_pretty(&run_dir.join("manifest.json"), &run_manifest)?;
 
     let capture = run_codex_task(CodexRunRequest {
-        model: manifest.model.clone(),
-        provider: manifest.provider.clone(),
+        model: selected.model.clone(),
+        provider: selected.provider.clone(),
+        personality_mode: selected.personality_mode.clone(),
+        prompt_style: selected.prompt_style.clone(),
+        cohort_id: Some(selected.cohort_id.clone()),
         run_id: run_id.clone(),
         repo: record.repo.clone(),
         instance_id: record.instance_id.clone(),
@@ -483,11 +665,42 @@ async fn has_ref(repo_cache: &Path, git_ref: &str) -> Result<bool> {
     Ok(output.status.success())
 }
 
-fn build_prompt(record: &DatasetRecord) -> String {
+fn build_prompt(
+    record: &DatasetRecord,
+    personality_mode: Option<&str>,
+    prompt_style: Option<&str>,
+) -> String {
     let mut prompt = String::new();
     prompt.push_str("You are solving a SWE-bench task inside a local git worktree.\n");
     prompt.push_str("Investigate the repository, make the minimal correct code changes, and stop when the patch is ready.\n");
     prompt.push_str("Do not produce a narrative essay. Use tools, inspect files, edit code, and verify when useful.\n\n");
+    if let Some(personality_mode) = personality_mode {
+        prompt.push_str("Requested personality mode: ");
+        prompt.push_str(personality_mode);
+        prompt.push('\n');
+    }
+    if let Some(prompt_style) = prompt_style {
+        prompt.push_str("Prompt-style control: ");
+        prompt.push_str(prompt_style);
+        prompt.push('\n');
+        match prompt_style {
+            "terse_engineer" => {
+                prompt.push_str("Use terse engineering updates and minimize extra phrasing unless it helps execution.\n\n");
+            }
+            "warm_collaborative" => {
+                prompt.push_str("Use collaborative, warm bridge language when explaining actions or results.\n\n");
+            }
+            "structured_checklist" => {
+                prompt.push_str("Prefer short structured checklists and explicit next steps.\n\n");
+            }
+            "research_exploratory" => {
+                prompt.push_str("Expose intermediate hypotheses, observations, and verification framing more explicitly.\n\n");
+            }
+            _ => {
+                prompt.push_str("Follow the style request while staying task-focused.\n\n");
+            }
+        }
+    }
     prompt.push_str("Problem statement:\n");
     prompt.push_str(&record.problem_statement);
     prompt.push_str("\n\nRepository: ");
@@ -766,8 +979,10 @@ fn render_command(cmd: &Command) -> String {
 }
 
 async fn write_predictions_jsonl(manifest: &CampaignManifest, campaign_dir: &Path) -> Result<()> {
-    let predictions_path = campaign_dir.join("predictions.jsonl");
-    let mut lines = Vec::new();
+    let predictions_dir = campaign_dir.join("predictions");
+    fs::create_dir_all(&predictions_dir)?;
+    let mut combined_lines = Vec::new();
+    let mut per_cohort_lines = BTreeMap::<String, Vec<String>>::new();
     for selected in &manifest.selected_instances {
         let record: DatasetRecord = read_json(&selected.run_dir.join("record.json"))?;
         let patch_path = selected.run_dir.join("attempt-01").join("patch.diff");
@@ -775,14 +990,102 @@ async fn write_predictions_jsonl(manifest: &CampaignManifest, campaign_dir: &Pat
             continue;
         }
         let patch = fs::read_to_string(patch_path)?;
-        lines.push(serde_json::to_string(&json!({
+        let row = serde_json::to_string(&json!({
             "instance_id": record.instance_id,
-            "model_name_or_path": format!("{}:{}", manifest.provider, manifest.model),
+            "paired_instance_key": selected.paired_instance_key,
+            "cohort_id": selected.cohort_id,
+            "model_name_or_path": format!("{}:{}", selected.provider, selected.model),
+            "personality_mode": selected.personality_mode,
+            "prompt_style": selected.prompt_style,
             "model_patch": patch,
-        }))?);
+        }))?;
+        combined_lines.push(row.clone());
+        per_cohort_lines
+            .entry(selected.cohort_id.clone())
+            .or_default()
+            .push(row);
     }
-    fs::write(predictions_path, lines.join("\n"))?;
+    fs::write(campaign_dir.join("predictions.jsonl"), combined_lines.join("\n"))?;
+    for (cohort_id, lines) in per_cohort_lines {
+        fs::write(predictions_dir.join(format!("{cohort_id}.jsonl")), lines.join("\n"))?;
+    }
     Ok(())
+}
+
+fn resolve_cohorts(
+    preset: &codex_bench_core::StudyPreset,
+    args: &PrepareCampaignArgs,
+) -> Vec<ExperimentCohort> {
+    if !preset.cohorts.is_empty() {
+        return preset
+            .cohorts
+            .iter()
+            .map(|cohort| map_cohort(cohort))
+            .collect();
+    }
+    vec![ExperimentCohort {
+        cohort_id: "default".to_string(),
+        label: format!(
+            "{} / {}{}",
+            args.model,
+            args.provider,
+            args.personality
+                .as_ref()
+                .map(|personality| format!(" / {personality}"))
+                .unwrap_or_default()
+        ),
+        model: args.model.clone(),
+        provider: args.provider.clone(),
+        personality_mode: args.personality.clone(),
+        prompt_style: args.prompt_style.clone(),
+    }]
+}
+
+fn map_cohort(cohort: &StudyCohortPreset) -> ExperimentCohort {
+    ExperimentCohort {
+        cohort_id: cohort.id.clone(),
+        label: cohort.label.clone(),
+        model: cohort.model.clone(),
+        provider: cohort.provider.clone(),
+        personality_mode: cohort.personality.clone(),
+        prompt_style: cohort.prompt_style.clone(),
+    }
+}
+
+fn write_model_catalog_snapshot(
+    repo_root: &Path,
+    cohorts: &[ExperimentCohort],
+    output_path: &Path,
+) -> Result<()> {
+    let models_path = repo_root
+        .join("repos")
+        .join("codex")
+        .join("codex-rs")
+        .join("core")
+        .join("models.json");
+    let models: Value = read_json(&models_path)?;
+    let requested_models = cohorts
+        .iter()
+        .map(|cohort| cohort.model.clone())
+        .collect::<BTreeSet<_>>();
+    let filtered = models
+        .as_object()
+        .map(|object| {
+            object
+                .iter()
+                .filter(|(model, _)| requested_models.contains(*model))
+                .map(|(model, value)| (model.clone(), value.clone()))
+                .collect::<Map<String, Value>>()
+        })
+        .unwrap_or_default();
+    write_json_pretty(
+        output_path,
+        &json!({
+            "source": models_path,
+            "requestedModels": requested_models,
+            "models": filtered,
+        }),
+    )
 }
 
 #[cfg(test)]

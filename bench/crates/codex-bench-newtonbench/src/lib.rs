@@ -46,6 +46,7 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     fs::create_dir_all(campaign_dir.join("runs"))?;
     let repo_cache_root = args
         .repo_cache_root
+        .clone()
         .map(|path| ensure_absolute_dir(&path))
         .transpose()?
         .unwrap_or_else(|| campaign_dir.join("_repo-cache"));
@@ -72,12 +73,23 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
             repo: record.repo.clone(),
             task_class: classify_task(record),
             run_dir,
+            paired_instance_key: record.instance_id.clone(),
+            cohort_id: "default".to_string(),
+            model: args.model.clone(),
+            provider: args.provider.clone(),
+            personality_mode: args.personality.clone(),
+            prompt_style: args.prompt_style.clone(),
         });
     }
 
     let manifest = CampaignManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: campaign_id.clone(),
+        experiment_id: format!("exp-{}", short_hash(&format!("{}:{}", BENCHMARK_NAME, args.seed))),
+        experiment_name: args
+            .experiment_name
+            .clone()
+            .unwrap_or_else(|| BENCHMARK_NAME.to_string()),
         created_at: Utc::now().to_rfc3339(),
         campaign_root: campaign_dir.clone(),
         repo_cache_root,
@@ -88,8 +100,19 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         stage_name,
         probe_profile: preset.probe_profile.clone(),
         report_profile: preset.report_profile.clone(),
-        model: args.model,
-        provider: args.provider,
+        model: args.model.clone(),
+        provider: args.provider.clone(),
+        personality_mode: args.personality.clone(),
+        prompt_style: args.prompt_style.clone(),
+        comparison_axes: vec!["model".to_string(), "personality".to_string()],
+        cohorts: vec![codex_bench_core::ExperimentCohort {
+            cohort_id: "default".to_string(),
+            label: BENCHMARK_NAME.to_string(),
+            model: args.model.clone(),
+            provider: args.provider.clone(),
+            personality_mode: args.personality.clone(),
+            prompt_style: args.prompt_style.clone(),
+        }],
         seed: args.seed,
         sample_size: selected_instances.len(),
         study_mode: STUDY_MODE.to_string(),
@@ -98,6 +121,9 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
         future_benchmarks: preset.future_benchmarks.clone(),
         grounding_documents: vec![TOKEN_BUDGET_DOC.to_string(), SCHEDULER_DOC.to_string()],
         reference_documents: vec![DEEPWIKI_DOC.to_string(), OPENAI_HARNESS_DOC.to_string()],
+        model_catalog_snapshot_path: None,
+        hypothesis_catalog_path: None,
+        experiment_lock_path: None,
         selected_instances,
     };
 
@@ -232,10 +258,18 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
     let run_manifest = RunManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: manifest.campaign_id.clone(),
+        experiment_id: manifest.experiment_id.clone(),
+        experiment_name: manifest.experiment_name.clone(),
         run_id: run_id.clone(),
         instance_id: record.instance_id.clone(),
         repo: record.repo.clone(),
         task_class: selected.task_class.clone(),
+        paired_instance_key: selected.paired_instance_key.clone(),
+        cohort_id: selected.cohort_id.clone(),
+        model: selected.model.clone(),
+        provider: selected.provider.clone(),
+        personality_mode: selected.personality_mode.clone(),
+        prompt_style: selected.prompt_style.clone(),
         base_commit: record.base_commit.clone(),
         worktree_dir: workspace_dir.clone(),
         attempt: 1,
@@ -246,8 +280,11 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
     write_json_pretty(&run_dir.join("manifest.json"), &run_manifest)?;
 
     let capture = run_codex_task(CodexRunRequest {
-        model: manifest.model.clone(),
-        provider: manifest.provider.clone(),
+        model: selected.model.clone(),
+        provider: selected.provider.clone(),
+        personality_mode: selected.personality_mode.clone(),
+        prompt_style: selected.prompt_style.clone(),
+        cohort_id: Some(selected.cohort_id.clone()),
         run_id: run_id.clone(),
         repo: record.repo.clone(),
         instance_id: record.instance_id.clone(),

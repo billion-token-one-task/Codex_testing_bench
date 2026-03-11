@@ -14,6 +14,19 @@ pub struct StudyStagePreset {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StudyCohortPreset {
+    pub id: String,
+    pub label: String,
+    pub model: String,
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    #[serde(default)]
+    pub personality: Option<String>,
+    #[serde(default)]
+    pub prompt_style: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StudyPreset {
     pub name: String,
     pub benchmark: String,
@@ -25,6 +38,12 @@ pub struct StudyPreset {
     pub report_profile: String,
     #[serde(default)]
     pub stages: Vec<StudyStagePreset>,
+    #[serde(default)]
+    pub experiment_name: Option<String>,
+    #[serde(default)]
+    pub comparison_axes: Vec<String>,
+    #[serde(default)]
+    pub cohorts: Vec<StudyCohortPreset>,
     #[serde(default)]
     pub required_task_classes: Vec<String>,
     #[serde(default)]
@@ -80,6 +99,10 @@ pub fn default_swebench_preset_path(repo_root: &Path) -> PathBuf {
 
 fn default_benchmark_adapter() -> String {
     "swebench".to_string()
+}
+
+fn default_provider() -> String {
+    "openai".to_string()
 }
 
 fn default_probe_profile() -> String {

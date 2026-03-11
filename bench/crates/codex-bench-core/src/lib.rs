@@ -12,7 +12,10 @@ pub use artifacts::{
     patch_file_count,
 };
 pub use commands::{command_capture, render_command, run_command};
-pub use config::{StudyPreset, StudyStagePreset, default_swebench_preset_path, load_study_preset};
+pub use config::{
+    StudyCohortPreset, StudyPreset, StudyStagePreset, default_swebench_preset_path,
+    load_study_preset,
+};
 pub use io::{read_json, read_jsonl_values, write_json_pretty, write_jsonl};
 pub use python::preferred_python;
 pub use traits::{

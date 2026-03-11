@@ -1,0 +1,131 @@
+{
+  "name": "model-behavior-v1",
+  "description": "针对 Codex 模型代际差异与 personality 差异的第一阶段研究假设集。",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "text": "gpt-5.4 在用户可见输出层面比 gpt-5.3-codex 说得更多。",
+      "evidence_required": [
+        "message_metrics.visible_output_total_tokens_est",
+        "message_metrics.visible_output_per_turn"
+      ],
+      "falsification_conditions": [
+        "在 paired tasks 上 5.4 的 visible_output_total_tokens_est 没有系统性高于 5.3-codex"
+      ],
+      "confounders": [
+        "任务难度",
+        "grader/harness 环境失败",
+        "task class 差异"
+      ],
+      "preferred_benchmarks": [
+        "SWE-bench Verified"
+      ],
+      "preferred_task_classes": [
+        "bootstrap-heavy",
+        "verification-heavy",
+        "search-heavy",
+        "compaction-likely",
+        "patch-heavy"
+      ]
+    },
+    {
+      "id": "H2",
+      "text": "5.4 的额外输出主要是 bridge / verification / decision explanation，而不是单纯礼貌包装。",
+      "evidence_required": [
+        "message_metrics.categories",
+        "probe_summary.actionable_commentary_ratio_bps",
+        "probe_summary.tool_grounded_commentary_ratio_bps",
+        "probe_summary.verification_grounded_commentary_ratio_bps",
+        "probe_summary.social_tone_ratio_bps"
+      ],
+      "falsification_conditions": [
+        "额外输出主要落在 social_tone / redundant_recap 类别，而非 tool/verification grounded 类别"
+      ],
+      "confounders": [
+        "prompt style",
+        "user-facing narrative bias"
+      ],
+      "preferred_benchmarks": [
+        "SWE-bench Verified"
+      ],
+      "preferred_task_classes": [
+        "verification-heavy",
+        "search-heavy"
+      ]
+    },
+    {
+      "id": "H3",
+      "text": "5.4 的“说更多”和工具使用存在更强耦合。",
+      "evidence_required": [
+        "verbosity_tool_coupling.tool_calls_per_1k_visible_tokens",
+        "verbosity_tool_coupling.silent_tool_burst_count",
+        "verbosity_tool_coupling.micro_narrated_tool_burst_count"
+      ],
+      "falsification_conditions": [
+        "5.4 只是多说，但 tool burst 结构与 5.3-codex 无显著差异"
+      ],
+      "confounders": [
+        "task class",
+        "benchmark adapter",
+        "tool availability"
+      ],
+      "preferred_benchmarks": [
+        "SWE-bench Verified"
+      ],
+      "preferred_task_classes": [
+        "verification-heavy",
+        "patch-heavy"
+      ]
+    },
+    {
+      "id": "H4",
+      "text": "friendly 会放大可观察状态外显化，而 pragmatic 会压低表层 verbosity。",
+      "evidence_required": [
+        "personality_requested",
+        "personality_effective",
+        "message_metrics.categories",
+        "probe_summary.visible_output_total_tokens_est"
+      ],
+      "falsification_conditions": [
+        "friendly 与 pragmatic 的 message-level 分布没有明显差异"
+      ],
+      "confounders": [
+        "model native personality support 是否完整生效",
+        "instruction fallback"
+      ],
+      "preferred_benchmarks": [
+        "SWE-bench Verified"
+      ],
+      "preferred_task_classes": [
+        "search-heavy",
+        "verification-heavy"
+      ]
+    },
+    {
+      "id": "H5",
+      "text": "部分差异来自 Codex harness 的 instruction layering、config freeze 和 tool mediation，而不只是 base model。",
+      "evidence_required": [
+        "codex_probes.config_freeze",
+        "codex_probes.instruction_channels",
+        "codex_probes.tool_mediation",
+        "probe_summary.harness_overhead_proxy_bps"
+      ],
+      "falsification_conditions": [
+        "模型差异可以完全用 visible verbosity 解释，而与 harness probe 无系统关联"
+      ],
+      "confounders": [
+        "App Server 事件可见性限制",
+        "compaction 是否被触发"
+      ],
+      "preferred_benchmarks": [
+        "SWE-bench Verified",
+        "Terminal-Bench",
+        "RepoBench"
+      ],
+      "preferred_task_classes": [
+        "compaction-likely",
+        "bootstrap-heavy"
+      ]
+    }
+  ]
+}

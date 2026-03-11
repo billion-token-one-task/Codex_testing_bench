@@ -2,6 +2,12 @@
   "instance_id": "scikit-learn__scikit-learn-10844",
   "repo": "scikit-learn/scikit-learn",
   "task_class": "compaction-likely",
+  "paired_instance_key": "",
+  "cohort_id": "",
+  "model": "",
+  "provider": "",
+  "personality_mode": null,
+  "prompt_style": null,
   "status": "completed",
   "grading_status": "pending",
   "raw_event_count": 1991,
@@ -12,6 +18,7 @@
   "command_count": 78,
   "tool_count": 84,
   "skill_event_count": 4,
+  "message_metric_count": 12,
   "patch_event_count": 6,
   "patch_file_count": 2,
   "patch_sha256": "0023347b64bac9fbf5b65ec5b1d21df5c70129441475914621290b56b76fa3b5",
@@ -21,10 +28,21 @@
   "total_tokens": 901853,
   "model_context_window": 258400,
   "anomaly_count": 0,
+  "visible_output_total_chars": 3525,
+  "visible_output_total_tokens_est": 877,
+  "visible_output_sentence_count": 29,
+  "visible_output_paragraph_count": 13,
+  "visible_output_bullet_count": 0,
+  "visible_output_codeblock_count": 0,
+  "visible_output_per_turn_tokens_est": 877,
+  "visible_output_per_tool_call_tokens_est": 20,
+  "visible_output_per_patch_event_tokens_est": 292,
+  "visible_output_per_verification_event_tokens_est": null,
   "event_type_counts": {
+    "agent_message": 12,
     "exec_command_begin": 39,
     "exec_command_end": 39,
-    "other": 1875,
+    "other": 1863,
     "patch_apply_begin": 3,
     "patch_apply_end": 3,
     "study_probe": 7,
@@ -58,6 +76,17 @@
     "using-superpowers": 1,
     "verification-before-completion": 1
   },
+  "message_category_counts": {
+    "decision_explanation": 2,
+    "observation": 1,
+    "orientation": 11,
+    "planning": 3,
+    "result_framing": 1,
+    "social_tone": 1,
+    "tool_bridge_after": 1,
+    "tool_bridge_before": 1,
+    "verification_framing": 7
+  },
   "artifact_inventory": {
     "anomalies": true,
     "attemptLog": true,
@@ -67,6 +96,7 @@
     "environmentPlan": true,
     "gradeEvents": false,
     "lifecycleEvents": true,
+    "messageMetrics": true,
     "patch": true,
     "patchEvents": true,
     "probeEvents": true,
@@ -80,6 +110,7 @@
     "skillEvents": true,
     "tokenSnapshots": true,
     "toolEvents": true,
-    "turnMetrics": true
+    "turnMetrics": true,
+    "verbosityToolCoupling": true
   }
 }

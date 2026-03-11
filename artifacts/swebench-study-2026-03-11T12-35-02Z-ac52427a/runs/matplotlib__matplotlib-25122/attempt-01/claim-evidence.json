@@ -79,6 +79,22 @@
     ]
   },
   {
+    "claim_id": "grounding.state_verbalization",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "tool_grounded_commentary_ratio_bps=Some(5136)",
+      "verification_grounded_commentary_ratio_bps=Some(10000)"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "matplotlib__matplotlib-25122[bootstrap-heavy]"
+    ],
+    "caveats": [
+      "Visible commentary is only a proxy for deeper state externalization."
+    ]
+  },
+  {
     "claim_id": "codex.compaction_rebuild",
     "label": "not_observable_with_current_probes",
     "supporting_evidence": [
@@ -196,6 +212,38 @@
     ],
     "caveats": [
       "Friction-token estimates are inferred from event sequencing and command duration."
+    ]
+  },
+  {
+    "claim_id": "codex.personality_policy_shape",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "visible_output_total_tokens_est=1102",
+      "tool_grounded_commentary_ratio_bps=Some(5136)",
+      "tool_burst_count=33"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "matplotlib__matplotlib-25122[bootstrap-heavy]"
+    ],
+    "caveats": [
+      "Strong support requires paired cohort comparisons across the same tasks."
+    ]
+  },
+  {
+    "claim_id": "codex.state_verbalization",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "restatement_ratio_bps=Some(689)",
+      "redundant_commentary_ratio_bps=Some(716)"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "matplotlib__matplotlib-25122[bootstrap-heavy]"
+    ],
+    "caveats": [
+      "A single run cannot by itself establish model-to-model differences."
     ]
   }
 ]

@@ -13,9 +13,16 @@
 - `codex-architecture-map.json`
 - `grounding-claims.json`
 - `codex-unique-claims.json`
+- `model-catalog-snapshot.json`
+- `experiment-lock.json`
+- `studies/hypotheses/model-behavior-v1.json` 的 campaign 引用
 - `predictions.jsonl`
 - `grader.json`
 - `reports/report.txt`
+- `reports/model-comparison.md`
+- `reports/verbosity-analysis.md`
+- `reports/tool-language-coupling.md`
+- `datasets/*.csv`
 
 这些文件回答的是：
 
@@ -37,9 +44,11 @@
 - `lifecycle-events.jsonl`
 - `token-snapshots.jsonl`
 - `turn-metrics.jsonl`
+- `message-metrics.jsonl`
 - `command-events.jsonl`
 - `tool-events.jsonl`
 - `skill-events.jsonl`
+- `verbosity-tool-coupling.jsonl`
 - `patch-events.jsonl`
 - `anomalies.jsonl`
 - `patch.diff`
@@ -77,6 +86,8 @@ raw JSONL 仍然是 source of truth，但它们不是给人类第一眼打开的
 - `run-evidence.txt`
 - `attempt-log.txt`
 - `replay.json`
+- campaign 级专题 Markdown
+- CSV 数据集
 
 通常只保留本地的：
 

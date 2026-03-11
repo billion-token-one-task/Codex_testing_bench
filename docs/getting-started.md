@@ -32,6 +32,10 @@ cargo run -p codex-bench-cli -- prepare \
 - `selected-dataset.json`
 - `codex-architecture-map.json`
 - campaign 局部拷贝的 claim catalog
+- `model-catalog-snapshot.json`
+- `experiment-lock.json`
+
+如果 preset 含有多 cohort 定义，那么这里会一次性展开出多个 `model × personality` 运行组；同一个 `instance_id` 会在不同 cohort 下形成配对样本。
 
 ### 2. 预热本地资源
 
@@ -75,8 +79,12 @@ cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 核心输出文件：
 
 - `artifacts/<campaign-id>/reports/report.txt`
+- `artifacts/<campaign-id>/reports/model-comparison.md`
+- `artifacts/<campaign-id>/reports/verbosity-analysis.md`
+- `artifacts/<campaign-id>/reports/tool-language-coupling.md`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/run-evidence.txt`
 - `artifacts/<campaign-id>/runs/<instance>/attempt-01/attempt-log.txt`
+- `artifacts/<campaign-id>/datasets/*.csv`
 
 ## 一个完成的运行应该怎么看
 
@@ -92,9 +100,11 @@ cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 1. `raw-agent-events.jsonl`
 2. `codex-probe-events.jsonl`
 3. `probe-events.jsonl`
-4. `turn-metrics.jsonl`
-5. `tool-events.jsonl`
-6. `command-events.jsonl`
+4. `message-metrics.jsonl`
+5. `verbosity-tool-coupling.jsonl`
+6. `turn-metrics.jsonl`
+7. `tool-events.jsonl`
+8. `command-events.jsonl`
 
 ## 策略说明
 

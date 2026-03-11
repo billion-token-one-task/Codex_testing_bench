@@ -49,5 +49,20 @@
   "peak_context_utilization_bps": 98470,
   "useful_token_proxy_bps": 75,
   "friction_token_proxy_bps": 18,
-  "harness_overhead_proxy_bps": -57
+  "harness_overhead_proxy_bps": -57,
+  "visible_output_total_chars": 4421,
+  "visible_output_total_tokens_est": 1102,
+  "visible_output_message_count": 13,
+  "actionable_commentary_ratio_bps": 10000,
+  "tool_grounded_commentary_ratio_bps": 5136,
+  "verification_grounded_commentary_ratio_bps": 10000,
+  "restatement_ratio_bps": 689,
+  "redundant_commentary_ratio_bps": 716,
+  "speculation_ratio_bps": 0,
+  "social_tone_ratio_bps": 3411,
+  "tool_burst_count": 33,
+  "silent_tool_burst_count": 22,
+  "micro_narrated_tool_burst_count": 8,
+  "tokens_before_first_tool": null,
+  "visible_text_before_first_tool_chars": 304
 }

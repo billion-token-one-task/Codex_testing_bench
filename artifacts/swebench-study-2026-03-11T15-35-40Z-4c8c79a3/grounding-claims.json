@@ -1,0 +1,145 @@
+[
+  {
+    "id": "grounding.activation_threshold",
+    "source": "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "text": "Useful work has an activation threshold rather than rising linearly from zero budget.",
+    "operationalization": "Measure tokens/time to first meaningful edit, first verification, first retained patch, and compare across runs and task classes.",
+    "required_evidence": [
+      "activation.first_meaningful_edit",
+      "activation.first_verification",
+      "activation.first_patch"
+    ],
+    "caveats": [
+      "Single-run evidence cannot establish the full curve shape."
+    ]
+  },
+  {
+    "id": "grounding.anti_regularization",
+    "source": "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "text": "Higher token budgets can anti-regularize the agent and increase redundancy, anxiety loops, or cleanup behavior.",
+    "operationalization": "Track repeated verification, git inspection loops, cleanup-only work, and post-submit activity across task classes.",
+    "required_evidence": [
+      "verification.retry_loop",
+      "redundancy.git_loop",
+      "redundancy.post_submit",
+      "redundancy.cleanup_only"
+    ],
+    "caveats": [
+      "Without explicit budget sweeps, support is directional rather than causal."
+    ]
+  },
+  {
+    "id": "grounding.flat_history_tax",
+    "source": "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "text": "Flat-history reread imposes a major token tax on agent execution.",
+    "operationalization": "Count repeated file reads without intervening edits, cache-read ratio, prompt growth, and rediscovery after compaction.",
+    "required_evidence": [
+      "redundancy.repeated_read",
+      "context.cache_read_ratio",
+      "context.prompt_growth",
+      "context.rediscovery"
+    ],
+    "caveats": [
+      "Repeated reads can be strategic rather than purely wasteful."
+    ]
+  },
+  {
+    "id": "grounding.state_compression_loss",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "State compression is useful but lossy; long-horizon tasks need mechanisms that preserve actionable state across compression boundaries.",
+    "operationalization": "Inspect compaction counts, replacement-history shape, post-compaction rediscovery, and continuity failures.",
+    "required_evidence": [
+      "context.compaction",
+      "context.rediscovery",
+      "containment.breach"
+    ],
+    "caveats": [
+      "Some losses are silent and therefore only partially observable."
+    ]
+  },
+  {
+    "id": "grounding.layered_state",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Layered state/context is preferable to forcing a single flat session to carry all task state.",
+    "operationalization": "Inspect instruction channels, compaction rebuilds, resume continuity, and whether Codex preserves actionable state outside the immediate turn transcript.",
+    "required_evidence": [
+      "instruction.channel_mix",
+      "context.compaction",
+      "persistence.resume_path",
+      "persistence.continuity"
+    ],
+    "caveats": [
+      "A system can approximate layered state without naming it explicitly."
+    ]
+  },
+  {
+    "id": "grounding.verification_pressure",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "External verification pressure improves effective work and stabilizes search.",
+    "operationalization": "Measure edit-to-verification closure, changed test states, verification retry loops, and useful-work proxies on verification-heavy tasks.",
+    "required_evidence": [
+      "verification.edit_closure",
+      "verification.changed_test_state",
+      "useful_work.proxy"
+    ],
+    "caveats": [
+      "Verification quality depends on the available test oracle and task setup fidelity."
+    ]
+  },
+  {
+    "id": "grounding.context_vs_budget",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Context window and total task token budget are distinct constraints and should not be conflated.",
+    "operationalization": "Track compaction thresholds, context-window-related probe data, and total token usage separately from wall time.",
+    "required_evidence": [
+      "context.compaction",
+      "tokens.total",
+      "context.window"
+    ],
+    "caveats": [
+      "Requires enough token-count coverage to estimate context pressure reliably."
+    ]
+  },
+  {
+    "id": "grounding.externalized_coordination",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Scaling beyond a single session often requires externalized coordination rather than only enlarging the immediate working context.",
+    "operationalization": "Inspect whether Codex relies on persistence, rollout state, resumability, and reconstructed context rather than pure flat transcript continuation.",
+    "required_evidence": [
+      "persistence.resume_path",
+      "instruction.channel_mix",
+      "context.compaction"
+    ],
+    "caveats": [
+      "This study observes Codex behavior; it does not test multi-session schedulers directly."
+    ]
+  },
+  {
+    "id": "grounding.control_regulation",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Long-horizon systems need explicit regulation layers that stabilize search and bound loss, rather than relying on unconstrained continuation.",
+    "operationalization": "Inspect compaction, config freeze, persistence, approval, and listener behaviors as control-rod-like regulation mechanisms.",
+    "required_evidence": [
+      "control_rod.compaction_regulation",
+      "control_rod.config_freeze",
+      "control_rod.persistence"
+    ],
+    "caveats": [
+      "Some regulation layers may stabilize runs while also introducing distortion or suppression."
+    ]
+  },
+  {
+    "id": "grounding.state_verbalization",
+    "source": "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md",
+    "text": "Advanced task schedulers benefit when actionable state is externalized rather than remaining hidden inside a single opaque continuation.",
+    "operationalization": "Track visible assistant bridge language, verification framing, instruction stratification, and tool-grounded commentary ratios.",
+    "required_evidence": [
+      "verbosity.tool_grounded",
+      "verbosity.verification_grounded",
+      "instruction.stratification"
+    ],
+    "caveats": [
+      "Visible language is only a proxy for deeper internal state management."
+    ]
+  }
+]

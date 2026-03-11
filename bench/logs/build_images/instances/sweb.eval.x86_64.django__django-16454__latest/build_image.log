@@ -1,0 +1,61 @@
+2026-03-11 22:16:08,826 - INFO - Building image sweb.eval.x86_64.django__django-16454:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.c70909fdac4897d1c685df:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-03-11 22:16:08,826 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/django/django /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 1250483ebf73f7a82ff820b94092c63ce4238264
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 1250483ebf73f7a82ff820b94092c63ce4238264)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-03-11 22:16:08,826 - INFO - Building docker image sweb.eval.x86_64.django__django-16454:latest in logs/build_images/instances/sweb.eval.x86_64.django__django-16454__latest with platform linux/x86_64
+2026-03-11 22:16:08,980 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.c70909fdac4897d1c685df:latest
+2026-03-11 22:16:08,980 - INFO - 
+2026-03-11 22:16:08,988 - INFO - ---> e9be9dda124b
+2026-03-11 22:16:08,989 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-03-11 22:16:08,989 - INFO - 
+2026-03-11 22:16:20,063 - INFO - ---> b74d28d10f35
+2026-03-11 22:16:20,064 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-03-11 22:16:20,064 - INFO - 
+2026-03-11 22:16:20,122 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-03-11 22:16:20,124 - INFO - ---> Running in 9c1292f7cd83
+2026-03-11 22:16:28,929 - INFO - ---> Removed intermediate container 9c1292f7cd83
+2026-03-11 22:16:28,930 - INFO - ---> fea6dbfbb7ed
+2026-03-11 22:16:28,930 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-03-11 22:16:28,931 - INFO - 
+2026-03-11 22:16:29,036 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-03-11 22:16:29,038 - INFO - ---> Running in 4082a50405ad
+2026-03-11 22:16:29,529 - INFO - + git clone -o origin --single-branch https://github.com/django/django /testbed
+2026-03-11 22:16:29,565 - INFO - Cloning into '/testbed'...
+2026-03-11 22:29:43,137 - INFO - error: RPC failed; curl 92 HTTP/2 stream 0 was not closed cleanly: CANCEL (err 8)
+error: 6947 bytes of body are still expected
+2026-03-11 22:29:43,170 - INFO - fetch-pack: unexpected disconnect while reading sideband packet
+2026-03-11 22:29:43,171 - INFO - fatal: early EOF
+2026-03-11 22:29:43,183 - INFO - fatal: fetch-pack: invalid index-pack output
+2026-03-11 22:29:43,387 - INFO - ---> Removed intermediate container 4082a50405ad
+2026-03-11 22:29:43,391 - ERROR - Error: The command '/bin/sh -c /bin/bash /root/setup_repo.sh' returned a non-zero code: 128
+2026-03-11 22:29:43,391 - ERROR - docker.errors.BuildError during sweb.eval.x86_64.django__django-16454:latest: The command '/bin/sh -c /bin/bash /root/setup_repo.sh' returned a non-zero code: 128

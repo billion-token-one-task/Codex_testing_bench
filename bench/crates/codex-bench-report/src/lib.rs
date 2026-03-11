@@ -31,6 +31,16 @@ struct RunReportBundle {
     artifact_paths: BTreeMap<String, PathBuf>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct OfficialGradingOverview {
+    status: String,
+    resolved_instances: usize,
+    unresolved_instances: usize,
+    error_instances: usize,
+    completed_instances: usize,
+    summary_path: Option<PathBuf>,
+}
+
 pub fn render_campaign_report(campaign_dir: &Path) -> Result<PathBuf> {
     let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     let architecture_map: Vec<StudyArchitectureSubsystem> =
@@ -81,11 +91,14 @@ pub fn render_campaign_report(campaign_dir: &Path) -> Result<PathBuf> {
         &architecture_map,
         &grounding_claims,
         &codex_claims,
+        &load_official_grading_overview(campaign_dir),
         &bundles,
     );
     let report_path = campaign_dir.join("reports").join("report.txt");
     fs::create_dir_all(report_path.parent().expect("report path has parent"))?;
     fs::write(&report_path, report)?;
+    write_supporting_reports(campaign_dir, &manifest, &bundles)?;
+    write_datasets(campaign_dir, &manifest, &bundles)?;
     Ok(report_path)
 }
 
@@ -99,8 +112,10 @@ fn ensure_attempt_derivations(
     let current_summary: RunSummary = read_json(&summary_path)?;
     let turn_metrics_missing = !attempt_dir.join("turn-metrics.jsonl").exists();
     let skill_events_missing = !attempt_dir.join("skill-events.jsonl").exists();
+    let message_metrics_missing = !attempt_dir.join("message-metrics.jsonl").exists();
+    let coupling_missing = !attempt_dir.join("verbosity-tool-coupling.jsonl").exists();
 
-    if !turn_metrics_missing && !skill_events_missing {
+    if !turn_metrics_missing && !skill_events_missing && !message_metrics_missing && !coupling_missing {
         return Ok(current_summary);
     }
 
@@ -198,7 +213,10 @@ pub fn render_run_evidence(
 ) -> Result<PathBuf> {
     let probe_summary: ProbeSummary = read_json(&attempt_dir.join("probe-summary.json"))?;
     let claim_evidence: Vec<ClaimEvidence> = read_json(&attempt_dir.join("claim-evidence.json"))?;
+    let grade_events = read_jsonl_values(&attempt_dir.join("grade-events.jsonl")).unwrap_or_default();
     let turn_metrics = read_jsonl_values(&attempt_dir.join("turn-metrics.jsonl")).unwrap_or_default();
+    let message_metrics =
+        read_jsonl_values(&attempt_dir.join("message-metrics.jsonl")).unwrap_or_default();
     let token_snapshots =
         read_jsonl_values(&attempt_dir.join("token-snapshots.jsonl")).unwrap_or_default();
     let command_events =
@@ -207,6 +225,8 @@ pub fn render_run_evidence(
     let skill_events =
         read_jsonl_values(&attempt_dir.join("skill-events.jsonl")).unwrap_or_default();
     let probe_events = read_jsonl_values(&attempt_dir.join("probe-events.jsonl")).unwrap_or_default();
+    let verbosity_tool_coupling =
+        read_jsonl_values(&attempt_dir.join("verbosity-tool-coupling.jsonl")).unwrap_or_default();
     let lifecycle_events =
         read_jsonl_values(&attempt_dir.join("lifecycle-events.jsonl")).unwrap_or_default();
     let anomaly_events = read_jsonl_values(&attempt_dir.join("anomalies.jsonl")).unwrap_or_default();
@@ -215,6 +235,20 @@ pub fn render_run_evidence(
     lines.push("===========".to_string());
     lines.push(format!("Instance: {}", record.instance_id));
     lines.push(format!("Repo: {}", record.repo));
+    lines.push(format!(
+        "Model / Provider: {} / {}",
+        summary.model.clone().unwrap_or_else(|| "-".to_string()),
+        summary.provider.clone().unwrap_or_else(|| "-".to_string())
+    ));
+    lines.push(format!(
+        "Cohort / Personality / PromptStyle: {} / {} / {}",
+        summary.cohort_id.clone().unwrap_or_else(|| "-".to_string()),
+        summary
+            .personality_mode
+            .clone()
+            .unwrap_or_else(|| "-".to_string()),
+        summary.prompt_style.clone().unwrap_or_else(|| "-".to_string())
+    ));
     lines.push(format!("Task class: {}", summary.task_class));
     lines.push(format!("Status: {}", summary.status));
     lines.push(format!("Grading status: {}", summary.grading_status));
@@ -234,10 +268,11 @@ pub fn render_run_evidence(
     lines.push("Human-Oriented Overview".to_string());
     lines.push("=======================".to_string());
     lines.push(format!(
-        "Commands={} | Tools={} | SkillEvents={} | TokenSnapshots={} | Anomalies={}",
+        "Commands={} | Tools={} | SkillEvents={} | MessageMetrics={} | TokenSnapshots={} | Anomalies={}",
         summary.command_count,
         summary.tool_count,
         summary.skill_event_count,
+        summary.message_metric_count,
         summary.token_snapshot_count,
         summary.anomaly_count
     ));
@@ -248,6 +283,34 @@ pub fn render_run_evidence(
     lines.push(format!(
         "Observed skills: {}",
         render_count_map(&summary.skill_name_counts)
+    ));
+    lines.push(String::new());
+    lines.push("Visible Output Summary".to_string());
+    lines.push("======================".to_string());
+    lines.push(format!(
+        "visible_output_total_chars={} | visible_output_total_tokens_est={} | sentence_count={} | paragraph_count={} | bullet_count={} | codeblock_count={}",
+        summary.visible_output_total_chars,
+        summary.visible_output_total_tokens_est,
+        summary.visible_output_sentence_count,
+        summary.visible_output_paragraph_count,
+        summary.visible_output_bullet_count,
+        summary.visible_output_codeblock_count
+    ));
+    lines.push(format!(
+        "per_turn_tokens_est={:?} | per_tool_call_tokens_est={:?} | per_patch_event_tokens_est={:?} | per_verification_event_tokens_est={:?}",
+        summary.visible_output_per_turn_tokens_est,
+        summary.visible_output_per_tool_call_tokens_est,
+        summary.visible_output_per_patch_event_tokens_est,
+        summary.visible_output_per_verification_event_tokens_est
+    ));
+    lines.push(format!(
+        "actionable_ratio_bps={:?} | tool_grounded_ratio_bps={:?} | verification_grounded_ratio_bps={:?} | restatement_ratio_bps={:?} | redundant_ratio_bps={:?} | social_tone_ratio_bps={:?}",
+        probe_summary.actionable_commentary_ratio_bps,
+        probe_summary.tool_grounded_commentary_ratio_bps,
+        probe_summary.verification_grounded_commentary_ratio_bps,
+        probe_summary.restatement_ratio_bps,
+        probe_summary.redundant_commentary_ratio_bps,
+        probe_summary.social_tone_ratio_bps
     ));
     lines.push(String::new());
     lines.push("Probe Summary".to_string());
@@ -316,6 +379,12 @@ pub fn render_run_evidence(
         "harness_overhead_proxy_bps={:?}",
         probe_summary.harness_overhead_proxy_bps
     ));
+    lines.push(format!(
+        "tool_burst_count={} | silent_tool_burst_count={} | micro_narrated_tool_burst_count={}",
+        probe_summary.tool_burst_count,
+        probe_summary.silent_tool_burst_count,
+        probe_summary.micro_narrated_tool_burst_count
+    ));
     lines.push(String::new());
     lines.push("Turn Metrics".to_string());
     lines.push("============".to_string());
@@ -324,6 +393,16 @@ pub fn render_run_evidence(
     } else {
         for turn in &turn_metrics {
             lines.push(format_turn_metric(turn));
+        }
+    }
+    lines.push(String::new());
+    lines.push("Message Metrics".to_string());
+    lines.push("===============".to_string());
+    if message_metrics.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for message in &message_metrics {
+            lines.push(format_message_metric(message));
         }
     }
     lines.push(String::new());
@@ -344,6 +423,16 @@ pub fn render_run_evidence(
     } else {
         for tool in &tool_events {
             lines.push(format_tool_event(tool));
+        }
+    }
+    lines.push(String::new());
+    lines.push("Verbosity × Tool Coupling".to_string());
+    lines.push("=========================".to_string());
+    if verbosity_tool_coupling.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for row in &verbosity_tool_coupling {
+            lines.push(format_coupling_row(row));
         }
     }
     lines.push(String::new());
@@ -431,6 +520,16 @@ pub fn render_run_evidence(
         }
     }
     lines.push(String::new());
+    lines.push("Official Grading".to_string());
+    lines.push("================".to_string());
+    if grade_events.is_empty() {
+        lines.push("<missing>".to_string());
+    } else {
+        for event in &grade_events {
+            lines.push(format_grade_event(event));
+        }
+    }
+    lines.push(String::new());
     lines.push("Failure Or Success Narrative".to_string());
     lines.push("============================".to_string());
     lines.push(format!(
@@ -487,12 +586,18 @@ fn render_campaign_report_text(
     architecture_map: &[StudyArchitectureSubsystem],
     grounding_claims: &[ClaimCatalogEntry],
     codex_claims: &[ClaimCatalogEntry],
+    grading_overview: &OfficialGradingOverview,
     bundles: &[RunReportBundle],
 ) -> String {
     let mut lines = Vec::new();
     lines.push("Study Header".to_string());
     lines.push("============".to_string());
     lines.push(format!("Campaign: {}", manifest.campaign_id));
+    lines.push(format!(
+        "Experiment: {} ({})",
+        display_or(&manifest.experiment_name, &manifest.campaign_id),
+        display_or(&manifest.experiment_id, "legacy-campaign")
+    ));
     lines.push(format!("Created: {}", manifest.created_at));
     lines.push(format!(
         "Benchmark: {} ({})",
@@ -506,7 +611,30 @@ fn render_campaign_report_text(
             .clone()
             .unwrap_or_else(|| "stage-unspecified".to_string())
     ));
-    lines.push(format!("Model: {} via {}", manifest.model, manifest.provider));
+    lines.push(format!("Default model/provider: {} via {}", manifest.model, manifest.provider));
+    lines.push(format!(
+        "Comparison axes: {}",
+        if manifest.comparison_axes.is_empty() {
+            "-".to_string()
+        } else {
+            manifest.comparison_axes.join(", ")
+        }
+    ));
+    lines.push("Cohorts:".to_string());
+    for cohort in &manifest.cohorts {
+        lines.push(format!(
+            "- {} | {} | model={} provider={} personality={} prompt_style={}",
+            cohort.cohort_id,
+            cohort.label,
+            cohort.model,
+            cohort.provider,
+            cohort
+                .personality_mode
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            cohort.prompt_style.clone().unwrap_or_else(|| "-".to_string())
+        ));
+    }
     lines.push(format!("Study mode: {}", manifest.study_mode));
     lines.push(format!("Probe profile: {}", manifest.probe_profile));
     lines.push(format!("Report profile: {}", manifest.report_profile));
@@ -583,7 +711,10 @@ fn render_campaign_report_text(
     let mut total_tools = 0usize;
     let mut total_turns = 0usize;
     let mut total_skill_events = 0usize;
+    let mut total_messages = 0usize;
     let mut total_anomalies = 0usize;
+    let mut total_visible_chars = 0usize;
+    let mut total_visible_tokens_est = 0i64;
     let mut artifact_missing = BTreeMap::<String, usize>::new();
     let mut aggregate_probe_codes = BTreeMap::<String, usize>::new();
     let mut aggregate_subsystems = BTreeMap::<String, usize>::new();
@@ -591,6 +722,8 @@ fn render_campaign_report_text(
     let mut task_classes = BTreeMap::<String, usize>::new();
     let mut aggregate_tool_kinds = BTreeMap::<String, usize>::new();
     let mut aggregate_skill_names = BTreeMap::<String, usize>::new();
+    let mut aggregate_message_categories = BTreeMap::<String, usize>::new();
+    let mut aggregate_cohorts = BTreeMap::<String, usize>::new();
     let mut task_class_probe_rows = BTreeMap::<String, Vec<String>>::new();
     let mut total_control_rods = 0usize;
     let mut total_externalized_coordination = 0usize;
@@ -606,9 +739,15 @@ fn render_campaign_report_text(
         total_tools += bundle.summary.tool_count;
         total_turns += bundle.summary.turn_count;
         total_skill_events += bundle.summary.skill_event_count;
+        total_messages += bundle.summary.message_metric_count;
         total_anomalies += bundle.summary.anomaly_count;
+        total_visible_chars += bundle.summary.visible_output_total_chars;
+        total_visible_tokens_est += bundle.summary.visible_output_total_tokens_est;
         *statuses.entry(bundle.summary.status.clone()).or_default() += 1;
         *task_classes.entry(bundle.summary.task_class.clone()).or_default() += 1;
+        *aggregate_cohorts
+            .entry(bundle.selected.cohort_id.clone())
+            .or_default() += 1;
         total_control_rods += bundle.probe_summary.control_rod_compaction_count
             + bundle.probe_summary.control_rod_config_freeze_count
             + bundle.probe_summary.control_rod_persistence_count;
@@ -646,6 +785,9 @@ fn render_campaign_report_text(
         for (skill_name, count) in &bundle.summary.skill_name_counts {
             *aggregate_skill_names.entry(skill_name.clone()).or_default() += count;
         }
+        for (category, count) in &bundle.summary.message_category_counts {
+            *aggregate_message_categories.entry(category.clone()).or_default() += count;
+        }
     }
 
     lines.push("Telemetry And Artifact Coverage".to_string());
@@ -654,16 +796,45 @@ fn render_campaign_report_text(
     lines.push(format!("Task class counts: {}", render_count_map(&task_classes)));
     lines.push(format!("Token totals: input={} output={} cache_read={}", total_input, total_output, total_cache));
     lines.push(format!(
-        "Turn totals: {} | Command totals: {} | Tool totals: {} | Skill events: {} | Anomalies: {}",
-        total_turns, total_commands, total_tools, total_skill_events, total_anomalies
+        "Turn totals: {} | Command totals: {} | Tool totals: {} | Skill events: {} | Message metrics: {} | Anomalies: {}",
+        total_turns, total_commands, total_tools, total_skill_events, total_messages, total_anomalies
     ));
+    lines.push(format!(
+        "Visible output totals: chars={} tokens_est={}",
+        total_visible_chars, total_visible_tokens_est
+    ));
+    lines.push(format!("Cohort counts: {}", render_count_map(&aggregate_cohorts)));
     lines.push(format!("Tool kind totals: {}", render_count_map(&aggregate_tool_kinds)));
     lines.push(format!("Skill name totals: {}", render_count_map(&aggregate_skill_names)));
+    lines.push(format!(
+        "Message category totals: {}",
+        render_count_map(&aggregate_message_categories)
+    ));
     if artifact_missing.is_empty() {
         lines.push("Artifact coverage: all expected artifacts present in the latest attempts.".to_string());
     } else {
         lines.push(format!("Artifact coverage gaps: {}", render_count_map(&artifact_missing)));
     }
+    lines.push(String::new());
+
+    lines.push("Official Grading Overview".to_string());
+    lines.push("=========================".to_string());
+    lines.push(format!("grader_status={}", grading_overview.status));
+    lines.push(format!(
+        "completed={} resolved={} unresolved={} errors={}",
+        grading_overview.completed_instances,
+        grading_overview.resolved_instances,
+        grading_overview.unresolved_instances,
+        grading_overview.error_instances
+    ));
+    lines.push(format!(
+        "official_summary_path={}",
+        grading_overview
+            .summary_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "-".to_string())
+    ));
     lines.push(String::new());
 
     lines.push("Observed Codex Harness Behavior".to_string());
@@ -708,7 +879,17 @@ fn render_campaign_report_text(
     for bundle in bundles {
         lines.push(format!(
             "{} | status={} | class={} | tokens={} | patch={} | compactions={} | repeated_git={} | repeated_verify={} | config_drift={} | friction={}",
-            bundle.selected.instance_id,
+            format!(
+                "{} [{} / {} / {}]",
+                bundle.selected.instance_id,
+                display_or(&bundle.selected.cohort_id, "default"),
+                display_or(&bundle.selected.model, &manifest.model),
+                bundle
+                    .selected
+                    .personality_mode
+                    .clone()
+                    .unwrap_or_else(|| manifest.personality_mode.clone().unwrap_or_else(|| "-".to_string()))
+            ),
             bundle.summary.status,
             bundle.summary.task_class,
             bundle.summary.total_tokens.unwrap_or_default(),
@@ -818,11 +999,18 @@ fn render_campaign_report_text(
     lines.push("=========".to_string());
     for bundle in bundles {
         lines.push(format!(
-            "{} | {} | {} | tokens={} | probes={} | anomalies={} | evidence={}",
+            "{} | {} | {} | cohort={} | personality={} | tokens={} | visible_tokens_est={} | probes={} | anomalies={} | evidence={}",
             bundle.selected.instance_id,
             bundle.summary.status,
             bundle.summary.task_class,
+            display_or(&bundle.selected.cohort_id, "default"),
+            bundle
+                .selected
+                .personality_mode
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
             bundle.summary.total_tokens.unwrap_or_default(),
+            bundle.summary.visible_output_total_tokens_est,
             bundle.summary.raw_probe_count,
             bundle.summary.anomaly_count,
             bundle.selected.run_dir.join("attempt-01").join("run-evidence.txt").display()
@@ -845,6 +1033,251 @@ fn render_campaign_report_text(
     }
 
     lines.join("\n")
+}
+
+fn write_supporting_reports(
+    campaign_dir: &Path,
+    manifest: &CampaignManifest,
+    bundles: &[RunReportBundle],
+) -> Result<()> {
+    let reports_dir = campaign_dir.join("reports");
+    fs::create_dir_all(&reports_dir)?;
+
+    let mut model_comparison = Vec::new();
+    model_comparison.push("# 模型对比".to_string());
+    model_comparison.push(String::new());
+    model_comparison.push(format!(
+        "实验：{} ({})",
+        display_or(&manifest.experiment_name, &manifest.campaign_id),
+        display_or(&manifest.experiment_id, "legacy-campaign")
+    ));
+    model_comparison.push(String::new());
+    for bundle in bundles {
+        model_comparison.push(format!(
+            "- `{}` / `{}` / `{}` / `{}`: total_tokens={}, visible_output_tokens_est={}, tool_count={}, command_count={}, verification_closure_count={}",
+            bundle.selected.instance_id,
+            display_or(&bundle.selected.cohort_id, "default"),
+            display_or(&bundle.selected.model, &manifest.model),
+            bundle.selected.personality_mode.clone().unwrap_or_else(|| "-".to_string()),
+            bundle.summary.total_tokens.unwrap_or_default(),
+            bundle.summary.visible_output_total_tokens_est,
+            bundle.summary.tool_count,
+            bundle.summary.command_count,
+            bundle.probe_summary.verification_closure_count
+        ));
+    }
+    fs::write(reports_dir.join("model-comparison.md"), model_comparison.join("\n"))?;
+
+    let mut verbosity = Vec::new();
+    verbosity.push("# 可见输出与冗长度分析".to_string());
+    verbosity.push(String::new());
+    for bundle in bundles {
+        verbosity.push(format!(
+            "## {} / {}",
+            bundle.selected.instance_id, bundle.selected.cohort_id
+        ));
+        verbosity.push(format!(
+            "- model/personality: {}/{}",
+            display_or(&bundle.selected.model, &manifest.model),
+            bundle.selected.personality_mode.clone().unwrap_or_else(|| "-".to_string())
+        ));
+        verbosity.push(format!("- visible_output_total_tokens_est: {}", bundle.summary.visible_output_total_tokens_est));
+        verbosity.push(format!(
+            "- actionable_commentary_ratio_bps: {:?}",
+            bundle.probe_summary.actionable_commentary_ratio_bps
+        ));
+        verbosity.push(format!(
+            "- tool_grounded_commentary_ratio_bps: {:?}",
+            bundle.probe_summary.tool_grounded_commentary_ratio_bps
+        ));
+        verbosity.push(format!(
+            "- verification_grounded_commentary_ratio_bps: {:?}",
+            bundle.probe_summary.verification_grounded_commentary_ratio_bps
+        ));
+        verbosity.push(format!(
+            "- social_tone_ratio_bps: {:?}",
+            bundle.probe_summary.social_tone_ratio_bps
+        ));
+        verbosity.push(String::new());
+    }
+    fs::write(reports_dir.join("verbosity-analysis.md"), verbosity.join("\n"))?;
+
+    let mut coupling = Vec::new();
+    coupling.push("# 语言-工具耦合分析".to_string());
+    coupling.push(String::new());
+    for bundle in bundles {
+        coupling.push(format!(
+            "- `{}` / `{}`: tool_burst_count={}, silent_tool_burst_count={}, micro_narrated_tool_burst_count={}, tokens_before_first_tool={:?}",
+            bundle.selected.instance_id,
+            display_or(&bundle.selected.cohort_id, "default"),
+            bundle.probe_summary.tool_burst_count,
+            bundle.probe_summary.silent_tool_burst_count,
+            bundle.probe_summary.micro_narrated_tool_burst_count,
+            bundle.probe_summary.tokens_before_first_tool
+        ));
+    }
+    fs::write(reports_dir.join("tool-language-coupling.md"), coupling.join("\n"))?;
+
+    fs::write(
+        reports_dir.join("personality-analysis.md"),
+        "# personality 分析\n\n该文件聚合 cohort 的 personality、可见输出、桥接语言和工具使用耦合证据。\n",
+    )?;
+    fs::write(
+        reports_dir.join("task-class-analysis.md"),
+        "# 任务类型分析\n\n请结合 `report.txt` 和 `datasets/task_class_summary.csv` 查看不同 task class 的差异。\n",
+    )?;
+    fs::write(
+        reports_dir.join("methods-appendix.md"),
+        "# 方法附录\n\n本研究以用户可见输出为“说更多”的主观测面，并结合 Codex 原始 probe、tool/patch/verification 时序构造耦合证据。\n",
+    )?;
+    Ok(())
+}
+
+fn display_or<'a>(value: &'a str, fallback: &'a str) -> &'a str {
+    if value.trim().is_empty() {
+        fallback
+    } else {
+        value
+    }
+}
+
+fn write_datasets(
+    campaign_dir: &Path,
+    manifest: &CampaignManifest,
+    bundles: &[RunReportBundle],
+) -> Result<()> {
+    let datasets_dir = campaign_dir.join("datasets");
+    fs::create_dir_all(&datasets_dir)?;
+
+    let mut campaign_runs = vec![
+        "campaign_id,experiment_id,instance_id,paired_instance_key,cohort_id,model,provider,personality_mode,prompt_style,task_class,status,grading_status,total_tokens,visible_output_total_tokens_est,tool_count,command_count,anomaly_count".to_string()
+    ];
+    let mut claim_rows = vec![
+        "instance_id,cohort_id,claim_id,label".to_string()
+    ];
+    let mut task_class_summary = vec![
+        "task_class,run_count,total_tokens,visible_output_total_tokens_est,tool_count,command_count".to_string()
+    ];
+    let mut task_rollup = BTreeMap::<String, (usize, i64, i64, usize, usize)>::new();
+    let mut model_pair_deltas = vec![
+        "paired_instance_key,cohort_id,model,personality_mode,total_tokens,visible_output_total_tokens_est,tool_count,command_count".to_string()
+    ];
+
+    for bundle in bundles {
+        campaign_runs.push(csv_row(&[
+            &manifest.campaign_id,
+            &manifest.experiment_id,
+            &bundle.selected.instance_id,
+            &bundle.selected.paired_instance_key,
+            &bundle.selected.cohort_id,
+            &bundle.selected.model,
+            &bundle.selected.provider,
+            bundle.selected.personality_mode.as_deref().unwrap_or(""),
+            bundle.selected.prompt_style.as_deref().unwrap_or(""),
+            &bundle.summary.task_class,
+            &bundle.summary.status,
+            &bundle.summary.grading_status,
+            &bundle.summary.total_tokens.unwrap_or_default().to_string(),
+            &bundle.summary.visible_output_total_tokens_est.to_string(),
+            &bundle.summary.tool_count.to_string(),
+            &bundle.summary.command_count.to_string(),
+            &bundle.summary.anomaly_count.to_string(),
+        ]));
+        model_pair_deltas.push(csv_row(&[
+            &bundle.selected.paired_instance_key,
+            &bundle.selected.cohort_id,
+            &bundle.selected.model,
+            bundle.selected.personality_mode.as_deref().unwrap_or(""),
+            &bundle.summary.total_tokens.unwrap_or_default().to_string(),
+            &bundle.summary.visible_output_total_tokens_est.to_string(),
+            &bundle.summary.tool_count.to_string(),
+            &bundle.summary.command_count.to_string(),
+        ]));
+        for claim in &bundle.claim_evidence {
+            claim_rows.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                &claim.claim_id,
+                &claim.label,
+            ]));
+        }
+        let entry = task_rollup
+            .entry(bundle.summary.task_class.clone())
+            .or_insert((0, 0, 0, 0, 0));
+        entry.0 += 1;
+        entry.1 += bundle.summary.total_tokens.unwrap_or_default();
+        entry.2 += bundle.summary.visible_output_total_tokens_est;
+        entry.3 += bundle.summary.tool_count;
+        entry.4 += bundle.summary.command_count;
+    }
+    for (task_class, (count, total_tokens, visible_tokens, tool_count, command_count)) in task_rollup {
+        task_class_summary.push(csv_row(&[
+            &task_class,
+            &count.to_string(),
+            &total_tokens.to_string(),
+            &visible_tokens.to_string(),
+            &tool_count.to_string(),
+            &command_count.to_string(),
+        ]));
+    }
+
+    fs::write(datasets_dir.join("campaign_runs.csv"), campaign_runs.join("\n"))?;
+    fs::write(datasets_dir.join("claim_evidence.csv"), claim_rows.join("\n"))?;
+    fs::write(datasets_dir.join("model_pair_deltas.csv"), model_pair_deltas.join("\n"))?;
+    fs::write(datasets_dir.join("task_class_summary.csv"), task_class_summary.join("\n"))?;
+
+    write_pass_through_dataset(
+        &datasets_dir.join("turn_metrics.csv"),
+        "turn-metrics.jsonl",
+        bundles,
+    )?;
+    write_pass_through_dataset(
+        &datasets_dir.join("message_metrics.csv"),
+        "message-metrics.jsonl",
+        bundles,
+    )?;
+    write_pass_through_dataset(
+        &datasets_dir.join("tool_usage.csv"),
+        "tool-events.jsonl",
+        bundles,
+    )?;
+    write_pass_through_dataset(
+        &datasets_dir.join("verbosity_tool_coupling.csv"),
+        "verbosity-tool-coupling.jsonl",
+        bundles,
+    )?;
+    Ok(())
+}
+
+fn write_pass_through_dataset(
+    output_path: &Path,
+    file_name: &str,
+    bundles: &[RunReportBundle],
+) -> Result<()> {
+    let mut rows = vec!["instance_id,cohort_id,json".to_string()];
+    for bundle in bundles {
+        let path = bundle.selected.run_dir.join("attempt-01").join(file_name);
+        for value in read_jsonl_values(&path).unwrap_or_default() {
+            rows.push(csv_row(&[
+                &bundle.selected.instance_id,
+                &bundle.selected.cohort_id,
+                &serde_json::to_string(&value)?,
+            ]));
+        }
+    }
+    fs::write(output_path, rows.join("\n"))?;
+    Ok(())
+}
+
+fn csv_row(cells: &[&str]) -> String {
+    cells
+        .iter()
+        .map(|cell| {
+            let escaped = cell.replace('"', "\"\"");
+            format!("\"{}\"", escaped)
+        })
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn render_attempt_log(
@@ -938,6 +1371,43 @@ fn render_count_map_filtered(map: &BTreeMap<String, usize>, prefix: &str) -> Str
     render_count_map(&filtered)
 }
 
+fn load_official_grading_overview(campaign_dir: &Path) -> OfficialGradingOverview {
+    let grader_path = campaign_dir.join("reports").join("grader.json");
+    let mut overview = OfficialGradingOverview::default();
+    overview.status = read_json::<Value>(&grader_path)
+        .ok()
+        .and_then(|value| value.get("status").and_then(Value::as_str).map(ToOwned::to_owned))
+        .unwrap_or_else(|| "missing".to_string());
+
+    let official_dir = campaign_dir.join("reports").join("official");
+    let Ok(entries) = fs::read_dir(&official_dir) else {
+        return overview;
+    };
+    let mut report_files = entries
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("json"))
+        .collect::<Vec<_>>();
+    report_files.sort();
+    if let Some(path) = report_files.pop() {
+        if let Ok(value) = read_json::<Value>(&path) {
+            overview.resolved_instances = read_usize_field(&value, "resolved_instances");
+            overview.unresolved_instances = read_usize_field(&value, "unresolved_instances");
+            overview.error_instances = read_usize_field(&value, "error_instances");
+            overview.completed_instances = read_usize_field(&value, "completed_instances");
+            overview.summary_path = Some(path);
+        }
+    }
+    overview
+}
+
+fn read_usize_field(value: &Value, key: &str) -> usize {
+    value
+        .get(key)
+        .and_then(Value::as_u64)
+        .map(|v| v as usize)
+        .unwrap_or_default()
+}
+
 fn format_turn_metric(value: &Value) -> String {
     format!(
         "turn={} status={} total_delta={} input_delta={} output_delta={} cache_delta={} cmds={} mcp={} patch={} skills={} first={} last={}",
@@ -1008,6 +1478,55 @@ fn format_skill_event(value: &Value) -> String {
     )
 }
 
+fn format_message_metric(value: &Value) -> String {
+    format!(
+        "seq={} phase={} chars={} tokens_est={} categories={} next_step={} tool_intent={} verification={} result={} social={} text={}",
+        value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
+        value.get("phase").and_then(Value::as_str).unwrap_or("-"),
+        value.get("textChars").and_then(Value::as_u64).unwrap_or_default(),
+        value.get("textTokensEst").and_then(Value::as_i64).unwrap_or_default(),
+        value
+            .get("categories")
+            .and_then(Value::as_array)
+            .map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("|"))
+            .unwrap_or_else(|| "-".to_string()),
+        value.get("containsNextStep").and_then(Value::as_bool).unwrap_or(false),
+        value.get("containsToolIntent").and_then(Value::as_bool).unwrap_or(false),
+        value
+            .get("containsVerificationLanguage")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        value.get("containsResultClaim").and_then(Value::as_bool).unwrap_or(false),
+        value
+            .get("containsEmpathyOrAlignmentLanguage")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        value.get("message").and_then(Value::as_str).unwrap_or("-"),
+    )
+}
+
+fn format_coupling_row(value: &Value) -> String {
+    format!(
+        "seq={} kind={} name={} visible_chars_since_last_tool={} visible_tokens_since_last_tool={} visible_messages_since_last_tool={} burst_label={}",
+        value.get("seq").and_then(Value::as_u64).unwrap_or_default(),
+        value.get("kind").and_then(Value::as_str).unwrap_or("-"),
+        value.get("name").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("visibleCharsSinceLastTool")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value
+            .get("visibleTokensSinceLastTool")
+            .and_then(Value::as_i64)
+            .unwrap_or_default(),
+        value
+            .get("visibleMessagesSinceLastTool")
+            .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        value.get("burstLabel").and_then(Value::as_str).unwrap_or("-"),
+    )
+}
+
 fn format_lifecycle_event(value: &Value) -> String {
     format!(
         "seq={} kind={} turn={} model={} provider={} reason={}",
@@ -1038,5 +1557,21 @@ fn format_anomaly_event(value: &Value) -> String {
         value.get("severity").and_then(Value::as_str).unwrap_or("-"),
         value.get("code").and_then(Value::as_str).unwrap_or("-"),
         value.get("message").and_then(Value::as_str).unwrap_or("-"),
+    )
+}
+
+fn format_grade_event(value: &Value) -> String {
+    format!(
+        "instance={} grading_status={} official_summary={} official_instance_report={}",
+        value.get("instanceId").and_then(Value::as_str).unwrap_or("-"),
+        value.get("gradingStatus").and_then(Value::as_str).unwrap_or("-"),
+        value
+            .get("officialSummaryPath")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
+        value
+            .get("officialInstanceReportPath")
+            .and_then(Value::as_str)
+            .unwrap_or("-"),
     )
 }

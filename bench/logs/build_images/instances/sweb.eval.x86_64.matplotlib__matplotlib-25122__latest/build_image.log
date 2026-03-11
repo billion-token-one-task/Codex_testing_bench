@@ -1,0 +1,68 @@
+2026-03-11 22:00:16,480 - INFO - Building image sweb.eval.x86_64.matplotlib__matplotlib-25122:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.31244378a92e3bcce809ac:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-03-11 22:00:16,480 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/matplotlib/matplotlib /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 5ec2bd279729ff534719b8bf238dbbca907b93c5
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 5ec2bd279729ff534719b8bf238dbbca907b93c5)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+apt-get -y update && apt-get -y upgrade && DEBIAN_FRONTEND=noninteractive apt-get install -y imagemagick ffmpeg texlive texlive-latex-extra texlive-fonts-recommended texlive-xetex texlive-luatex cm-super dvipng
+QHULL_URL="http://www.qhull.org/download/qhull-2020-src-8.0.2.tgz"
+QHULL_TAR="/tmp/qhull-2020-src-8.0.2.tgz"
+QHULL_BUILD_DIR="/testbed/build"
+wget -O "$QHULL_TAR" "$QHULL_URL"
+mkdir -p "$QHULL_BUILD_DIR"
+tar -xvzf "$QHULL_TAR" -C "$QHULL_BUILD_DIR"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-03-11 22:00:16,481 - INFO - Building docker image sweb.eval.x86_64.matplotlib__matplotlib-25122:latest in logs/build_images/instances/sweb.eval.x86_64.matplotlib__matplotlib-25122__latest with platform linux/x86_64
+2026-03-11 22:00:16,642 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.31244378a92e3bcce809ac:latest
+2026-03-11 22:00:16,643 - INFO - 
+2026-03-11 22:00:16,648 - INFO - ---> 7964c8103bea
+2026-03-11 22:00:16,648 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-03-11 22:00:16,648 - INFO - 
+2026-03-11 22:00:51,868 - INFO - ---> f0e0a3f7e9f4
+2026-03-11 22:00:51,870 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-03-11 22:00:51,870 - INFO - 
+2026-03-11 22:00:51,967 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-03-11 22:00:51,967 - INFO - ---> Running in d151f50cd1bd
+2026-03-11 22:01:16,758 - INFO - ---> Removed intermediate container d151f50cd1bd
+2026-03-11 22:01:16,760 - INFO - ---> 9e5fc3573a5b
+2026-03-11 22:01:16,760 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-03-11 22:01:16,760 - INFO - 
+2026-03-11 22:01:16,826 - INFO - ---> [Warning] The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+2026-03-11 22:01:16,826 - INFO - ---> Running in 3f1614def2ba
+2026-03-11 22:01:17,048 - INFO - + git clone -o origin --single-branch https://github.com/matplotlib/matplotlib /testbed
+2026-03-11 22:01:17,077 - INFO - Cloning into '/testbed'...
+2026-03-11 22:47:34,266 - INFO - error: RPC failed; curl 56 GnuTLS recv error (-9): Error decoding the received TLS packet.
+error: 2094 bytes of body are still expected
+2026-03-11 22:47:34,307 - INFO - fetch-pack: unexpected disconnect while reading sideband packet
+2026-03-11 22:47:34,310 - INFO - fatal: early EOF
+2026-03-11 22:47:34,324 - INFO - fatal: fetch-pack: invalid index-pack output
+2026-03-11 22:47:34,659 - INFO - ---> Removed intermediate container 3f1614def2ba
+2026-03-11 22:47:34,666 - ERROR - Error: The command '/bin/sh -c /bin/bash /root/setup_repo.sh' returned a non-zero code: 128
+2026-03-11 22:47:34,679 - ERROR - docker.errors.BuildError during sweb.eval.x86_64.matplotlib__matplotlib-25122:latest: The command '/bin/sh -c /bin/bash /root/setup_repo.sh' returned a non-zero code: 128

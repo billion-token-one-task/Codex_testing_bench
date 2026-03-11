@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use codex_bench_core::{
-    ClaimEvidence, DatasetRecord, ProbeEventRow, ProbeSummary, RunSummary,
-    artifact_inventory_for_attempt, patch_file_count, write_json_pretty, write_jsonl,
+    ClaimEvidence, DatasetRecord, ProbeEventRow, ProbeSummary, RunManifest, RunSummary,
+    artifact_inventory_for_attempt, patch_file_count, read_json, write_json_pretty, write_jsonl,
 };
 use codex_protocol::protocol::{
     Event, EventMsg, ExecCommandBeginEvent, ExecCommandEndEvent, StudyProbeEvent, TokenUsageInfo,
@@ -50,12 +50,14 @@ pub fn derive_run_outputs(
 ) -> Result<RunSummary> {
     let mut token_rows = Vec::<Value>::new();
     let mut turn_rows = Vec::<Value>::new();
+    let mut message_rows = Vec::<Value>::new();
     let mut command_rows = Vec::<Value>::new();
     let mut tool_rows = Vec::<Value>::new();
     let mut skill_rows = Vec::<Value>::new();
     let mut patch_rows = Vec::<Value>::new();
     let mut lifecycle_rows = Vec::<Value>::new();
     let mut anomaly_rows = Vec::<Value>::new();
+    let mut coupling_rows = Vec::<Value>::new();
     let mut derived_probes = Vec::<ProbeEventRow>::new();
 
     let mut event_type_counts = BTreeMap::<String, usize>::new();
@@ -73,10 +75,29 @@ pub fn derive_run_outputs(
     let mut tool_kind_counts = BTreeMap::<String, usize>::new();
     let mut tool_name_counts = BTreeMap::<String, usize>::new();
     let mut skill_name_counts = BTreeMap::<String, usize>::new();
+    let mut message_category_counts = BTreeMap::<String, usize>::new();
 
     let mut seen_read_commands_since_write = BTreeSet::<String>::new();
     let mut seen_verification_commands_since_write = BTreeSet::<String>::new();
     let mut seen_git_commands_since_write = BTreeSet::<String>::new();
+    let mut visible_output_total_chars = 0usize;
+    let mut visible_output_total_tokens_est = 0i64;
+    let mut visible_output_sentence_count = 0usize;
+    let mut visible_output_paragraph_count = 0usize;
+    let mut visible_output_bullet_count = 0usize;
+    let mut visible_output_codeblock_count = 0usize;
+    let mut actionable_commentary_tokens = 0i64;
+    let mut tool_grounded_commentary_tokens = 0i64;
+    let mut verification_grounded_commentary_tokens = 0i64;
+    let mut restatement_tokens = 0i64;
+    let mut redundant_commentary_tokens = 0i64;
+    let mut speculation_tokens = 0i64;
+    let mut social_tone_tokens = 0i64;
+    let mut commentary_chars_since_last_tool = 0usize;
+    let mut commentary_tokens_since_last_tool = 0i64;
+    let mut commentary_messages_since_last_tool = 0usize;
+    let mut first_tool_seen = false;
+    let mut coupling_index = 0usize;
 
     for (seq, event) in decoded_events.iter().enumerate() {
         let event_type = event_type_name(&event.msg).to_string();
@@ -200,6 +221,40 @@ pub fn derive_run_outputs(
             EventMsg::ExecCommandBegin(ev) => {
                 command_seq += 1;
                 *tool_kind_counts.entry("shell".to_string()).or_default() += 1;
+                if !first_tool_seen {
+                    first_tool_seen = true;
+                    probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
+                    probe_summary.visible_text_before_first_tool_chars =
+                        Some(commentary_chars_since_last_tool);
+                }
+                let burst_label = classify_tool_burst(
+                    commentary_messages_since_last_tool,
+                    commentary_tokens_since_last_tool,
+                );
+                if burst_label == "silent_tool_burst" {
+                    probe_summary.silent_tool_burst_count += 1;
+                }
+                if burst_label == "micro_narrated_tool_burst" {
+                    probe_summary.micro_narrated_tool_burst_count += 1;
+                }
+                probe_summary.tool_burst_count += 1;
+                coupling_rows.push(json!({
+                    "seq": seq,
+                    "index": coupling_index,
+                    "turnId": ev.turn_id,
+                    "kind": "shell",
+                    "name": "shell",
+                    "command": join_command(&ev.command),
+                    "visibleCharsSinceLastTool": commentary_chars_since_last_tool,
+                    "visibleTokensSinceLastTool": commentary_tokens_since_last_tool,
+                    "visibleMessagesSinceLastTool": commentary_messages_since_last_tool,
+                    "burstLabel": burst_label,
+                    "classification": "inferred",
+                }));
+                coupling_index += 1;
+                commentary_chars_since_last_tool = 0;
+                commentary_tokens_since_last_tool = 0;
+                commentary_messages_since_last_tool = 0;
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "begin",
@@ -278,11 +333,120 @@ pub fn derive_run_outputs(
                     last_patch_seq,
                 );
             }
+            EventMsg::AgentMessage(ev) => {
+                let phase = ev
+                    .phase
+                    .as_ref()
+                    .map(|phase| format!("{phase:?}").to_lowercase())
+                    .unwrap_or_else(|| "unknown".to_string());
+                let categories = classify_agent_message(&ev.message, &phase);
+                let text_chars = ev.message.chars().count();
+                let text_tokens_est = estimate_text_tokens(&ev.message);
+                let sentence_count = count_sentences(&ev.message);
+                let paragraph_count = count_paragraphs(&ev.message);
+                let bullet_count = count_bullets(&ev.message);
+                let codeblock_count = ev.message.matches("```").count() / 2;
+                let contains_question = ev.message.contains('?') || ev.message.contains('？');
+                let contains_uncertainty = contains_any(&ev.message, &["maybe", "might", "probably", "可能", "也许", "perhaps", "unclear"]);
+                let contains_next_step = contains_any(&ev.message, &["next", "接下来", "now i", "i'll", "will ", "计划", "then "]);
+                let contains_tool_intent = contains_any(&ev.message, &["run", "inspect", "check", "test", "edit", "patch", "search", "打开", "查看", "测试", "修改"]);
+                let contains_verification_language = contains_any(&ev.message, &["verify", "verified", "test", "tests", "确认", "验证", "通过"]);
+                let contains_result_claim = contains_any(&ev.message, &["fixed", "resolved", "done", "完成", "修复", "解决"]);
+                let contains_empathy_or_alignment_language = contains_any(&ev.message, &["we ", "let's", "together", "我会", "我们", "一起", "friendly"]);
+                for category in &categories {
+                    *message_category_counts.entry(category.clone()).or_default() += 1;
+                }
+                if categories.iter().any(|category| matches!(category.as_str(), "planning" | "decision_explanation" | "tool_bridge_before" | "tool_bridge_after" | "verification_framing" | "result_framing" | "observation")) {
+                    actionable_commentary_tokens += text_tokens_est;
+                }
+                if categories.iter().any(|category| matches!(category.as_str(), "tool_bridge_before" | "tool_bridge_after")) {
+                    tool_grounded_commentary_tokens += text_tokens_est;
+                }
+                if categories.iter().any(|category| matches!(category.as_str(), "verification_framing" | "result_framing")) || contains_verification_language {
+                    verification_grounded_commentary_tokens += text_tokens_est;
+                }
+                if categories.iter().any(|category| category == "task_restatement") {
+                    restatement_tokens += text_tokens_est;
+                }
+                if categories.iter().any(|category| category == "redundant_recap") {
+                    redundant_commentary_tokens += text_tokens_est;
+                }
+                if contains_uncertainty {
+                    speculation_tokens += text_tokens_est;
+                }
+                if categories.iter().any(|category| category == "social_tone") || contains_empathy_or_alignment_language {
+                    social_tone_tokens += text_tokens_est;
+                }
+                visible_output_total_chars += text_chars;
+                visible_output_total_tokens_est += text_tokens_est;
+                visible_output_sentence_count += sentence_count;
+                visible_output_paragraph_count += paragraph_count;
+                visible_output_bullet_count += bullet_count;
+                visible_output_codeblock_count += codeblock_count;
+                commentary_chars_since_last_tool += text_chars;
+                commentary_tokens_since_last_tool += text_tokens_est;
+                commentary_messages_since_last_tool += 1;
+                message_rows.push(json!({
+                    "seq": seq,
+                    "classification": "inferred",
+                    "turnId": current_turn_id,
+                    "phase": phase,
+                    "messageId": format!("{run_id}-message-{seq}"),
+                    "textChars": text_chars,
+                    "textTokensEst": text_tokens_est,
+                    "sentenceCount": sentence_count,
+                    "paragraphCount": paragraph_count,
+                    "bulletCount": bullet_count,
+                    "codeblockCount": codeblock_count,
+                    "containsQuestion": contains_question,
+                    "containsUncertainty": contains_uncertainty,
+                    "containsNextStep": contains_next_step,
+                    "containsToolIntent": contains_tool_intent,
+                    "containsVerificationLanguage": contains_verification_language,
+                    "containsResultClaim": contains_result_claim,
+                    "containsEmpathyOrAlignmentLanguage": contains_empathy_or_alignment_language,
+                    "categories": categories,
+                    "message": ev.message,
+                }));
+            }
             EventMsg::McpToolCallBegin(ev) => {
                 *tool_kind_counts.entry("mcp".to_string()).or_default() += 1;
                 *tool_name_counts
                     .entry(format!("{}::{}", ev.invocation.server, ev.invocation.tool))
                     .or_default() += 1;
+                if !first_tool_seen {
+                    first_tool_seen = true;
+                    probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
+                    probe_summary.visible_text_before_first_tool_chars =
+                        Some(commentary_chars_since_last_tool);
+                }
+                let burst_label = classify_tool_burst(
+                    commentary_messages_since_last_tool,
+                    commentary_tokens_since_last_tool,
+                );
+                if burst_label == "silent_tool_burst" {
+                    probe_summary.silent_tool_burst_count += 1;
+                }
+                if burst_label == "micro_narrated_tool_burst" {
+                    probe_summary.micro_narrated_tool_burst_count += 1;
+                }
+                probe_summary.tool_burst_count += 1;
+                coupling_rows.push(json!({
+                    "seq": seq,
+                    "index": coupling_index,
+                    "turnId": current_turn_id,
+                    "kind": "mcp",
+                    "name": format!("{}::{}", ev.invocation.server, ev.invocation.tool),
+                    "visibleCharsSinceLastTool": commentary_chars_since_last_tool,
+                    "visibleTokensSinceLastTool": commentary_tokens_since_last_tool,
+                    "visibleMessagesSinceLastTool": commentary_messages_since_last_tool,
+                    "burstLabel": burst_label,
+                    "classification": "inferred",
+                }));
+                coupling_index += 1;
+                commentary_chars_since_last_tool = 0;
+                commentary_tokens_since_last_tool = 0;
+                commentary_messages_since_last_tool = 0;
                 if let Some(turn_id) = current_turn_id.as_ref()
                     && let Some(acc) = turn_accumulators.get_mut(turn_id)
                 {
@@ -335,6 +499,39 @@ pub fn derive_run_outputs(
             EventMsg::PatchApplyBegin(ev) => {
                 *tool_kind_counts.entry("apply_patch".to_string()).or_default() += 1;
                 *tool_name_counts.entry("apply_patch".to_string()).or_default() += 1;
+                if !first_tool_seen {
+                    first_tool_seen = true;
+                    probe_summary.tokens_before_first_tool = last_token_total(&last_token_info);
+                    probe_summary.visible_text_before_first_tool_chars =
+                        Some(commentary_chars_since_last_tool);
+                }
+                let burst_label = classify_tool_burst(
+                    commentary_messages_since_last_tool,
+                    commentary_tokens_since_last_tool,
+                );
+                if burst_label == "silent_tool_burst" {
+                    probe_summary.silent_tool_burst_count += 1;
+                }
+                if burst_label == "micro_narrated_tool_burst" {
+                    probe_summary.micro_narrated_tool_burst_count += 1;
+                }
+                probe_summary.tool_burst_count += 1;
+                coupling_rows.push(json!({
+                    "seq": seq,
+                    "index": coupling_index,
+                    "turnId": current_turn_id,
+                    "kind": "apply_patch",
+                    "name": "apply_patch",
+                    "visibleCharsSinceLastTool": commentary_chars_since_last_tool,
+                    "visibleTokensSinceLastTool": commentary_tokens_since_last_tool,
+                    "visibleMessagesSinceLastTool": commentary_messages_since_last_tool,
+                    "burstLabel": burst_label,
+                    "classification": "inferred",
+                }));
+                coupling_index += 1;
+                commentary_chars_since_last_tool = 0;
+                commentary_tokens_since_last_tool = 0;
+                commentary_messages_since_last_tool = 0;
                 tool_rows.push(json!({
                     "seq": seq,
                     "phase": "begin",
@@ -585,6 +782,26 @@ pub fn derive_run_outputs(
     ) {
         probe_summary.harness_overhead_proxy_bps = Some(friction_bps.saturating_sub(useful_bps));
     }
+    probe_summary.visible_output_total_chars = visible_output_total_chars;
+    probe_summary.visible_output_total_tokens_est = visible_output_total_tokens_est;
+    probe_summary.visible_output_message_count = message_rows.len();
+    if visible_output_total_tokens_est > 0 {
+        probe_summary.actionable_commentary_ratio_bps =
+            Some((actionable_commentary_tokens * 10_000) / visible_output_total_tokens_est);
+        probe_summary.tool_grounded_commentary_ratio_bps =
+            Some((tool_grounded_commentary_tokens * 10_000) / visible_output_total_tokens_est);
+        probe_summary.verification_grounded_commentary_ratio_bps = Some(
+            (verification_grounded_commentary_tokens * 10_000) / visible_output_total_tokens_est,
+        );
+        probe_summary.restatement_ratio_bps =
+            Some((restatement_tokens * 10_000) / visible_output_total_tokens_est);
+        probe_summary.redundant_commentary_ratio_bps =
+            Some((redundant_commentary_tokens * 10_000) / visible_output_total_tokens_est);
+        probe_summary.speculation_ratio_bps =
+            Some((speculation_tokens * 10_000) / visible_output_total_tokens_est);
+        probe_summary.social_tone_ratio_bps =
+            Some((social_tone_tokens * 10_000) / visible_output_total_tokens_est);
+    }
 
     if raw_probe_events.is_empty() {
         anomaly_rows.push(json!({
@@ -611,11 +828,16 @@ pub fn derive_run_outputs(
     write_jsonl(&attempt_dir.join("lifecycle-events.jsonl"), &lifecycle_rows)?;
     write_jsonl(&attempt_dir.join("token-snapshots.jsonl"), &token_rows)?;
     write_jsonl(&attempt_dir.join("turn-metrics.jsonl"), &turn_rows)?;
+    write_jsonl(&attempt_dir.join("message-metrics.jsonl"), &message_rows)?;
     write_jsonl(&attempt_dir.join("command-events.jsonl"), &command_rows)?;
     write_jsonl(&attempt_dir.join("tool-events.jsonl"), &tool_rows)?;
     write_jsonl(&attempt_dir.join("skill-events.jsonl"), &skill_rows)?;
     write_jsonl(&attempt_dir.join("patch-events.jsonl"), &patch_rows)?;
     write_jsonl(&attempt_dir.join("anomalies.jsonl"), &anomaly_rows)?;
+    write_jsonl(
+        &attempt_dir.join("verbosity-tool-coupling.jsonl"),
+        &coupling_rows,
+    )?;
     write_jsonl(&attempt_dir.join("probe-events.jsonl"), &derived_probes)?;
     write_json_pretty(&attempt_dir.join("probe-summary.json"), &probe_summary)?;
 
@@ -630,10 +852,34 @@ pub fn derive_run_outputs(
         Some(format!("{:x}", hasher.finalize()))
     };
 
+    let run_manifest_meta = attempt_dir
+        .parent()
+        .map(|run_dir| run_dir.join("manifest.json"))
+        .filter(|path| path.exists())
+        .and_then(|path| read_json::<RunManifest>(&path).ok());
+
     let summary = RunSummary {
         instance_id: record.instance_id.clone(),
         repo: record.repo.clone(),
         task_class: task_class.to_string(),
+        paired_instance_key: run_manifest_meta
+            .as_ref()
+            .map(|manifest| manifest.paired_instance_key.clone()),
+        cohort_id: run_manifest_meta
+            .as_ref()
+            .map(|manifest| manifest.cohort_id.clone()),
+        model: run_manifest_meta
+            .as_ref()
+            .map(|manifest| manifest.model.clone()),
+        provider: run_manifest_meta
+            .as_ref()
+            .map(|manifest| manifest.provider.clone()),
+        personality_mode: run_manifest_meta
+            .as_ref()
+            .and_then(|manifest| manifest.personality_mode.clone()),
+        prompt_style: run_manifest_meta
+            .as_ref()
+            .and_then(|manifest| manifest.prompt_style.clone()),
         status: if decoded_events
             .iter()
             .any(|event| matches!(event.msg, EventMsg::TurnComplete(_)))
@@ -656,6 +902,7 @@ pub fn derive_run_outputs(
         command_count: command_rows.len(),
         tool_count: tool_rows.len(),
         skill_event_count: skill_rows.len(),
+        message_metric_count: message_rows.len(),
         patch_event_count: patch_rows.len(),
         patch_file_count: patch_file_count(patch_text),
         patch_sha256,
@@ -673,6 +920,16 @@ pub fn derive_run_outputs(
             .map(|info| info.total_token_usage.total_tokens),
         model_context_window: last_token_info.as_ref().and_then(|info| info.model_context_window),
         anomaly_count: anomaly_rows.len(),
+        visible_output_total_chars,
+        visible_output_total_tokens_est,
+        visible_output_sentence_count,
+        visible_output_paragraph_count,
+        visible_output_bullet_count,
+        visible_output_codeblock_count,
+        visible_output_per_turn_tokens_est: div_i64(visible_output_total_tokens_est, turn_rows.len()),
+        visible_output_per_tool_call_tokens_est: div_i64(visible_output_total_tokens_est, tool_rows.iter().filter(|row| row.get("phase").and_then(Value::as_str) == Some("begin")).count()),
+        visible_output_per_patch_event_tokens_est: div_i64(visible_output_total_tokens_est, patch_rows.iter().filter(|row| row.get("phase").and_then(Value::as_str) == Some("end")).count()),
+        visible_output_per_verification_event_tokens_est: div_i64(visible_output_total_tokens_est, probe_summary.verification_closure_count),
         event_type_counts,
         probe_code_counts,
         probe_subsystem_counts,
@@ -680,6 +937,7 @@ pub fn derive_run_outputs(
         tool_kind_counts,
         tool_name_counts,
         skill_name_counts,
+        message_category_counts,
         artifact_inventory: artifact_inventory_for_attempt(attempt_dir),
     };
     write_json_pretty(&attempt_dir.join("run-summary.json"), &summary)?;
@@ -1320,6 +1578,35 @@ fn build_claim_evidence(
             caveats: vec!["A regulation mechanism can improve stability while also introducing some compression loss or overhead.".to_string()],
         },
         ClaimEvidence {
+            claim_id: "grounding.state_verbalization".to_string(),
+            label: if probe_summary.actionable_commentary_ratio_bps.unwrap_or_default() > 0
+                || probe_summary.tool_grounded_commentary_ratio_bps.unwrap_or_default() > 0
+                || probe_summary.verification_grounded_commentary_ratio_bps.unwrap_or_default() > 0
+            {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "actionable_commentary_ratio_bps={:?}",
+                    probe_summary.actionable_commentary_ratio_bps
+                ),
+                format!(
+                    "tool_grounded_commentary_ratio_bps={:?}",
+                    probe_summary.tool_grounded_commentary_ratio_bps
+                ),
+                format!(
+                    "verification_grounded_commentary_ratio_bps={:?}",
+                    probe_summary.verification_grounded_commentary_ratio_bps
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![run_ref.clone()],
+            caveats: vec!["Visible commentary is only a proxy for deeper state externalization.".to_string()],
+        },
+        ClaimEvidence {
             claim_id: "codex.compaction_rebuild".to_string(),
             label: if probe_summary.compaction_count > 0 {
                 "evidence_consistent"
@@ -1466,6 +1753,55 @@ fn build_claim_evidence(
             relevant_runs: vec![run_ref],
             caveats: vec!["Friction-token estimates are inferred from event sequencing and command duration.".to_string()],
         },
+        ClaimEvidence {
+            claim_id: "codex.personality_policy_shape".to_string(),
+            label: if probe_summary.visible_output_total_tokens_est > 0
+                && (probe_summary.tool_grounded_commentary_ratio_bps.unwrap_or_default() > 0
+                    || probe_summary.actionable_commentary_ratio_bps.unwrap_or_default() > 0)
+            {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!("visible_output_total_tokens_est={}", probe_summary.visible_output_total_tokens_est),
+                format!(
+                    "tool_grounded_commentary_ratio_bps={:?}",
+                    probe_summary.tool_grounded_commentary_ratio_bps
+                ),
+                format!("tool_burst_count={}", probe_summary.tool_burst_count),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![format!("{}[{task_class}]", record.instance_id)],
+            caveats: vec!["Strong support requires paired cohort comparisons across the same tasks.".to_string()],
+        },
+        ClaimEvidence {
+            claim_id: "codex.state_verbalization".to_string(),
+            label: if probe_summary.actionable_commentary_ratio_bps.unwrap_or_default() > 0 {
+                "evidence_consistent"
+            } else {
+                "evidence_inconclusive"
+            }
+            .to_string(),
+            supporting_evidence: vec![
+                format!(
+                    "actionable_commentary_ratio_bps={:?}",
+                    probe_summary.actionable_commentary_ratio_bps
+                ),
+                format!(
+                    "restatement_ratio_bps={:?}",
+                    probe_summary.restatement_ratio_bps
+                ),
+                format!(
+                    "redundant_commentary_ratio_bps={:?}",
+                    probe_summary.redundant_commentary_ratio_bps
+                ),
+            ],
+            conflicting_evidence: Vec::new(),
+            relevant_runs: vec![format!("{}[{task_class}]", record.instance_id)],
+            caveats: vec!["A single run cannot by itself establish model-to-model differences.".to_string()],
+        },
     ]
 }
 
@@ -1587,6 +1923,105 @@ fn is_search_command(command: &str) -> bool {
         .any(|needle| command.starts_with(needle))
 }
 
+fn estimate_text_tokens(text: &str) -> i64 {
+    let chars = text.chars().count() as i64;
+    (chars / 4).max(1)
+}
+
+fn count_sentences(text: &str) -> usize {
+    text.matches(['.', '!', '?', '。', '！', '？'])
+        .count()
+        .max(usize::from(!text.trim().is_empty()))
+}
+
+fn count_paragraphs(text: &str) -> usize {
+    text.split("\n\n")
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+        .count()
+        .max(usize::from(!text.trim().is_empty()))
+}
+
+fn count_bullets(text: &str) -> usize {
+    text.lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("- ")
+                || trimmed.starts_with("* ")
+                || trimmed.starts_with("1. ")
+                || trimmed.starts_with("2. ")
+                || trimmed.starts_with("3. ")
+        })
+        .count()
+}
+
+fn contains_any(text: &str, needles: &[&str]) -> bool {
+    let lowered = text.to_ascii_lowercase();
+    needles
+        .iter()
+        .any(|needle| lowered.contains(&needle.to_ascii_lowercase()))
+}
+
+fn classify_agent_message(message: &str, phase: &str) -> Vec<String> {
+    let lowered = message.to_ascii_lowercase();
+    let mut categories = Vec::new();
+    if phase == "commentary" {
+        categories.push("orientation".to_string());
+    }
+    if contains_any(&lowered, &["problem", "task", "issue", "need to", "要求", "问题", "任务"]) {
+        categories.push("task_restatement".to_string());
+    }
+    if contains_any(&lowered, &["plan", "next", "first", "then", "接下来", "先", "然后"]) {
+        categories.push("planning".to_string());
+    }
+    if contains_any(&lowered, &["found", "noticed", "see", "looks like", "发现", "看到", "看起来"]) {
+        categories.push("observation".to_string());
+    }
+    if contains_any(&lowered, &["because", "so that", "i'm going to", "decide", "因为", "所以", "决定"]) {
+        categories.push("decision_explanation".to_string());
+    }
+    if contains_any(&lowered, &["i'll run", "i'm going to run", "run ", "check ", "inspect ", "我去", "我会先", "先跑"]) {
+        categories.push("tool_bridge_before".to_string());
+    }
+    if contains_any(&lowered, &["output shows", "that means", "the result", "结果", "说明", "表明"]) {
+        categories.push("tool_bridge_after".to_string());
+    }
+    if contains_any(&lowered, &["verify", "test", "validated", "验证", "测试", "确认"]) {
+        categories.push("verification_framing".to_string());
+    }
+    if phase == "finalanswer" || contains_any(&lowered, &["fixed", "resolved", "done", "修复", "解决", "完成"]) {
+        categories.push("result_framing".to_string());
+    }
+    if contains_any(&lowered, &["we ", "let's", "happy to", "together", "我们", "一起", "我来"]) {
+        categories.push("social_tone".to_string());
+    }
+    if contains_any(&lowered, &["again", "as mentioned", "recap", "再说一遍", "总结一下", "重申"]) {
+        categories.push("redundant_recap".to_string());
+    }
+    if categories.is_empty() {
+        categories.push("observation".to_string());
+    }
+    categories
+}
+
+fn classify_tool_burst(message_count: usize, token_count: i64) -> &'static str {
+    if message_count == 0 || token_count == 0 {
+        "silent_tool_burst"
+    } else if token_count <= 80 {
+        "micro_narrated_tool_burst"
+    } else {
+        "talk_then_act"
+    }
+}
+
+fn div_i64(value: i64, denominator: usize) -> Option<i64> {
+    if denominator == 0 {
+        None
+    } else {
+        Some(value / denominator as i64)
+    }
+}
+
 fn make_probe(
     run_id: &str,
     record: &DatasetRecord,
@@ -1622,6 +2057,7 @@ fn event_type_name(msg: &EventMsg) -> &'static str {
         EventMsg::TurnComplete(_) => "turn_complete",
         EventMsg::TurnAborted(_) => "turn_aborted",
         EventMsg::TokenCount(_) => "token_count",
+        EventMsg::AgentMessage(_) => "agent_message",
         EventMsg::ExecCommandBegin(_) => "exec_command_begin",
         EventMsg::ExecCommandEnd(_) => "exec_command_end",
         EventMsg::McpToolCallBegin(_) => "mcp_tool_call_begin",

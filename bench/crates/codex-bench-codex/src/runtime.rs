@@ -15,6 +15,7 @@ use codex_core::config::{ConfigBuilder, ConfigOverrides};
 use codex_core::config_loader::{CloudRequirementsLoader, LoaderOverrides};
 use codex_feedback::CodexFeedback;
 use codex_protocol::config_types::SandboxMode as CoreSandboxMode;
+use codex_protocol::config_types::Personality;
 use codex_protocol::protocol::{AskForApproval, Event, EventMsg, StudyMetadata, StudyProbeEvent};
 use serde_json::{Map, Value, json};
 use tokio::io::AsyncWriteExt;
@@ -99,6 +100,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
             params: ThreadStartParams {
                 model: Some(request.model.clone()),
                 model_provider: Some(request.provider.clone()),
+                personality: request.personality_mode.as_deref().and_then(parse_personality),
                 cwd: Some(worktree_dir.display().to_string()),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox: Some(SandboxMode::WorkspaceWrite),
@@ -121,6 +123,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
                 }],
                 cwd: Some(worktree_dir.clone()),
                 model: Some(request.model.clone()),
+                personality: request.personality_mode.as_deref().and_then(parse_personality),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox_policy: Some(SandboxPolicy::WorkspaceWrite {
                     writable_roots: Vec::new(),
@@ -226,6 +229,15 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
         probe_events,
         raw_diagnostics,
     })
+}
+
+fn parse_personality(value: &str) -> Option<Personality> {
+    match value {
+        "friendly" => Some(Personality::Friendly),
+        "pragmatic" => Some(Personality::Pragmatic),
+        "none" => Some(Personality::None),
+        _ => None,
+    }
 }
 
 pub fn decode_legacy_notification(notification: JSONRPCNotification) -> Result<Option<Event>> {

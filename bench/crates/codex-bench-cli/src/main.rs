@@ -47,6 +47,12 @@ enum Command {
         #[arg(long, default_value = "openai")]
         provider: String,
         #[arg(long)]
+        personality: Option<String>,
+        #[arg(long)]
+        prompt_style: Option<String>,
+        #[arg(long)]
+        experiment_name: Option<String>,
+        #[arg(long)]
         repo_cache_root: Option<PathBuf>,
         #[arg(long)]
         preset_path: Option<PathBuf>,
@@ -102,6 +108,9 @@ async fn main() -> Result<()> {
             dataset_jsonl,
             model,
             provider,
+            personality,
+            prompt_style,
+            experiment_name,
             repo_cache_root,
             preset_path,
             stage,
@@ -113,6 +122,9 @@ async fn main() -> Result<()> {
                 dataset_jsonl,
                 model,
                 provider,
+                personality,
+                prompt_style,
+                experiment_name,
                 repo_cache_root,
                 preset_path,
                 stage,

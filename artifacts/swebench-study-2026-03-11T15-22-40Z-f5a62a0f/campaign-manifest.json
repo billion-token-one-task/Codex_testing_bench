@@ -1,0 +1,125 @@
+{
+  "schema_version": "codex-bench.v1",
+  "campaign_id": "swebench-study-2026-03-11T15-22-40Z-f5a62a0f",
+  "experiment_id": "exp-20260311152240-8e31c25c",
+  "experiment_name": "Codex 模型人格化行为对比研究 v1",
+  "created_at": "2026-03-11T15:22:40.846680+00:00",
+  "campaign_root": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f",
+  "repo_cache_root": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../.local-cache/repos/swebench",
+  "benchmark_name": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "preset_name": "swebench-v1",
+  "preset_path": "/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets/swebench-v1.json",
+  "stage_name": "architecture-validation",
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "model": "gpt-5.4",
+  "provider": "openai",
+  "personality_mode": null,
+  "prompt_style": null,
+  "comparison_axes": [
+    "model",
+    "personality"
+  ],
+  "cohorts": [
+    {
+      "cohort_id": "gpt-5.3-codex-pragmatic",
+      "label": "gpt-5.3-codex × pragmatic",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality_mode": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "cohort_id": "gpt-5.3-codex-friendly",
+      "label": "gpt-5.3-codex × friendly",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality_mode": "friendly",
+      "prompt_style": "warm_collaborative"
+    },
+    {
+      "cohort_id": "gpt-5.4-pragmatic",
+      "label": "gpt-5.4 × pragmatic",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality_mode": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "cohort_id": "gpt-5.4-friendly",
+      "label": "gpt-5.4 × friendly",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality_mode": "friendly",
+      "prompt_style": "warm_collaborative"
+    }
+  ],
+  "seed": "personality-smoke",
+  "sample_size": 1,
+  "study_mode": "codex_live_observation",
+  "required_task_classes": [],
+  "preferred_task_classes": [],
+  "future_benchmarks": [],
+  "grounding_documents": [
+    "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md"
+  ],
+  "reference_documents": [
+    "https://deepwiki.com/openai/codex",
+    "https://openai.com/index/unlocking-the-codex-harness/"
+  ],
+  "model_catalog_snapshot_path": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/model-catalog-snapshot.json",
+  "hypothesis_catalog_path": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../studies/hypotheses/model-behavior-v1.json",
+  "experiment_lock_path": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/experiment-lock.json",
+  "selected_instances": [
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/runs/gpt-5.3-codex-pragmatic/sphinx-doc__sphinx-10323",
+      "paired_instance_key": "sphinx-doc__sphinx-10323",
+      "cohort_id": "gpt-5.3-codex-pragmatic",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality_mode": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/runs/gpt-5.3-codex-friendly/sphinx-doc__sphinx-10323",
+      "paired_instance_key": "sphinx-doc__sphinx-10323",
+      "cohort_id": "gpt-5.3-codex-friendly",
+      "model": "gpt-5.3-codex",
+      "provider": "openai",
+      "personality_mode": "friendly",
+      "prompt_style": "warm_collaborative"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/runs/gpt-5.4-pragmatic/sphinx-doc__sphinx-10323",
+      "paired_instance_key": "sphinx-doc__sphinx-10323",
+      "cohort_id": "gpt-5.4-pragmatic",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality_mode": "pragmatic",
+      "prompt_style": "terse_engineer"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T15-22-40Z-f5a62a0f/runs/gpt-5.4-friendly/sphinx-doc__sphinx-10323",
+      "paired_instance_key": "sphinx-doc__sphinx-10323",
+      "cohort_id": "gpt-5.4-friendly",
+      "model": "gpt-5.4",
+      "provider": "openai",
+      "personality_mode": "friendly",
+      "prompt_style": "warm_collaborative"
+    }
+  ]
+}

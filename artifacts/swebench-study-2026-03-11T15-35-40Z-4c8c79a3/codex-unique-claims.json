@@ -1,0 +1,142 @@
+[
+  {
+    "id": "codex.compaction_rebuild",
+    "source": "DeepWiki + Codex source",
+    "text": "Codex is not a pure flat-loop harness because it performs native compaction and history rebuild.",
+    "operationalization": "Inspect context-compaction probes, replacement history shape, and post-compaction rediscovery patterns.",
+    "required_evidence": [
+      "context.compaction",
+      "context.rediscovery",
+      "context.replacement_history"
+    ],
+    "caveats": [
+      "A compaction mechanism can still be lossy or brittle."
+    ]
+  },
+  {
+    "id": "codex.config_freeze",
+    "source": "Codex App Server + core",
+    "text": "Codex behavior is materially shaped by session/config freeze at thread start.",
+    "operationalization": "Compare requested thread-start params against effective SessionConfigured values and turn-level instruction makeup.",
+    "required_evidence": [
+      "config.requested_vs_effective",
+      "instruction.channel_mix"
+    ],
+    "caveats": [
+      "Some drift reflects provider normalization rather than hidden harness behavior."
+    ]
+  },
+  {
+    "id": "codex.tool_mediation",
+    "source": "Codex core tool orchestration",
+    "text": "Codex tool use is mediated by an internal routing/orchestration layer rather than being equivalent to raw shell execution.",
+    "operationalization": "Track shell vs patch vs MCP tool paths, approval routing, and structured tool-event boundaries.",
+    "required_evidence": [
+      "tools.routing",
+      "tools.approval_path",
+      "tools.mediation_tax"
+    ],
+    "caveats": [
+      "A single task may exercise only a subset of tool paths."
+    ]
+  },
+  {
+    "id": "codex.persistence_continuity",
+    "source": "Codex rollout/state DB path",
+    "text": "Codex persistence and resume semantics create both continuity benefits and mismatch risks.",
+    "operationalization": "Track resume/reconstruction probes, listener attach behavior, and stale-state mismatch incidents.",
+    "required_evidence": [
+      "persistence.resume_path",
+      "persistence.continuity",
+      "harness.listener_attach"
+    ],
+    "caveats": [
+      "Needs resumed or reconstructed sessions for the strongest evidence."
+    ]
+  },
+  {
+    "id": "codex.event_architecture",
+    "source": "Codex App Server event bridge",
+    "text": "Codex’s queue/listener/event bridge creates visibility and discontinuity patterns that wrapper-only telemetry would miss.",
+    "operationalization": "Compare raw legacy event streams, typed notifications, study probes, and lagged/backpressure diagnostics.",
+    "required_evidence": [
+      "events.legacy_vs_typed",
+      "harness.listener_attach",
+      "events.backpressure"
+    ],
+    "caveats": [
+      "Some discontinuities are observability artifacts rather than reasoning artifacts."
+    ]
+  },
+  {
+    "id": "codex.harness_overhead_tax",
+    "source": "Codex runtime orchestration",
+    "text": "A non-trivial share of Codex runtime cost comes from internal harness orchestration, not direct task progress.",
+    "operationalization": "Estimate friction-token, friction-step, and harness-specific incident counts relative to direct edit/verify cycles.",
+    "required_evidence": [
+      "harness.friction",
+      "useful_work.proxy",
+      "tools.mediation_tax"
+    ],
+    "caveats": [
+      "Overhead estimates are partly inferred rather than exact."
+    ]
+  },
+  {
+    "id": "codex.instruction_stratification",
+    "source": "Codex instruction assembly path",
+    "text": "Codex behaves more like a layered instruction stack than a single undifferentiated transcript.",
+    "operationalization": "Track instruction-channel probe events, model-native instruction preservation, and reconstructed-context shifts after compaction or resume.",
+    "required_evidence": [
+      "instruction.channel_mix",
+      "instruction.stratification",
+      "persistence.externalized_state"
+    ],
+    "caveats": [
+      "The exact effect of each layer remains partly hidden because internal reasoning is not exposed."
+    ]
+  },
+  {
+    "id": "codex.control_rods",
+    "source": "Codex runtime control surfaces",
+    "text": "Codex contains harness-native regulation layers that act like control rods, sometimes stabilizing and sometimes throttling the reaction.",
+    "operationalization": "Track control-rod probe families across compaction, config freeze, persistence, and listener/approval boundaries.",
+    "required_evidence": [
+      "control_rod.compaction_regulation",
+      "control_rod.config_freeze",
+      "control_rod.persistence",
+      "containment.heat_leak"
+    ],
+    "caveats": [
+      "This is a harness-level interpretation grounded in observable behavior, not an implementation claim from upstream docs."
+    ]
+  },
+  {
+    "id": "codex.personality_policy_shape",
+    "source": "Codex model personality support",
+    "text": "Codex personality modes can shape observable agent policy, not only surface tone.",
+    "operationalization": "Compare visible-output density, tool-bridge language, and verbosity-tool coupling between friendly and pragmatic cohorts under paired tasks.",
+    "required_evidence": [
+      "personality.requested_vs_effective",
+      "verbosity.tool_grounded",
+      "verbosity.tool_coupling"
+    ],
+    "caveats": [
+      "Strong support requires paired multi-cohort experiments rather than a single run."
+    ]
+  },
+  {
+    "id": "codex.state_verbalization",
+    "source": "Codex behavior study",
+    "text": "Some Codex/model combinations externalize more actionable state into visible assistant language than others.",
+    "operationalization": "Compare message-level planning, decision, tool-bridge, and verification framing categories across models and personality modes.",
+    "required_evidence": [
+      "verbosity.actionable",
+      "verbosity.tool_grounded",
+      "verbosity.verification_grounded"
+    ],
+    "caveats": [
+      "This captures visible state verbalization, not hidden chain-of-thought."
+    ]
+  }
+]
