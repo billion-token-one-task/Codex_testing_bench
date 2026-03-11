@@ -7,8 +7,8 @@ use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance,
-    attempt_artifact_paths, default_swebench_preset_path, load_study_preset, preferred_python, read_json,
-    write_json_pretty,
+    attempt_artifact_paths, default_swebench_preset_path, ensure_absolute_dir, load_study_preset,
+    preferred_python, read_json, write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::render_run_evidence;
@@ -34,17 +34,19 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let (stage_name, sample_size) =
         preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
 
-    fs::create_dir_all(&args.campaign_root)?;
+    let campaign_root = ensure_absolute_dir(&args.campaign_root)?;
     let campaign_id = format!(
         "swebench-study-{}-{}",
         Utc::now().format("%Y-%m-%dT%H-%M-%SZ"),
         short_hash(&format!("{}:{sample_size}", args.seed))
     );
-    let campaign_dir = args.campaign_root.join(&campaign_id);
+    let campaign_dir = campaign_root.join(&campaign_id);
     fs::create_dir_all(campaign_dir.join("reports"))?;
     fs::create_dir_all(campaign_dir.join("runs"))?;
     let repo_cache_root = args
         .repo_cache_root
+        .map(|path| ensure_absolute_dir(&path))
+        .transpose()?
         .unwrap_or_else(|| default_shared_repo_cache_root(&repo_root));
     fs::create_dir_all(&repo_cache_root)?;
 
@@ -412,7 +414,9 @@ async fn ensure_repo_commit_cached(
         .await?;
     }
 
-    if !has_commit(&repo_cache, &record.base_commit).await? {
+    let bench_ref = format!("refs/codex-bench/{}", record.base_commit);
+    let has_commit = has_commit(&repo_cache, &record.base_commit).await?;
+    if !has_commit {
         run_command(
             Command::new("git")
                 .arg("-C")
@@ -436,8 +440,18 @@ async fn ensure_repo_commit_cached(
                 .arg("-C")
                 .arg(&repo_cache)
                 .arg("update-ref")
-                .arg(format!("refs/codex-bench/{}", record.base_commit))
+                .arg(&bench_ref)
                 .arg("FETCH_HEAD"),
+        )
+        .await?;
+    } else if !has_ref(&repo_cache, &bench_ref).await? {
+        run_command(
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo_cache)
+                .arg("update-ref")
+                .arg(&bench_ref)
+                .arg(&record.base_commit),
         )
         .await?;
     }
@@ -451,6 +465,19 @@ async fn has_commit(repo_cache: &Path, commit: &str) -> Result<bool> {
         .arg("cat-file")
         .arg("-e")
         .arg(format!("{commit}^{{commit}}"))
+        .output()
+        .await?;
+    Ok(output.status.success())
+}
+
+async fn has_ref(repo_cache: &Path, git_ref: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo_cache)
+        .arg("show-ref")
+        .arg("--verify")
+        .arg("--quiet")
+        .arg(git_ref)
         .output()
         .await?;
     Ok(output.status.success())

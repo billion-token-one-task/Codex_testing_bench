@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use tokio::process::Command;
@@ -56,4 +56,18 @@ pub async fn git_commit_all(workspace_dir: &Path, message: &str) -> Result<()> {
     )
     .await?;
     Ok(())
+}
+
+pub fn absolute_path(path: &Path) -> Result<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
+    } else {
+        Ok(std::env::current_dir()?.join(path))
+    }
+}
+
+pub fn ensure_absolute_dir(path: &Path) -> Result<PathBuf> {
+    let absolute = absolute_path(path)?;
+    fs::create_dir_all(&absolute)?;
+    Ok(absolute)
 }

@@ -1,0 +1,38 @@
+{
+  "schema_version": "codex-bench.v1",
+  "campaign_id": "swebench-study-2026-03-11T11-37-27Z-946959b3",
+  "created_at": "2026-03-11T11:37:27.918202+00:00",
+  "campaign_root": "../.artifacts/swebench-study-2026-03-11T11-37-27Z-946959b3",
+  "repo_cache_root": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../.local-cache/repos/swebench",
+  "benchmark_name": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "preset_name": "swebench-v1",
+  "preset_path": "../studies/task-presets/swebench-v1.json",
+  "stage_name": null,
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "model": "gpt-5.4",
+  "provider": "openai",
+  "seed": "local-cache-check",
+  "sample_size": 1,
+  "study_mode": "codex_live_observation",
+  "required_task_classes": [],
+  "preferred_task_classes": [],
+  "future_benchmarks": [],
+  "grounding_documents": [
+    "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md"
+  ],
+  "reference_documents": [
+    "https://deepwiki.com/openai/codex",
+    "https://openai.com/index/unlocking-the-codex-harness/"
+  ],
+  "selected_instances": [
+    {
+      "instance_id": "django__django-13028",
+      "repo": "django/django",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "../.artifacts/swebench-study-2026-03-11T11-37-27Z-946959b3/runs/django__django-13028"
+    }
+  ]
+}

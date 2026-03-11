@@ -7,7 +7,7 @@ use chrono::Utc;
 use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     CampaignManifest, CodexRunRequest, DatasetRecord, PrepareCampaignArgs, RunManifest,
-    SelectedInstance, attempt_artifact_paths, command_capture, git_commit_all,
+    SelectedInstance, attempt_artifact_paths, command_capture, ensure_absolute_dir, git_commit_all,
     init_git_workspace, preferred_python, read_json, reset_dir, write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
@@ -35,17 +35,19 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
     let preset = codex_bench_core::load_study_preset(&preset_path)?;
     let (stage_name, sample_size) = preset.resolve_stage(args.stage.as_deref(), args.sample_size)?;
 
-    fs::create_dir_all(&args.campaign_root)?;
+    let campaign_root = ensure_absolute_dir(&args.campaign_root)?;
     let campaign_id = format!(
         "newtonbench-study-{}-{}",
         Utc::now().format("%Y-%m-%dT%H-%M-%SZ"),
         short_hash(&format!("{}:{sample_size}", args.seed))
     );
-    let campaign_dir = args.campaign_root.join(&campaign_id);
+    let campaign_dir = campaign_root.join(&campaign_id);
     fs::create_dir_all(campaign_dir.join("reports"))?;
     fs::create_dir_all(campaign_dir.join("runs"))?;
     let repo_cache_root = args
         .repo_cache_root
+        .map(|path| ensure_absolute_dir(&path))
+        .transpose()?
         .unwrap_or_else(|| campaign_dir.join("_repo-cache"));
     fs::create_dir_all(&repo_cache_root)?;
 

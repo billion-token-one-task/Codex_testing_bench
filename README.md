@@ -9,7 +9,7 @@ The repo is organized so the research bench is easy to read on GitHub:
 - [`/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks`](/Users/kevinlin/Downloads/CodexPlusClaw/vendor-benchmarks) contains vendored external benchmark sources such as NewtonBench and NL2RepoBench.
 - [`/Users/kevinlin/Downloads/CodexPlusClaw/docs`](/Users/kevinlin/Downloads/CodexPlusClaw/docs) contains architecture, reference, and probe documentation.
 - [`/Users/kevinlin/Downloads/CodexPlusClaw/studies`](/Users/kevinlin/Downloads/CodexPlusClaw/studies) contains reusable claim catalogs and task presets.
-- [`/Users/kevinlin/Downloads/CodexPlusClaw/.artifacts`](/Users/kevinlin/Downloads/CodexPlusClaw/.artifacts) is the local-only output root for campaigns and run evidence.
+- [`/Users/kevinlin/Downloads/CodexPlusClaw/artifacts`](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts) is the publishable output root for campaign reports and curated run evidence.
 
 ## What This Repo Studies
 
@@ -74,20 +74,20 @@ From [`/Users/kevinlin/Downloads/CodexPlusClaw/bench`](/Users/kevinlin/Downloads
 
 ```bash
 cargo run -p codex-bench-cli -- bootstrap-local \
-  --campaign-dir ../.artifacts/<campaign-id>
+  --campaign-dir ../artifacts/<campaign-id>
 
 cargo run -p codex-bench-cli -- prepare \
-  --campaign-root ../.artifacts \
+  --campaign-root ../artifacts \
   --preset-path ../studies/task-presets/swebench-v1.json \
   --stage architecture-validation \
   --seed codex-study
 
-cargo run -p codex-bench-cli -- run ../.artifacts/<campaign-id>
+cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 
-cargo run -p codex-bench-cli -- grade ../.artifacts/<campaign-id> \
+cargo run -p codex-bench-cli -- grade ../artifacts/<campaign-id> \
   --command 'python -m swebench.harness.run_evaluation --predictions_path {predictions}'
 
-cargo run -p codex-bench-cli -- report ../.artifacts/<campaign-id>
+cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 
 cargo run -p codex-bench-cli -- list-presets
 ```
@@ -101,20 +101,20 @@ cargo run -p codex-bench-cli -- list-presets
 If you already have a prepared campaign and only want the git object cache warmed:
 
 ```bash
-cargo run -p codex-bench-cli -- warm-cache ../.artifacts/<campaign-id>
+cargo run -p codex-bench-cli -- warm-cache ../artifacts/<campaign-id>
 ```
 
 For the new benchmark families:
 
 ```bash
 cargo run -p codex-bench-cli -- prepare \
-  --campaign-root ../.artifacts \
+  --campaign-root ../artifacts \
   --preset-path ../studies/task-presets/nl2repo-v0.json \
   --stage architecture-validation \
   --seed codex-study
 
 cargo run -p codex-bench-cli -- prepare \
-  --campaign-root ../.artifacts \
+  --campaign-root ../artifacts \
   --preset-path ../studies/task-presets/newtonbench-v0.json \
   --stage architecture-validation \
   --seed codex-study

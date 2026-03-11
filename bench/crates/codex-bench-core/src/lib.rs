@@ -19,4 +19,4 @@ pub use traits::{
     BenchmarkAdapter, ClaimCatalog, ProbeDeriver, ReportRenderer, RuntimeAdapter, TaskClassifier,
 };
 pub use types::*;
-pub use workspace::{git_commit_all, init_git_workspace, reset_dir};
+pub use workspace::{absolute_path, ensure_absolute_dir, git_commit_all, init_git_workspace, reset_dir};

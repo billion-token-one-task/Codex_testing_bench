@@ -28,11 +28,20 @@ pub struct CodexRuntimeCapture {
 }
 
 pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapture> {
+    let worktree_dir = request
+        .worktree_dir
+        .canonicalize()
+        .unwrap_or_else(|_| request.worktree_dir.clone());
+    let attempt_dir = request
+        .attempt_dir
+        .canonicalize()
+        .unwrap_or_else(|_| request.attempt_dir.clone());
+
     let config = Arc::new(
         ConfigBuilder::default()
             .cli_overrides(Vec::<(String, TomlValue)>::new())
             .harness_overrides(ConfigOverrides {
-                cwd: Some(request.worktree_dir.clone()),
+                cwd: Some(worktree_dir.clone()),
                 model: Some(request.model.clone()),
                 model_provider: Some(request.provider.clone()),
                 approval_policy: Some(AskForApproval::Never),
@@ -72,7 +81,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
         attempt: 1,
         study_mode: "codex_research_bench".to_string(),
         task_class: Some(request.task_class.clone()),
-        artifact_root: request.attempt_dir.clone(),
+        artifact_root: attempt_dir.clone(),
     };
 
     let thread_start: ThreadStartResponse = client
@@ -81,7 +90,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
             params: ThreadStartParams {
                 model: Some(request.model.clone()),
                 model_provider: Some(request.provider.clone()),
-                cwd: Some(request.worktree_dir.display().to_string()),
+                cwd: Some(worktree_dir.display().to_string()),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox: Some(SandboxMode::WorkspaceWrite),
                 experimental_raw_events: true,
@@ -101,7 +110,7 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
                     text: request.prompt.clone(),
                     text_elements: Vec::new(),
                 }],
-                cwd: Some(request.worktree_dir.clone()),
+                cwd: Some(worktree_dir.clone()),
                 model: Some(request.model.clone()),
                 approval_policy: Some(AppServerAskForApproval::Never),
                 sandbox_policy: Some(SandboxPolicy::WorkspaceWrite {
@@ -117,11 +126,11 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
         .await?;
 
     let mut raw_agent_file =
-        tokio::fs::File::create(request.attempt_dir.join("raw-agent-events.jsonl")).await?;
+        tokio::fs::File::create(attempt_dir.join("raw-agent-events.jsonl")).await?;
     let mut raw_diag_file =
-        tokio::fs::File::create(request.attempt_dir.join("raw-diagnostics.jsonl")).await?;
+        tokio::fs::File::create(attempt_dir.join("raw-diagnostics.jsonl")).await?;
     let mut probe_file =
-        tokio::fs::File::create(request.attempt_dir.join("codex-probe-events.jsonl")).await?;
+        tokio::fs::File::create(attempt_dir.join("codex-probe-events.jsonl")).await?;
 
     let mut decoded_events = Vec::<Event>::new();
     let mut probe_events = Vec::<StudyProbeEvent>::new();

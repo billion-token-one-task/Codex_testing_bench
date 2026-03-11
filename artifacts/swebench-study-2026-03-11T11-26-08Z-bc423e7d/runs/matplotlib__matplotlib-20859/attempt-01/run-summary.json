@@ -1,0 +1,67 @@
+{
+  "instance_id": "matplotlib__matplotlib-20859",
+  "repo": "matplotlib/matplotlib",
+  "task_class": "bootstrap-heavy",
+  "status": "completed",
+  "grading_status": "pending",
+  "raw_event_count": 2926,
+  "raw_probe_count": 7,
+  "raw_diagnostic_count": 1783,
+  "token_snapshot_count": 57,
+  "command_count": 132,
+  "tool_count": 2,
+  "patch_event_count": 0,
+  "patch_file_count": 2,
+  "patch_sha256": "564151ea96507e99359cc48bf97f76bd3a0dac63cd00e5f6d5b5c027618995bf",
+  "total_input_tokens": 2761039,
+  "total_output_tokens": 21191,
+  "total_cache_read_tokens": 2710528,
+  "total_tokens": 2782230,
+  "model_context_window": 258400,
+  "anomaly_count": 0,
+  "event_type_counts": {
+    "exec_command_begin": 66,
+    "exec_command_end": 66,
+    "mcp_tool_call_begin": 1,
+    "mcp_tool_call_end": 1,
+    "other": 2726,
+    "study_probe": 7,
+    "token_count": 57,
+    "turn_complete": 1,
+    "turn_started": 1
+  },
+  "probe_code_counts": {
+    "session_configured": 1,
+    "turn_context_built": 3,
+    "turn_context_ready": 3
+  },
+  "probe_subsystem_counts": {
+    "ConfigFreeze": 1,
+    "InstructionChannel": 3,
+    "TurnLifecycle": 3
+  },
+  "diagnostic_type_counts": {
+    "server_notification": 1783
+  },
+  "artifact_inventory": {
+    "anomalies": true,
+    "claimEvidence": true,
+    "codexProbeEvents": true,
+    "commandEvents": true,
+    "environmentPlan": true,
+    "gradeEvents": false,
+    "lifecycleEvents": true,
+    "patch": true,
+    "patchEvents": true,
+    "probeEvents": true,
+    "probeSummary": true,
+    "prompt": true,
+    "rawAgentEvents": true,
+    "rawDiagnostics": true,
+    "replay": false,
+    "runEvidence": false,
+    "runSummary": false,
+    "tokenSnapshots": true,
+    "toolEvents": true
+  }
+}

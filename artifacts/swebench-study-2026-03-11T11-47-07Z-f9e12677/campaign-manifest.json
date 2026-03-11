@@ -1,0 +1,92 @@
+{
+  "schema_version": "codex-bench.v1",
+  "campaign_id": "swebench-study-2026-03-11T11-47-07Z-f9e12677",
+  "created_at": "2026-03-11T11:47:08.097012+00:00",
+  "campaign_root": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677",
+  "repo_cache_root": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/crates/codex-bench-swebench/../../../.local-cache/repos/swebench",
+  "benchmark_name": "SWE-bench Verified",
+  "benchmark_adapter": "swebench",
+  "preset_name": "swebench-v1",
+  "preset_path": "/Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets/swebench-v1.json",
+  "stage_name": null,
+  "probe_profile": "codex-deep-probe.v1",
+  "report_profile": "evidence-dossier.v1",
+  "model": "gpt-5.4",
+  "provider": "openai",
+  "seed": "run10-abs",
+  "sample_size": 10,
+  "study_mode": "codex_live_observation",
+  "required_task_classes": [],
+  "preferred_task_classes": [],
+  "future_benchmarks": [],
+  "grounding_documents": [
+    "/Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx",
+    "/Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md"
+  ],
+  "reference_documents": [
+    "https://deepwiki.com/openai/codex",
+    "https://openai.com/index/unlocking-the-codex-harness/"
+  ],
+  "selected_instances": [
+    {
+      "instance_id": "astropy__astropy-13453",
+      "repo": "astropy/astropy",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/astropy__astropy-13453"
+    },
+    {
+      "instance_id": "django__django-14053",
+      "repo": "django/django",
+      "task_class": "compaction-likely",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/django__django-14053"
+    },
+    {
+      "instance_id": "django__django-11790",
+      "repo": "django/django",
+      "task_class": "patch-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/django__django-11790"
+    },
+    {
+      "instance_id": "django__django-13820",
+      "repo": "django/django",
+      "task_class": "search-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/django__django-13820"
+    },
+    {
+      "instance_id": "django__django-14011",
+      "repo": "django/django",
+      "task_class": "verification-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/django__django-14011"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10449",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/sphinx-doc__sphinx-10449"
+    },
+    {
+      "instance_id": "django__django-11740",
+      "repo": "django/django",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/django__django-11740"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8120",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/sphinx-doc__sphinx-8120"
+    },
+    {
+      "instance_id": "pydata__xarray-6721",
+      "repo": "pydata/xarray",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/pydata__xarray-6721"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9281",
+      "repo": "sphinx-doc/sphinx",
+      "task_class": "bootstrap-heavy",
+      "run_dir": "/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-11T11-47-07Z-f9e12677/runs/sphinx-doc__sphinx-9281"
+    }
+  ]
+}
