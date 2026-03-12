@@ -7,7 +7,10 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::Value;
 
-use codex_bench_core::{CampaignManifest, ProbeSummary, RunManifest, RunSummary, artifact_inventory_for_attempt, read_json};
+use codex_bench_core::{
+    CampaignManifest, ProbeSummary, RunManifest, RunSummary, artifact_inventory_for_attempt,
+    artifact_role_map_for_attempt, read_json,
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ArtifactDescriptor {
@@ -15,6 +18,14 @@ pub struct ArtifactDescriptor {
     pub path: String,
     pub kind: String,
     pub exists: bool,
+    pub role: Option<String>,
+    pub scope: String,
+    pub format: String,
+    pub size_bytes: Option<u64>,
+    pub updated_at: Option<String>,
+    pub line_count: Option<usize>,
+    pub row_count: Option<usize>,
+    pub previewable: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -128,28 +139,82 @@ fn sorted_child_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-fn artifact_descriptors(dir: &Path) -> Vec<ArtifactDescriptor> {
+fn detect_artifact_format(path: &Path) -> String {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("file")
+        .to_string()
+}
+
+fn artifact_stats(path: &Path) -> (Option<u64>, Option<String>, Option<usize>, Option<usize>) {
+    let metadata = match fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return (None, None, None, None),
+    };
+    let size_bytes = Some(metadata.len());
+    let updated_at = metadata
+        .modified()
+        .ok()
+        .map(|time| DateTime::<Utc>::from(time).to_rfc3339());
+    let format = detect_artifact_format(path);
+    if metadata.len() > 1_500_000 {
+        return (size_bytes, updated_at, None, None);
+    }
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(_) => return (size_bytes, updated_at, None, None),
+    };
+    let line_count = Some(raw.lines().count());
+    let row_count = match format.as_str() {
+        "jsonl" => line_count,
+        "csv" => line_count.map(|count| count.saturating_sub(1)),
+        _ => None,
+    };
+    (size_bytes, updated_at, line_count, row_count)
+}
+
+fn is_previewable_format(format: &str) -> bool {
+    matches!(format, "txt" | "md" | "json" | "jsonl" | "csv" | "diff" | "patch" | "log")
+}
+
+fn build_artifact_descriptor(path: &Path, role: Option<String>, scope: &str) -> ArtifactDescriptor {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("artifact")
+        .to_string();
+    let kind = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("file")
+        .to_string();
+    let format = detect_artifact_format(path);
+    let (size_bytes, updated_at, line_count, row_count) = if path.exists() {
+        artifact_stats(path)
+    } else {
+        (None, None, None, None)
+    };
+    ArtifactDescriptor {
+        name,
+        path: path.display().to_string(),
+        kind,
+        exists: path.exists(),
+        role,
+        scope: scope.to_string(),
+        format: format.clone(),
+        size_bytes,
+        updated_at,
+        line_count,
+        row_count,
+        previewable: is_previewable_format(&format),
+    }
+}
+
+fn artifact_descriptors(dir: &Path, scope: &str, role: Option<&str>) -> Vec<ArtifactDescriptor> {
     sorted_child_files(dir)
         .into_iter()
         .filter(|path| path.is_file())
-        .map(|path| {
-            let name = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("artifact")
-                .to_string();
-            let kind = path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .unwrap_or("file")
-                .to_string();
-            ArtifactDescriptor {
-                name,
-                path: path.display().to_string(),
-                kind,
-                exists: path.exists(),
-            }
-        })
+        .map(|path| build_artifact_descriptor(&path, role.map(str::to_string), scope))
         .collect()
 }
 
@@ -169,7 +234,7 @@ fn latest_attempt_for_run(run_dir: &Path) -> Option<AttemptIndex> {
         .collect::<Vec<_>>();
     attempts.sort_by_key(|(attempt, _)| *attempt);
     let (attempt, dir) = attempts.pop()?;
-    let artifact_roles = codex_bench_core::artifact_role_map_for_attempt();
+    let artifact_roles = artifact_role_map_for_attempt();
     let inventory = artifact_inventory_for_attempt(&dir);
     let mut artifacts = Vec::new();
     for (artifact_name, exists) in inventory {
@@ -203,15 +268,14 @@ fn latest_attempt_for_run(run_dir: &Path) -> Option<AttemptIndex> {
             "replay" => "replay.json",
             _ => return None,
         });
-        artifacts.push(ArtifactDescriptor {
-            name: artifact_name.clone(),
-            path: path.display().to_string(),
-            kind: artifact_roles
-                .get(&artifact_name)
-                .cloned()
-                .unwrap_or_else(|| "artifact".to_string()),
-            exists,
-        });
+        let mut descriptor = build_artifact_descriptor(
+            &path,
+            artifact_roles.get(&artifact_name).cloned(),
+            "attempt_artifact",
+        );
+        descriptor.name = artifact_name.clone();
+        descriptor.exists = exists;
+        artifacts.push(descriptor);
     }
     Some(AttemptIndex {
         attempt,
@@ -347,8 +411,8 @@ pub fn scan_campaign_detail(_repo_root: &Path, campaign_dir: &Path) -> Result<Ca
     }
     runs.sort_by(|a, b| a.run_id.cmp(&b.run_id));
 
-    let reports = artifact_descriptors(&campaign_dir.join("reports"));
-    let datasets = artifact_descriptors(&campaign_dir.join("datasets"));
+    let reports = artifact_descriptors(&campaign_dir.join("reports"), "campaign_report", Some("campaign_report"));
+    let datasets = artifact_descriptors(&campaign_dir.join("datasets"), "campaign_dataset", Some("campaign_dataset"));
     Ok(CampaignDetail {
         manifest,
         reports,
@@ -481,4 +545,23 @@ pub fn read_csv_file(path: &Path) -> Result<Vec<BTreeMap<String, String>>> {
 
 pub fn read_jsonl_file(path: &Path) -> Result<Vec<Value>> {
     codex_bench_core::read_jsonl_values(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn build_artifact_descriptor_includes_role_and_stats() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("report.txt");
+        fs::write(&path, "line1\nline2\n").unwrap();
+        let descriptor = build_artifact_descriptor(&path, Some("campaign_report".into()), "campaign_report");
+        assert_eq!(descriptor.role.as_deref(), Some("campaign_report"));
+        assert_eq!(descriptor.scope, "campaign_report");
+        assert_eq!(descriptor.format, "txt");
+        assert_eq!(descriptor.line_count, Some(2));
+        assert!(descriptor.previewable);
+    }
 }

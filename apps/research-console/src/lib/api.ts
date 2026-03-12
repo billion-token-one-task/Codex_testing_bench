@@ -2,9 +2,14 @@ import type {
   ArtifactFileResponse,
   ArtifactTailResponse,
   CampaignDetail,
+  CampaignOperationalSummary,
   CampaignListItem,
+  LiveOverviewResponse,
   ManagedProcessSnapshot,
+  ProcessDetail,
+  LiveRunSnapshot,
   RunDetailResponse,
+  RunOperationalSummary,
   RunIndexEntry,
   WorkspaceIndex,
 } from "./types";
@@ -26,16 +31,30 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   workspaceIndex: () => request<WorkspaceIndex>("/api/workspace/index"),
+  liveOverview: () => request<LiveOverviewResponse>("/api/live/overview"),
   campaigns: () => request<CampaignListItem[]>("/api/campaigns"),
   campaign: (campaignId: string) =>
     request<CampaignDetail>(`/api/campaigns/${campaignId}`),
+  campaignOperationalSummary: (campaignId: string) =>
+    request<CampaignOperationalSummary>(`/api/campaigns/${campaignId}/operational-summary`),
   campaignReports: (campaignId: string) =>
     request(`/api/campaigns/${campaignId}/reports`),
   campaignDatasets: (campaignId: string) =>
     request(`/api/campaigns/${campaignId}/datasets`),
   run: (runId: string) => request<RunIndexEntry>(`/api/runs/${runId}`),
+  runStreamUrl: (runId: string, eventTypes?: string[]) => {
+    const params = new URLSearchParams();
+    if (eventTypes?.length) {
+      params.set("event_types", eventTypes.join(","));
+    }
+    return `/api/runs/${runId}/stream${params.toString() ? `?${params.toString()}` : ""}`;
+  },
+  runOperationalSummary: (runId: string) => request<RunOperationalSummary>(`/api/runs/${runId}/operational-summary`),
   runDetail: (runId: string) => request<RunDetailResponse>(`/api/runs/${runId}/detail`),
+  liveRun: (runId: string) => request<LiveRunSnapshot>(`/api/live/runs/${runId}`),
   processes: () => request<ManagedProcessSnapshot[]>("/api/processes"),
+  processDetail: (processId: string) => request<ProcessDetail>(`/api/processes/${processId}`),
+  liveRuns: () => request<LiveRunSnapshot[]>("/api/live/runs"),
   artifactFile: (path: string, format?: string) => {
     const params = new URLSearchParams({ path });
     if (format) params.set("format", format);

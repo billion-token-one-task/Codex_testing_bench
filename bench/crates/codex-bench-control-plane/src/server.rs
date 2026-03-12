@@ -28,6 +28,8 @@ pub async fn run_control_plane(config: ControlPlaneConfig) -> Result<()> {
         repo_root: repo_root.clone(),
         processes: ProcessRegistry::new(events.clone()),
         events: events.clone(),
+        live_runs: std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::BTreeMap::new())),
+        workspace_cache: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
     };
     tokio::spawn(poll_workspace(state.clone()));
 

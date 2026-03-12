@@ -13,9 +13,11 @@ export function PageIntro({
 }) {
   return (
     <section className="page-intro">
+      {/* Crosshatch texture decoration */}
+      <div className="page-intro-texture" aria-hidden="true" />
       <div className="page-intro-copy">
         <div className="page-kicker">{kicker}</div>
-        <h1 className="page-title">{title}</h1>
+        <h2 className="page-title">{title}</h2>
         <p className="page-description">{description}</p>
       </div>
       {actions ? <div className="page-intro-actions">{actions}</div> : null}

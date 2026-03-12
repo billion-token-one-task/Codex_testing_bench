@@ -1,5 +1,6 @@
 pub mod api;
 pub mod index;
+pub mod live;
 pub mod processes;
 pub mod server;
 

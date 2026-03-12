@@ -1,9 +1,11 @@
 export function DataTable({
   rows,
   maxRows = 80,
+  compact = false,
 }: {
   rows: Array<Record<string, unknown>>;
   maxRows?: number;
+  compact?: boolean;
 }) {
   if (!rows.length) {
     return <div className="empty-box">没有可展示的数据行。</div>;
@@ -11,7 +13,7 @@ export function DataTable({
   const headers = Object.keys(rows[0]);
   return (
     <div className="table-wrap">
-      <table className="ledger-table">
+      <table className={`ledger-table${compact ? " ledger-table-compact" : ""}`}>
         <thead>
           <tr>
             {headers.map((header) => (
@@ -36,7 +38,8 @@ export function DataTable({
 function formatCell(value: unknown) {
   if (value == null) return "—";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
+    const next = String(value);
+    return next.length > 180 ? `${next.slice(0, 177)}...` : next;
   }
   return JSON.stringify(value);
 }

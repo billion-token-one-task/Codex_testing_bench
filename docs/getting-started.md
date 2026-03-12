@@ -49,6 +49,19 @@ cargo run -p codex-bench-cli -- prepare \
 - 进入 `Run Detail` 看单题完整行为链
 - 浏览 `reports/*.md` 与 `datasets/*.csv`
 
+最近一版里，控制台额外强化了这些研究面：
+
+- `Live`
+  - focused run spotlight
+  - process dossier
+  - live message / tool / patch / mechanism rails
+- `Compare`
+  - 同题 2x2 signal board
+  - phrase / tool / mechanism delta surface
+- `Run Detail`
+  - turn 级 token pressure strip
+  - bridge / verification / state externalization 强度条
+
 如果 preset 含有多 cohort 定义，那么这里会一次性展开出多个 `model × personality` 运行组；同一个 `instance_id` 会在不同 cohort 下形成配对样本。
 
 ### 2. 预热本地资源
@@ -104,6 +117,17 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 - `Artifacts` 证据浏览页
 - `Research` 研究摘要页
 - `Run Detail` 单题战情页
+
+而且当前已经支持：
+
+- live run snapshot
+- 最新 `message / tool / patch / mechanism` rail
+- 选中活跃 run 的 focused spotlight
+  - 直接看该 run 的 live message / tool / patch / mechanism
+  - 直接看 `attempt-log.txt` tail
+  - 直接看 operational warnings 与 artifact/event readiness
+- campaign 级 `bootstrap-local / run / grade / report` 快捷动作
+- `campaign / run` 双层 artifact 档案浏览
 
 重要的是：这些 `datasets/*.csv` 现在不再只是简单 pass-through，而是会自动包含：
 

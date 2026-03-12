@@ -14,5 +14,10 @@ export function StatusBadge({
     | "anomaly";
   children: ReactNode;
 }) {
-  return <span className={`status-badge status-${tone}`}>{children}</span>;
+  return (
+    <span className={`status-badge status-${tone}`}>
+      <span className="status-dot" aria-hidden="true" />
+      {children}
+    </span>
+  );
 }

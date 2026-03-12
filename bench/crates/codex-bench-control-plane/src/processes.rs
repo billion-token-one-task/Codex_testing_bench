@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -20,11 +20,30 @@ pub struct ManagedProcessSnapshot {
     pub started_at: String,
     pub exited_at: Option<String>,
     pub exit_code: Option<i32>,
+    pub stdout_line_count: usize,
+    pub stderr_line_count: usize,
+    pub total_output_line_count: usize,
+    pub last_output_at: Option<String>,
+    pub latest_line_preview: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ManagedProcessOutputLine {
+    pub stream: String,
+    pub line: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ManagedProcessDetail {
+    pub snapshot: ManagedProcessSnapshot,
+    pub recent_output: Vec<ManagedProcessOutputLine>,
 }
 
 pub struct ManagedProcess {
     pub snapshot: ManagedProcessSnapshot,
     pub child: Arc<RwLock<Child>>,
+    pub recent_output: VecDeque<ManagedProcessOutputLine>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -55,6 +74,15 @@ impl ProcessRegistry {
             .values()
             .map(|process| process.snapshot.clone())
             .collect()
+    }
+
+    pub async fn detail(&self, process_id: &str) -> Result<ManagedProcessDetail> {
+        let registry = self.inner.read().await;
+        let process = registry.get(process_id).context("managed process not found")?;
+        Ok(ManagedProcessDetail {
+            snapshot: process.snapshot.clone(),
+            recent_output: process.recent_output.iter().cloned().collect(),
+        })
     }
 
     pub async fn stop(&self, process_id: &str) -> Result<()> {
@@ -95,6 +123,11 @@ impl ProcessRegistry {
             started_at: Utc::now().to_rfc3339(),
             exited_at: None,
             exit_code: None,
+            stdout_line_count: 0,
+            stderr_line_count: 0,
+            total_output_line_count: 0,
+            last_output_at: None,
+            latest_line_preview: None,
         };
         let child = Arc::new(RwLock::new(child));
         self.inner.write().await.insert(
@@ -102,6 +135,7 @@ impl ProcessRegistry {
             ManagedProcess {
                 snapshot: snapshot.clone(),
                 child: child.clone(),
+                recent_output: VecDeque::new(),
             },
         );
         let _ = self.events.send(UiEvent {
@@ -112,16 +146,35 @@ impl ProcessRegistry {
         if let Some(stdout) = stdout {
             let events = self.events.clone();
             let process_id = process_id.clone();
+            let registry = self.inner.clone();
             tokio::spawn(async move {
                 let mut lines = BufReader::new(stdout).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
+                    let timestamp = Utc::now().to_rfc3339();
+                    {
+                        let mut registry = registry.write().await;
+                        if let Some(process) = registry.get_mut(&process_id) {
+                            process.snapshot.stdout_line_count += 1;
+                            process.snapshot.total_output_line_count += 1;
+                            process.snapshot.last_output_at = Some(timestamp.clone());
+                            process.snapshot.latest_line_preview = Some(trim_preview(&line));
+                            process.recent_output.push_back(ManagedProcessOutputLine {
+                                stream: "stdout".to_string(),
+                                line: line.clone(),
+                                timestamp: timestamp.clone(),
+                            });
+                            while process.recent_output.len() > 240 {
+                                process.recent_output.pop_front();
+                            }
+                        }
+                    }
                     let _ = events.send(UiEvent {
                         event_type: "process.output".to_string(),
                         payload: serde_json::json!({
                             "processId": process_id,
                             "stream": "stdout",
                             "line": line,
-                            "timestamp": Utc::now().to_rfc3339(),
+                            "timestamp": timestamp,
                         }),
                     });
                 }
@@ -131,16 +184,35 @@ impl ProcessRegistry {
         if let Some(stderr) = stderr {
             let events = self.events.clone();
             let process_id = process_id.clone();
+            let registry = self.inner.clone();
             tokio::spawn(async move {
                 let mut lines = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
+                    let timestamp = Utc::now().to_rfc3339();
+                    {
+                        let mut registry = registry.write().await;
+                        if let Some(process) = registry.get_mut(&process_id) {
+                            process.snapshot.stderr_line_count += 1;
+                            process.snapshot.total_output_line_count += 1;
+                            process.snapshot.last_output_at = Some(timestamp.clone());
+                            process.snapshot.latest_line_preview = Some(trim_preview(&line));
+                            process.recent_output.push_back(ManagedProcessOutputLine {
+                                stream: "stderr".to_string(),
+                                line: line.clone(),
+                                timestamp: timestamp.clone(),
+                            });
+                            while process.recent_output.len() > 240 {
+                                process.recent_output.pop_front();
+                            }
+                        }
+                    }
                     let _ = events.send(UiEvent {
                         event_type: "process.output".to_string(),
                         payload: serde_json::json!({
                             "processId": process_id,
                             "stream": "stderr",
                             "line": line,
-                            "timestamp": Utc::now().to_rfc3339(),
+                            "timestamp": timestamp,
                         }),
                     });
                 }
@@ -185,4 +257,13 @@ fn bench_cli_command(repo_root: &Path, args: &[String]) -> (String, Vec<String>)
             .chain(args.iter().cloned())
             .collect(),
     )
+}
+
+fn trim_preview(value: &str) -> String {
+    const MAX: usize = 180;
+    if value.chars().count() <= MAX {
+        return value.to_string();
+    }
+    let truncated = value.chars().take(MAX - 3).collect::<String>();
+    format!("{truncated}...")
 }
