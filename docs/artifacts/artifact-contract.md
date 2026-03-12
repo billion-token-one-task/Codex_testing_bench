@@ -58,6 +58,13 @@
 - 哪些 claim 在研究范围内
 - 汇总后的证据是什么样子
 
+研究控制台当前会直接消费这些 campaign 级文件：
+
+- `reports/*.md`
+- `reports/report.txt`
+- `datasets/*.csv`
+- `campaign-manifest.json`
+
 ## 单次运行 / 单次尝试产物
 
 期望存在的 attempt 级文件：
@@ -83,6 +90,15 @@
 - `patch.diff`
 - `run-summary.json`
 - `probe-events.jsonl`
+
+研究控制台当前直接可视化的重点文件包括：
+
+- `message-metrics.jsonl`
+- `tool-events.jsonl`
+- `patch-chain.jsonl`
+- `personality-events.jsonl`
+- `skill-mechanism.jsonl`
+- `verbosity-tool-coupling.jsonl`
 - `probe-summary.json`
 - `claim-evidence.json`
 - `run-evidence.txt`

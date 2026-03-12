@@ -1,6 +1,8 @@
 .artifacts
 bench/target/
 .local-cache/
+apps/research-console/node_modules/
+apps/research-console/dist/
 vendor-benchmarks/swebench-verified/
 
 # Publishable benchmark results live here; keep bulky runtime byproducts local.

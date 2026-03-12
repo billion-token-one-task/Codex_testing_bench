@@ -38,6 +38,17 @@ cargo run -p codex-bench-cli -- prepare \
 - `experiment-lock.json`
 - `benchmark-research-profile.json`
 
+如果你偏向图形界面工作流，也可以在 prepare 后直接启动：
+
+- [研究控制台](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console.md)
+
+研究控制台现在不只是看列表，而是完整本地控制面：
+
+- 发起 `prepare / bootstrap-local / warm-cache / run / grade / report / replay`
+- 监视活跃 run 的 stdout / stderr
+- 进入 `Run Detail` 看单题完整行为链
+- 浏览 `reports/*.md` 与 `datasets/*.csv`
+
 如果 preset 含有多 cohort 定义，那么这里会一次性展开出多个 `model × personality` 运行组；同一个 `instance_id` 会在不同 cohort 下形成配对样本。
 
 ### 2. 预热本地资源
@@ -81,6 +92,18 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 - `reports/skill-mechanism-analysis.md`
 - `reports/instruction-stratification-analysis.md`
 - `datasets/*.csv`
+
+如果此时研究控制台正在运行，它会自动看到新的 reports、datasets 和 run 状态变化。
+
+同时控制台会直接把这些派生产物组织成：
+
+- `Campaigns` 总览
+- `Live` 实时控制台
+- `Runs` 巡检表
+- `Compare` cohort 对比页
+- `Artifacts` 证据浏览页
+- `Research` 研究摘要页
+- `Run Detail` 单题战情页
 
 重要的是：这些 `datasets/*.csv` 现在不再只是简单 pass-through，而是会自动包含：
 
@@ -190,3 +213,15 @@ cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
 
 - 重新运行一次 `report`
 - 当前 reporting 路径支持在条件满足时，从旧的 raw artifact 回填新的派生产物
+
+如果你想用图形控制台查看：
+
+- 当前 run 在做什么
+- stdout / stderr
+- run 级 artifact
+- Markdown 报告
+- CSV 数据集
+
+则看：
+
+- [docs/research/research-console.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console.md)
