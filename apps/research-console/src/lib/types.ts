@@ -197,6 +197,8 @@ export type LiveOverviewResponse = {
   active_campaign?: CampaignListItem | null;
   active_campaign_summary?: CampaignOperationalSummary | null;
   active_live_runs: LiveRunSnapshot[];
+  current_campaign_live_runs: LiveRunSnapshot[];
+  other_live_runs: LiveRunSnapshot[];
   hottest_live_runs: LiveRunSnapshot[];
   stalled_live_runs: LiveRunSnapshot[];
   running_processes: ManagedProcessSnapshot[];
@@ -206,6 +208,7 @@ export type LiveOverviewResponse = {
   latest_global_focus_samples: string[];
   latest_global_message_previews: string[];
   latest_global_warnings: string[];
+  operator_notices: string[];
 };
 
 export type WorkspaceIndex = {

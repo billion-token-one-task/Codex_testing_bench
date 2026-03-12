@@ -1447,11 +1447,13 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "filetime",
  "once_cell",
  "regex",
  "rust-stemmers",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "unicode-segmentation",
 ]

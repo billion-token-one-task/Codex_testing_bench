@@ -141,6 +141,10 @@ pub struct CampaignManifest {
     #[serde(default)]
     pub per_repo_prepare_parallelism: usize,
     #[serde(default)]
+    pub run_timeout_seconds: u64,
+    #[serde(default)]
+    pub idle_timeout_seconds: u64,
+    #[serde(default)]
     pub required_task_classes: Vec<String>,
     #[serde(default)]
     pub preferred_task_classes: Vec<String>,
@@ -211,11 +215,21 @@ pub struct RunManifest {
     pub worktree_dir: PathBuf,
     pub attempt: u32,
     pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_updated_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<String>,
     #[serde(default)]
     pub derivations_status: String,
     #[serde(default)]
     pub evidence_status: String,
     pub grading_status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_class: Option<String>,
     pub artifact_paths: BTreeMap<String, PathBuf>,
 }
 
@@ -501,6 +515,10 @@ pub struct CodexRunRequest {
     pub worktree_dir: PathBuf,
     pub attempt_dir: PathBuf,
     pub approval_never: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_timeout_seconds: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idle_timeout_seconds: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

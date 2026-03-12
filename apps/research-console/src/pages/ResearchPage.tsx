@@ -8,6 +8,7 @@ import { KeyValueGrid } from "../components/KeyValueGrid";
 import { MetricCard } from "../components/MetricCard";
 import { PageIntro } from "../components/PageIntro";
 import { Panel } from "../components/Panel";
+import { StateNotice } from "../components/StateNotice";
 import { api } from "../lib/api";
 import { formatCompact } from "../lib/format";
 import { useRecentEventTypes, useWorkspaceIndex } from "../lib/store";
@@ -84,6 +85,21 @@ export function ResearchPage() {
     }
     return counts;
   }, [mechanismEvents]);
+  const evidenceGapRows = useMemo(
+    () =>
+      [
+        ["claim rows", claimRows.length],
+        ["task rows", taskRows.length],
+        ["personality rows", personalityRows.length],
+        ["skill rows", skillRows.length],
+        ["mechanism events", mechanismEvents.length],
+      ].map(([label, count]) => ({
+        label,
+        count,
+        status: Number(count) > 0 ? "present" : "missing",
+      })),
+    [claimRows.length, taskRows.length, personalityRows.length, skillRows.length, mechanismEvents.length],
+  );
 
   const activeCampaign = useMemo(
     () => campaigns.find((campaign) => campaign.campaign_id === campaignId) ?? campaigns[0] ?? null,
@@ -143,7 +159,50 @@ export function ResearchPage() {
         <MetricCard label="Mechanism Rows" value={formatCompact(personalityRows.length + skillRows.length)} detail="personality + skill mechanism tables" />
       </div>
 
+      <div className="page-grid page-grid-2">
+        <Panel title="Research Surface Health" kicker="Do we have enough evidence to make disciplined claims?">
+          <KeyValueGrid
+            columns={4}
+            items={[
+              { label: "Campaign", value: activeCampaign?.campaign_id ?? "—", detail: activeCampaign?.experiment_name ?? "no active campaign" },
+              { label: "Claim Surface", value: claimRows.length, detail: claimRows.length ? "claim_evidence loaded" : "claim evidence missing", tone: claimRows.length ? "verify" : "anomaly" },
+              { label: "Task Surface", value: taskRows.length, detail: taskRows.length ? "task lens available" : "task lens missing", tone: taskRows.length ? "signal" : "pressure" },
+              { label: "Mechanism Surface", value: personalityRows.length + skillRows.length, detail: mechanismEvents.length ? `${mechanismEvents.length} live mechanism events` : "no live mechanism event", tone: mechanismEvents.length ? "pressure" : "neutral" },
+              { label: "Reports / Datasets", value: `${activeCampaign?.report_count ?? 0} / ${activeCampaign?.dataset_count ?? 0}`, detail: activeCampaign?.status ?? "—" },
+              { label: "Visible / Total", value: `${formatCompact(activeCampaign?.total_visible_output_tokens_est)} / ${formatCompact(activeCampaign?.total_tokens)}` },
+              { label: "Evidence Status Mix", value: Object.entries(evidenceStatus).map(([label, count]) => `${label}×${count}`).join(" · ") || "—" },
+              { label: "Method Refs", value: references.length, detail: activeReference.name },
+            ]}
+          />
+        </Panel>
+
+        <Panel title="Evidence Gap Ledger" kicker="What is still missing or weak in the current research surface">
+          <div className="focus-grid">
+            {evidenceGapRows.map((row) => (
+              <div key={row.label} className="focus-note">
+                <span className="metric-label">{row.label}</span>
+                <strong>{row.count}</strong>
+                <span className="mono-note">{row.status}</span>
+              </div>
+            ))}
+          </div>
+          <div className="panel-divider" />
+          <ul className="evidence-list">
+            <li>如果 claim rows 为空，当前页更像 methods hub，而不是 evidence board。</li>
+            <li>如果 mechanism rows 很低，要谨慎解释 personality / skill 结论，优先回到 observed artifacts。</li>
+            <li>如果 task rows 很低，不要把当前结论过度泛化成跨 task-class 结论。</li>
+          </ul>
+        </Panel>
+      </div>
+
       <Panel title="Research Navigation" kicker="Jump directly into the current evidence loop">
+        {!activeCampaign ? (
+          <StateNotice
+            title="研究导航尚未绑定到可用 campaign"
+            body="当前 workspace 里还没有能驱动研究页的 campaign / datasets；这页会在 run 自动产出 datasets 后显著充实。"
+            tone="loading"
+          />
+        ) : null}
         <div className="chip-row">
           {activeCampaign ? (
             <>
@@ -173,6 +232,13 @@ export function ResearchPage() {
       </Panel>
 
       <Panel title="Evidence Status Board" kicker="Current hypothesis / claim readout">
+        {!Object.keys(evidenceStatus).length ? (
+          <StateNotice
+            title="claim evidence 还没有载入"
+            body="Research 页需要 `claim_evidence.csv` 和相关 datasets；如果 benchmark 还没跑完，这里会先显示方法层框架。"
+            tone="info"
+          />
+        ) : null}
         <KeyValueGrid
           columns={5}
           items={Object.entries(evidenceStatus).slice(0, 10).map(([label, count]) => ({
@@ -185,7 +251,41 @@ export function ResearchPage() {
       </Panel>
 
       <div className="page-grid page-grid-2">
+        <Panel title="Hypothesis Command Deck" kicker="What to read first before writing claims">
+          <div className="focus-grid">
+            <div className="focus-note">
+              <span className="metric-label">Most important question</span>
+              <strong>谁更会把任务状态外显出来</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Mechanism axis</span>
+              <strong>personality × instruction × tool mediation</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Evidence discipline</span>
+              <strong>observed first, inferred second</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Current campaign</span>
+              <strong>{activeCampaign?.campaign_id ?? "—"}</strong>
+            </div>
+          </div>
+          <div className="panel-divider" />
+          <ul className="evidence-list">
+            <li>先看 `claim_evidence.csv` 与 hypothesis ledger，再回到 Compare 页找同题四格的具体证据。</li>
+            <li>如果 mechanism rows 很薄，不要急着写“personality 改变了 policy”，先写 evidence-limited。</li>
+            <li>优先把 tool / verification / bridge language 的联合变化当作主证据，而不是单看字数。</li>
+          </ul>
+        </Panel>
+
         <Panel title="Hypothesis Spotlight" kicker="What this bench is actively trying to prove or falsify">
+          {!hypothesisFocus.length ? (
+            <StateNotice
+              title="hypothesis catalog 暂时不可用"
+              body="如果研究假设文件还没加载成功，这里会先保持空态，不影响其他机制与 evidence 面板。"
+              tone="warning"
+            />
+          ) : null}
           <div className="focus-grid">
             {hypothesisFocus.map((row, index) => (
               <div key={`${row.id ?? index}`} className="insight-card">
@@ -208,6 +308,13 @@ export function ResearchPage() {
 
       <div className="page-grid page-grid-2">
         <Panel title="Current Research Focus" kicker="Active thesis line">
+          {!taskLens.length ? (
+            <StateNotice
+              title="task-class lens 还没有 campaign 数据"
+              body="等 task-class summary 生成后，这里会逐类展示 bootstrap-heavy / verification-heavy / patch-heavy 等任务的行为差异。"
+              tone="loading"
+            />
+          ) : null}
           <ul className="evidence-list">
             <li>5.4 是否比 5.3-codex 更愿意把状态外显成用户可见语言。</li>
             <li>friendly 与 pragmatic 的差异是语气级，还是会改变工具编排与验证节奏。</li>
@@ -246,6 +353,75 @@ export function ResearchPage() {
                 <span className="artifact-kind">{artifact.role}</span>
               </button>
             ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="page-grid page-grid-2">
+        <Panel title="Mechanism Pulse Board" kicker="Live mechanism categories currently surfacing">
+          {!Object.keys(mechanismPulse).length ? (
+            <StateNotice
+              title="live mechanism pulse 还没有形成"
+              body="如果没有 personality / skill / token / mechanism 增量事件，这里会先保持空态，不代表研究面失效。"
+              tone="loading"
+            />
+          ) : (
+            <div className="focus-grid">
+              {Object.entries(mechanismPulse).map(([label, count]) => (
+                <div key={label} className="focus-note">
+                  <span className="metric-label">{label}</span>
+                  <strong>{count}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+        <Panel title="Reference Dock" kicker="Methods / observability / probe discipline">
+          <div className="artifact-list artifact-list-column artifact-ledger">
+            {references.map((artifact) => (
+              <button
+                key={artifact.path}
+                className={`artifact-row-button${activeReference.path === artifact.path ? " artifact-row-button-active" : ""}`}
+                onClick={() => setSelectedReference(artifact.path)}
+              >
+                <div className="artifact-row-main">
+                  <strong>{artifact.name}</strong>
+                  <span className="artifact-role">{artifact.role ?? artifact.kind}</span>
+                  <span className="artifact-scope">{artifact.scope ?? artifact.format ?? "—"}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="page-grid page-grid-2">
+        <Panel title="Personality / Mechanism Reading Guide" kicker="How to interpret tone vs policy-shaping">
+          <ul className="evidence-list">
+            <li>先看 `requested vs effective personality`，再看 fallback，不要跳过机制生效层。</li>
+            <li>如果 social tone 上升，但 bridge / verification / externalization 不变，更像 tone-shaping。</li>
+            <li>如果工具密度、bridge language、verification framing 一起变化，更像 policy-shaping。</li>
+            <li>如果 skill / instruction rows 稀薄，优先把结论写成 evidence-limited，而不是 mechanism-proven。</li>
+          </ul>
+        </Panel>
+        <Panel title="Observability Contract Highlights" kicker="What this console can and cannot really know">
+          <div className="focus-grid">
+            <div className="focus-note">
+              <span className="metric-label">Observed</span>
+              <strong>Raw events / probes / processes</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Inferred</span>
+              <strong>bridge / coupling / skill incidence</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Estimated</span>
+              <strong>visible token estimates / lexical density</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">Not observable</span>
+              <strong>full hidden CoT / uninstrumented internal branches</strong>
+            </div>
           </div>
         </Panel>
       </div>

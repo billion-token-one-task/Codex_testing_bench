@@ -10,6 +10,7 @@ import { Panel } from "../components/Panel";
 import { RunCard } from "../components/RunCard";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { SignalBar } from "../components/SignalBar";
+import { StateNotice } from "../components/StateNotice";
 import { StatusBadge } from "../components/StatusBadge";
 import { api } from "../lib/api";
 import { formatCompact, formatDate, summarizeMap, truncateMiddle } from "../lib/format";
@@ -18,12 +19,15 @@ import {
   useCampaignDetail,
   useCampaignOperationalSummary,
   useCampaignSelection,
+  useLiveOverview,
   useRecentEventTypes,
   useWorkspaceIndex,
 } from "../lib/store";
 
 export function CampaignsPage() {
-  const { data, loading, error } = useWorkspaceIndex();
+  const { data: workspaceData, loading, error } = useWorkspaceIndex();
+  const liveOverview = useLiveOverview();
+  const data = liveOverview.data?.workspace ?? workspaceData ?? null;
   const campaigns = data?.campaigns ?? [];
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [artifactMode, setArtifactMode] = useState<"reports" | "datasets">("reports");
@@ -124,6 +128,14 @@ export function CampaignsPage() {
         title="Campaigns"
         description="这里是研究批次的总账面。左边看 experiment ledger，中间看当前 campaign 的 operational dossier，右边看 artifact / event pulse。"
       />
+
+      {!data && (loading || !liveOverview.data) ? (
+        <StateNotice
+          title="Campaign ledger 正在水合"
+          body="控制台会先读取 workspace 索引，再把 active campaign summary、artifact pulse 和 recent run updates 叠上来。短暂空态不代表实验目录为空。"
+          tone="loading"
+        />
+      ) : null}
 
       <div className="page-grid page-grid-4">
         <MetricCard

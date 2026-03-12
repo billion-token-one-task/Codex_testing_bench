@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api } from "../lib/api";
-import { useWorkspaceIndex } from "../lib/store";
+import { useLiveOverview, useWorkspaceIndex } from "../lib/store";
 import { SegmentedTabs } from "./SegmentedTabs";
 
 type ActionKind =
@@ -39,6 +39,8 @@ type LaunchHistoryEntry = {
 
 export function ActionLauncher() {
   const workspace = useWorkspaceIndex();
+  const liveOverview = useLiveOverview();
+  const hydratedWorkspace = liveOverview.data?.workspace ?? workspace.data ?? null;
   const [mode, setMode] = useState<LauncherMode>("quick");
   const [kind, setKind] = useState<ActionKind>("run");
   const [campaignDir, setCampaignDir] = useState("");
@@ -124,8 +126,11 @@ export function ActionLauncher() {
 
   const isPrepare = kind === "prepare";
   const submitLabel = useMemo(() => `Launch ${kind}`, [kind]);
-  const recentCampaigns = (workspace.data?.campaigns ?? []).slice(0, 4);
-  const activeCampaign = workspace.data?.campaigns.find((campaign) => campaign.status.includes("running")) ?? workspace.data?.campaigns?.[0] ?? null;
+  const recentCampaigns = (hydratedWorkspace?.campaigns ?? []).slice(0, 4);
+  const activeCampaign = liveOverview.data?.active_campaign
+    ?? hydratedWorkspace?.campaigns.find((campaign) => campaign.status.includes("running"))
+    ?? hydratedWorkspace?.campaigns?.[0]
+    ?? null;
   const validationNotes = useMemo(() => {
     const notes: string[] = [];
     if (isPrepare) {
@@ -141,8 +146,52 @@ export function ActionLauncher() {
     }
     return notes;
   }, [campaignDir, campaignRoot, isPrepare, kind, maxParallelRuns, presetPath, recentCampaigns.length, seed]);
+  const recommendedActions = useMemo(() => {
+    const actions: Array<{ label: string; detail: string; apply: () => void }> = [];
+    if (!hydratedWorkspace?.campaigns.length) {
+      actions.push({
+        label: "先 prepare 一个新实验",
+        detail: "当前工作区里还没有可直接操作的 campaign。",
+        apply: () => {
+          setKind("prepare");
+          if (!campaignRoot) setCampaignRoot("artifacts");
+        },
+      });
+    }
+    if (activeCampaign && activeCampaign.status.includes("running")) {
+      actions.push({
+        label: "盯当前主战场",
+        detail: `${activeCampaign.experiment_name} 正在运行，可直接绑定 active campaign。`,
+        apply: () => {
+          setCampaignDir(activeCampaign.path);
+          setKind("report");
+        },
+      });
+    }
+    if (activeCampaign && activeCampaign.completed_run_count > 0 && activeCampaign.report_count === 0) {
+      actions.push({
+        label: "重建 campaign 报告",
+        detail: "已经有 completed runs，但报告还没写出来。",
+        apply: () => {
+          setCampaignDir(activeCampaign.path);
+          setKind("report");
+        },
+      });
+    }
+    if (activeCampaign && activeCampaign.completed_run_count > 0 && activeCampaign.status === "run_completed") {
+      actions.push({
+        label: "推进 grading",
+        detail: "solver 已经跑过，适合进入 grade 阶段。",
+        apply: () => {
+          setCampaignDir(activeCampaign.path);
+          setKind("grade");
+        },
+      });
+    }
+    return actions.slice(0, 3);
+  }, [activeCampaign, campaignRoot, hydratedWorkspace?.campaigns.length]);
   const contextSummary = useMemo(() => {
-    const summary = workspace.data?.summary;
+    const summary = hydratedWorkspace?.summary;
     if (!summary) return null;
     return [
       { label: "Campaigns", value: String(summary.campaign_count) },
@@ -150,7 +199,7 @@ export function ActionLauncher() {
       { label: "Visible Tok", value: String(summary.total_visible_output_tokens_est) },
       { label: "Tools", value: String(summary.total_tool_calls) },
     ];
-  }, [workspace.data?.summary]);
+  }, [hydratedWorkspace?.summary]);
 
   const quickActions: ActionKind[] = ["prepare", "bootstrap-local", "run", "grade", "report", "replay"];
   const presetShortcuts = [
@@ -308,7 +357,7 @@ export function ActionLauncher() {
             ))}
           </div>
         ) : (
-          <div className="mono-note">等待 workspace summary…</div>
+          <div className="mono-note">等待 workspace / live overview 水合…</div>
         )}
       </div>
 
@@ -342,6 +391,23 @@ export function ActionLauncher() {
             >
               rebuild active report
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {recommendedActions.length ? (
+        <div className="launcher-presets">
+          <div className="section-label">Recommended Next Step</div>
+          <div className="artifact-list artifact-list-column artifact-ledger">
+            {recommendedActions.map((action) => (
+              <button key={action.label} type="button" className="artifact-row-button" onClick={action.apply}>
+                <div className="artifact-row-main">
+                  <strong>{action.label}</strong>
+                  <span className="artifact-role">operator recommendation</span>
+                  <span className="artifact-scope">{action.detail}</span>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       ) : null}
@@ -387,6 +453,35 @@ export function ActionLauncher() {
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {liveOverview.data?.active_campaign_summary ? (
+        <div className="launcher-presets">
+          <div className="section-label">Active Campaign Snapshot</div>
+          <div className="metric-grid metric-grid-compact">
+            <div>
+              <span className="metric-label">Active Live</span>
+              <strong>{liveOverview.data.active_campaign_summary.active_live_runs.length}</strong>
+            </div>
+            <div>
+              <span className="metric-label">Live Msg</span>
+              <strong>{liveOverview.data.active_campaign_summary.live_message_count}</strong>
+            </div>
+            <div>
+              <span className="metric-label">Live Tool</span>
+              <strong>{liveOverview.data.active_campaign_summary.live_tool_count}</strong>
+            </div>
+            <div>
+              <span className="metric-label">Warnings</span>
+              <strong>{liveOverview.data.active_campaign_summary.active_warning_count}</strong>
+            </div>
+          </div>
+          {liveOverview.data.operator_notices?.length ? (
+            <div className="mono-note">
+              {liveOverview.data.operator_notices[0]}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

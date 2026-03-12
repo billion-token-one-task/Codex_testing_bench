@@ -8,6 +8,7 @@ import { PageIntro } from "../components/PageIntro";
 import { Panel } from "../components/Panel";
 import { RunCard } from "../components/RunCard";
 import { SignalBar } from "../components/SignalBar";
+import { StateNotice } from "../components/StateNotice";
 import { api } from "../lib/api";
 import { formatCompact, humanizeKey } from "../lib/format";
 import { useWorkspaceIndex } from "../lib/store";
@@ -60,6 +61,26 @@ export function ComparePage() {
 
   const runIndex = data?.runs ?? [];
   const pairHighlights = pairRows.slice(0, 12);
+  const deltaLeaderboard = useMemo(() => {
+    const numeric = (row: CsvRow, ...keys: string[]) => {
+      for (const key of keys) {
+        const value = Number(row[key] ?? "");
+        if (Number.isFinite(value) && value !== 0) return value;
+      }
+      return 0;
+    };
+    const byMagnitude = (keys: string[]) =>
+      [...pairRows]
+        .map((row) => ({ row, value: Math.abs(numeric(row, ...keys)) }))
+        .sort((left, right) => right.value - left.value)
+        .slice(0, 4);
+    return {
+      visible: byMagnitude(["visible_output_total_tokens_est_delta", "visible_delta"]),
+      tools: byMagnitude(["tool_count_delta"]),
+      bridge: byMagnitude(["bridge_language_score_bps_delta", "bridge_delta"]),
+      verify: byMagnitude(["verification_language_score_bps_delta", "verify_delta"]),
+    };
+  }, [pairRows]);
   const sameTaskGroups = useMemo(() => {
     const byInstance = campaignRunRows.reduce<Record<string, CsvRow[]>>((acc, row) => {
       const key = row.instance_id ?? "unknown";
@@ -178,7 +199,69 @@ export function ComparePage() {
         <MetricCard label="Cohort Surface" value={Object.keys(cohortCounts).length} detail={`${activeCampaign?.sample_size ?? 0} sampled tasks`} />
       </div>
 
+      <div className="page-grid page-grid-2">
+        <Panel title="Comparison Readiness" kicker="Is this campaign ready for serious 2x2 analysis?">
+          {!activeCampaign ? (
+            <StateNotice
+              title="当前还没有可分析的 experiment"
+              body="Compare 页需要一个已经写出 datasets 的 campaign。没有 datasets 时，这里会优先解释缺了哪一层。"
+              tone="loading"
+            />
+          ) : null}
+          <KeyValueGrid
+            columns={4}
+            items={[
+              { label: "Campaign Status", value: activeCampaign?.status ?? "—", detail: activeCampaign?.experiment_name ?? "—" },
+              { label: "Datasets", value: datasets.length, detail: datasets[0]?.name ?? "none yet", tone: datasets.length ? "verify" : "anomaly" },
+              { label: "Pair Rows", value: pairRows.length, detail: pairRows.length ? "pair deltas present" : "pair deltas not written yet", tone: pairRows.length ? "signal" : "pressure" },
+              { label: "Run Rows", value: campaignRunRows.length, detail: sameTaskGroups.length ? `${sameTaskGroups.length} same-task groups` : "no same-task groups yet" },
+              { label: "Phrase Rows", value: phraseRows.length, detail: phraseRows[0]?.phrase ?? phraseRows[0]?.lemma ?? "—" },
+              { label: "Tool Rows", value: toolRows.length, detail: toolRows[0]?.tool_name ?? "—" },
+              { label: "Mechanism Rows", value: personalityRows.length, detail: personalityRows[0]?.personality_effective ?? "—" },
+              { label: "Selected Task", value: activeTaskId ?? "—", detail: selectedTaskSummary ? `${selectedTaskSummary.maxVisible} most verbose` : "pick a same-task row" },
+            ]}
+          />
+        </Panel>
+
+        <Panel title="Delta Leaderboards" kicker="Largest divergences worth reading first">
+          {!pairRows.length ? (
+            <StateNotice
+              title="delta leaderboard 还没形成"
+              body="一旦 `model_pair_deltas.csv` 和 `campaign_runs.csv` 写出，这里会自动挑出最值得读的同题差异。"
+              tone="loading"
+            />
+          ) : null}
+          <div className="page-grid page-grid-2">
+            {([
+              ["Visible", deltaLeaderboard.visible],
+              ["Tools", deltaLeaderboard.tools],
+              ["Bridge", deltaLeaderboard.bridge],
+              ["Verify", deltaLeaderboard.verify],
+            ] as Array<[string, Array<{ row: CsvRow; value: number }>]>).map(([label, rows]) => (
+              <div key={label} className="compare-block">
+                <div className="compare-heading">{label} delta</div>
+                <div className="cluster-list">
+                  {rows.map(({ row, value }, index) => (
+                    <div key={`${label}-${index}`} className="event-kv">
+                      <span>{row.instance_id ?? "instance"} · {row.left_cohort ?? "left"} → {row.right_cohort ?? "right"}</span>
+                      <strong>{value || "—"}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
       <Panel title="Comparison Target" kicker="Select experiment campaign">
+        {!activeCampaign ? (
+          <StateNotice
+            title="还没有可比较的实验 campaign"
+            body="Compare 页依赖 campaign 级 datasets。等一次完整的 run 自动生成 datasets 后，这里会变成 2x2 研究工作台。"
+            tone="loading"
+          />
+        ) : null}
         <div className="filter-row">
           <select value={activeCampaign?.campaign_id ?? ""} onChange={(event) => setCampaignId(event.target.value)}>
             {campaigns.map((campaign) => (
@@ -209,6 +292,13 @@ export function ComparePage() {
 
       <div className="page-grid page-grid-2">
         <Panel title="2x2 Quadrant Board" kicker="Cohort counts inside the selected campaign">
+          {!Object.keys(cohortCounts).length ? (
+            <StateNotice
+              title="cohort 象限暂时为空"
+              body="当前 campaign 还没有足够的 run row 写进 datasets，或者这批 run 还在进行中。"
+              tone="info"
+            />
+          ) : null}
           <div className="quadrant-board">
             {Object.entries(cohortCounts).map(([cohort, count]) => (
               <div key={cohort} className="quadrant-cell">
@@ -221,6 +311,13 @@ export function ComparePage() {
         </Panel>
 
         <Panel title="Pair Delta Highlights" kicker="model_pair_deltas.csv">
+          {!pairHighlights.length ? (
+            <StateNotice
+              title="pair delta 还没有形成"
+              body="等 `model_pair_deltas.csv` 生成后，这里会直接列出 5.4 vs 5.3-codex、friendly vs pragmatic 的关键差分。"
+              tone="loading"
+            />
+          ) : null}
           <div className="compare-stack">
             {pairHighlights.map((row, index) => (
               <div key={`${row.instance_id}-${index}`} className="compare-block">
@@ -242,7 +339,51 @@ export function ComparePage() {
         </Panel>
       </div>
 
+      <Panel title="Selected Task Reading Frame" kicker="What this one same-task 2x2 actually suggests">
+        {!activeTaskRows.length ? (
+          <StateNotice
+            title="请先选择一个有 cohort coverage 的 task"
+            body="当 `campaign_runs.csv` 里出现同题多 cohort 行后，这里会自动提炼出这道题最值得看的解释角度。"
+            tone="info"
+          />
+        ) : null}
+        {activeTaskRows.length ? (
+          <div className="page-grid page-grid-2">
+            <div className="focus-grid">
+              <div className="focus-note">
+                <span className="metric-label">Most verbose</span>
+                <strong>{selectedTaskSummary?.maxVisible ?? "—"}</strong>
+              </div>
+              <div className="focus-note">
+                <span className="metric-label">Most tool-dense</span>
+                <strong>{selectedTaskSummary?.maxTool ?? "—"}</strong>
+              </div>
+              <div className="focus-note">
+                <span className="metric-label">Strongest bridge</span>
+                <strong>{selectedTaskSummary?.maxBridge ?? "—"}</strong>
+              </div>
+              <div className="focus-note">
+                <span className="metric-label">Strongest verify</span>
+                <strong>{selectedTaskSummary?.maxVerify ?? "—"}</strong>
+              </div>
+            </div>
+            <ul className="evidence-list">
+              <li>先看四格里谁的 `visible output` 上升，同时 `tool count` 也上升，而不是只变长。</li>
+              <li>再看 `bridge / verification framing`，判断是单纯更会说，还是更会把动作组织成外显策略。</li>
+              <li>最后看 `social tone` 与 mechanism rows，判断 `friendly` 差异更像 tone-shaping 还是 policy-shaping。</li>
+            </ul>
+          </div>
+        ) : null}
+      </Panel>
+
       <Panel title="2x2 Same-task Board" kicker="Select one task and inspect all four quadrants">
+        {!sameTaskGroups.length ? (
+          <StateNotice
+            title="还没有同题四格样本"
+            body="这个区域只在同一个 instance 被多个 cohort 配对跑过后才会亮起来。"
+            tone="loading"
+          />
+        ) : null}
         <div className="filter-row filter-row-wide">
           <select value={activeTaskId ?? ""} onChange={(event) => setSelectedInstance(event.target.value)}>
             {sameTaskGroups.map(([instanceId, rows]) => (
@@ -330,6 +471,13 @@ export function ComparePage() {
       </Panel>
 
       <Panel title="Same-task 2x2 Matrix" kicker="Drill down by instance">
+        {!sameTaskGroups.length ? (
+          <StateNotice
+            title="矩阵暂时为空"
+            body="当 campaign 还没生成 `campaign_runs.csv` 或样本不足以形成配对时，这里会保持空态。"
+            tone="info"
+          />
+        ) : null}
         <div className="same-task-groups">
           {sameTaskGroups.map(([instanceId, rows]) => {
             const cards = rows

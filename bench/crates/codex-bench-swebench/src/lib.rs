@@ -10,8 +10,8 @@ use codex_bench_core::{
     BenchmarkResearchProfile, BenchmarkTaskClassProfile, CampaignManifest, CodexRunRequest,
     DatasetRecord, ExperimentCohort, PrepareCampaignArgs, RunManifest, RunSummary,
     SelectedInstance, StudyCohortPreset, attempt_artifact_paths, default_swebench_preset_path,
-    ensure_absolute_dir, load_study_preset, preferred_python, read_json, write_json_pretty,
-    write_jsonl,
+    ensure_absolute_dir, load_study_preset, preferred_python, read_json,
+    reconcile_campaign_state, write_json_pretty, write_jsonl,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::{render_campaign_report, render_run_evidence};
@@ -172,6 +172,8 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
             .per_repo_prepare_parallelism
             .unwrap_or(preset.per_repo_prepare_parallelism)
             .max(1),
+        run_timeout_seconds: preset.run_timeout_seconds,
+        idle_timeout_seconds: preset.idle_timeout_seconds,
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
@@ -291,6 +293,7 @@ fn swebench_benchmark_research_profile() -> BenchmarkResearchProfile {
 }
 
 pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Result<()> {
+    let _ = reconcile_campaign_state(campaign_dir);
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "running".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -311,8 +314,19 @@ pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Resu
             run_instance(manifest, selected, refresh_repo_cache, repo_prepare_limiter).await
         });
     }
+    let mut failure_count = 0usize;
     while let Some(joined) = join_set.join_next().await {
-        joined??;
+        match joined {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                failure_count += 1;
+                eprintln!("swebench run instance failed: {error:#}");
+            }
+            Err(error) => {
+                failure_count += 1;
+                eprintln!("swebench join task failed: {error:#}");
+            }
+        }
     }
     write_predictions_jsonl(manifest_arc.as_ref(), campaign_dir).await?;
     manifest.campaign_status = "run_completed".to_string();
@@ -322,6 +336,9 @@ pub async fn run_campaign(campaign_dir: &Path, refresh_repo_cache: bool) -> Resu
     manifest.last_report_path = Some(report_path);
     manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
+    if failure_count > 0 {
+        eprintln!("swebench campaign completed with {failure_count} failed run(s)");
+    }
     Ok(())
 }
 
@@ -450,6 +467,7 @@ for row in dataset:
 }
 
 pub async fn grade_campaign(campaign_dir: &Path, command: Option<String>) -> Result<()> {
+    let _ = reconcile_campaign_state(campaign_dir);
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     let predictions_path = campaign_dir.join("predictions.jsonl");
     if !predictions_path.exists() {
@@ -706,6 +724,7 @@ async fn run_instance(
 
     let run_id = format!("{}-attempt-01", record.instance_id);
     let mut artifact_paths = attempt_artifact_paths(&attempt_dir);
+    let started_at = Utc::now().to_rfc3339();
     let run_manifest = RunManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: manifest.campaign_id.clone(),
@@ -725,65 +744,130 @@ async fn run_instance(
         worktree_dir: worktree_dir.clone(),
         attempt: 1,
         status: "running".to_string(),
+        started_at: Some(started_at.clone()),
+        last_updated_at: Some(started_at.clone()),
+        completed_at: None,
         derivations_status: "pending".to_string(),
         evidence_status: "pending".to_string(),
         grading_status: "pending".to_string(),
+        failure_reason: None,
+        failure_class: None,
         artifact_paths: artifact_paths.clone(),
     };
     write_json_pretty(&run_dir.join("manifest.json"), &run_manifest)?;
+    let execution = async {
+        let capture = run_codex_task(CodexRunRequest {
+            model: selected.model.clone(),
+            provider: selected.provider.clone(),
+            personality_mode: selected.personality_mode.clone(),
+            prompt_style: selected.prompt_style.clone(),
+            cohort_id: Some(selected.cohort_id.clone()),
+            run_id: run_id.clone(),
+            repo: record.repo.clone(),
+            instance_id: record.instance_id.clone(),
+            task_class: selected.task_class.clone(),
+            prompt,
+            worktree_dir: worktree_dir.clone(),
+            attempt_dir: attempt_dir.clone(),
+            approval_never: true,
+            run_timeout_seconds: Some(manifest.run_timeout_seconds),
+            idle_timeout_seconds: Some(manifest.idle_timeout_seconds),
+        })
+        .await?;
 
-    let capture = run_codex_task(CodexRunRequest {
-        model: selected.model.clone(),
-        provider: selected.provider.clone(),
-        personality_mode: selected.personality_mode.clone(),
-        prompt_style: selected.prompt_style.clone(),
-        cohort_id: Some(selected.cohort_id.clone()),
-        run_id: run_id.clone(),
-        repo: record.repo.clone(),
-        instance_id: record.instance_id.clone(),
-        task_class: selected.task_class.clone(),
-        prompt,
-        worktree_dir: worktree_dir.clone(),
-        attempt_dir: attempt_dir.clone(),
-        approval_never: true,
-    })
-    .await?;
+        let patch = command_capture(
+            Command::new("git")
+                .arg("-C")
+                .arg(&worktree_dir)
+                .arg("diff")
+                .arg("--binary")
+                .arg("--no-ext-diff"),
+        )
+        .await?;
+        fs::write(attempt_dir.join("patch.diff"), &patch.stdout)?;
 
-    let patch = command_capture(
-        Command::new("git")
-            .arg("-C")
-            .arg(&worktree_dir)
-            .arg("diff")
-            .arg("--binary")
-            .arg("--no-ext-diff"),
-    )
-    .await?;
-    fs::write(attempt_dir.join("patch.diff"), &patch.stdout)?;
-
-    let summary = derive_run_outputs(
-        &attempt_dir,
-        &run_id,
-        &selected.task_class,
-        &record,
-        &capture.decoded_events,
-        &capture.probe_events,
-        &capture.raw_diagnostics,
-        &patch.stdout,
-    )?;
-    render_run_evidence(&attempt_dir, &record, &summary)?;
+        let summary = derive_run_outputs(
+            &attempt_dir,
+            &run_id,
+            &selected.task_class,
+            &record,
+            &capture.decoded_events,
+            &capture.probe_events,
+            &capture.raw_diagnostics,
+            &patch.stdout,
+        )?;
+        render_run_evidence(&attempt_dir, &record, &summary)?;
+        Ok::<_, anyhow::Error>(summary)
+    }
+    .await;
 
     for (name, path) in attempt_artifact_paths(&attempt_dir) {
         artifact_paths.insert(name, path);
     }
-    let finished_manifest = RunManifest {
-        status: summary.status.clone(),
-        derivations_status: "completed".to_string(),
-        evidence_status: "run_evidence_generated".to_string(),
-        artifact_paths,
-        ..run_manifest
-    };
-    write_json_pretty(&run_dir.join("manifest.json"), &finished_manifest)?;
-    Ok(())
+
+    match execution {
+        Ok(summary) => {
+            let finished_manifest = RunManifest {
+                status: summary.status.clone(),
+                last_updated_at: Some(Utc::now().to_rfc3339()),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                derivations_status: "completed".to_string(),
+                evidence_status: "run_evidence_generated".to_string(),
+                artifact_paths,
+                ..run_manifest
+            };
+            write_json_pretty(&run_dir.join("manifest.json"), &finished_manifest)?;
+            Ok(())
+        }
+        Err(error) => {
+            fs::write(attempt_dir.join("run-error.txt"), format!("{error:#}\n"))?;
+            let failure_reason = error.to_string();
+            let failure_class = classify_run_failure(&failure_reason).to_string();
+            let failed_manifest = RunManifest {
+                status: "failed".to_string(),
+                last_updated_at: Some(Utc::now().to_rfc3339()),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                derivations_status: if attempt_dir.join("probe-summary.json").exists() {
+                    "completed".to_string()
+                } else {
+                    "failed".to_string()
+                },
+                evidence_status: if attempt_dir.join("run-evidence.txt").exists() {
+                    "run_evidence_generated".to_string()
+                } else {
+                    "pending".to_string()
+                },
+                failure_reason: Some(failure_reason),
+                failure_class: Some(failure_class),
+                artifact_paths,
+                ..run_manifest
+            };
+            write_json_pretty(&run_dir.join("manifest.json"), &failed_manifest)?;
+            Err(error)
+        }
+    }
+}
+
+fn classify_run_failure(message: &str) -> &'static str {
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("idle timeout") || lower.contains("run timeout") {
+        "timeout"
+    } else if lower.contains("web_search_begin") {
+        "policy_violation"
+    } else if lower.contains("prepare_repo_workspace")
+        || lower.contains("git worktree")
+        || lower.contains("failed to fetch commit")
+    {
+        "workspace_prepare"
+    } else if lower.contains("failed to invoke configured python")
+        || lower.contains("dataset snapshot fetch failed")
+    {
+        "bootstrap_env"
+    } else if lower.contains("patch") {
+        "patch_capture"
+    } else {
+        "solver_runtime"
+    }
 }
 
 async fn prepare_repo_workspace(

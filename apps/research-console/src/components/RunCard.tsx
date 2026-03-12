@@ -60,6 +60,12 @@ export function RunCard({
         <span>friction {run.harness_friction_count}</span>
       </div>
 
+      <div className="brief-meta">
+        <span>anomaly {run.anomaly_count}</span>
+        <span>patch {run.patch_file_count}</span>
+        <span>msg {run.message_metric_count}</span>
+      </div>
+
       <div className="run-card-grid">
         <div>
           <span className="metric-label">Visible</span>

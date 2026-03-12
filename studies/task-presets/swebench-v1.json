@@ -5,6 +5,8 @@
   "experiment_name": "Codex 模型人格化行为对比研究 v1",
   "probe_profile": "codex-deep-probe.v1",
   "report_profile": "evidence-dossier.v1",
+  "run_timeout_seconds": 2700,
+  "idle_timeout_seconds": 600,
   "comparison_axes": [
     "model",
     "personality"

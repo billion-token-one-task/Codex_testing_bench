@@ -56,6 +56,10 @@ pub struct StudyPreset {
     pub max_parallel_runs: usize,
     #[serde(default = "default_per_repo_prepare_parallelism")]
     pub per_repo_prepare_parallelism: usize,
+    #[serde(default = "default_run_timeout_seconds")]
+    pub run_timeout_seconds: u64,
+    #[serde(default = "default_idle_timeout_seconds")]
+    pub idle_timeout_seconds: u64,
 }
 
 impl StudyPreset {
@@ -128,4 +132,12 @@ fn default_max_parallel_runs() -> usize {
 
 fn default_per_repo_prepare_parallelism() -> usize {
     1
+}
+
+fn default_run_timeout_seconds() -> u64 {
+    60 * 45
+}
+
+fn default_idle_timeout_seconds() -> u64 {
+    60 * 10
 }

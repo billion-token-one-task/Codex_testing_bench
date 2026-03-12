@@ -18,6 +18,7 @@ use codex_protocol::config_types::Personality;
 use codex_protocol::config_types::SandboxMode as CoreSandboxMode;
 use codex_protocol::protocol::{AskForApproval, Event, EventMsg, StudyMetadata, StudyProbeEvent};
 use serde_json::{Map, Value, json};
+use tokio::time::{Duration, Instant, sleep_until};
 use tokio::io::AsyncWriteExt;
 use toml::Value as TomlValue;
 
@@ -158,11 +159,43 @@ pub async fn run_codex_task(request: CodexRunRequest) -> Result<CodexRuntimeCapt
     let mut decoded_events = Vec::<Event>::new();
     let mut probe_events = Vec::<StudyProbeEvent>::new();
     let mut raw_diagnostics = Vec::<Value>::new();
+    let run_timeout = Duration::from_secs(request.run_timeout_seconds.unwrap_or(60 * 45));
+    let idle_timeout = Duration::from_secs(request.idle_timeout_seconds.unwrap_or(60 * 10));
+    let total_deadline = Instant::now() + run_timeout;
+    let mut idle_deadline = Instant::now() + idle_timeout;
 
     loop {
-        let Some(server_event) = client.next_event().await else {
+        let server_event = tokio::select! {
+            _ = sleep_until(total_deadline) => {
+                let row = json!({
+                    "kind": "runtime_timeout",
+                    "timeoutSeconds": run_timeout.as_secs(),
+                    "reason": "run timeout exceeded while waiting for Codex turn completion",
+                });
+                raw_diag_file
+                    .write_all(&(serde_json::to_string(&row)? + "\n").into_bytes())
+                    .await?;
+                raw_diagnostics.push(row);
+                bail!("run timeout exceeded after {} seconds", run_timeout.as_secs());
+            }
+            _ = sleep_until(idle_deadline) => {
+                let row = json!({
+                    "kind": "idle_timeout",
+                    "timeoutSeconds": idle_timeout.as_secs(),
+                    "reason": "idle timeout exceeded without new Codex events",
+                });
+                raw_diag_file
+                    .write_all(&(serde_json::to_string(&row)? + "\n").into_bytes())
+                    .await?;
+                raw_diagnostics.push(row);
+                bail!("idle timeout exceeded after {} seconds without new events", idle_timeout.as_secs());
+            }
+            server_event = client.next_event() => server_event,
+        };
+        let Some(server_event) = server_event else {
             break;
         };
+        idle_deadline = Instant::now() + idle_timeout;
         match server_event {
             InProcessServerEvent::LegacyNotification(notification) => {
                 raw_agent_file

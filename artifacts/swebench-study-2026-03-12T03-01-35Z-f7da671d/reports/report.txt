@@ -1,0 +1,269 @@
+Study Header
+============
+Campaign: swebench-study-2026-03-12T03-01-35Z-f7da671d
+Campaign status: run_completed
+Report stage: 求解后报告
+Experiment: Codex 5题研究批次 rerun (exp-20260312030136-d8551ec6)
+Created: 2026-03-12T03:01:36.178718+00:00
+Benchmark: SWE-bench Verified (swebench)
+Preset: swebench-v1 [behavior-pilot]
+Default model/provider: gpt-5.4 via openai
+Comparison axes: model, personality
+Cohorts:
+- gpt-5.3-codex-pragmatic | gpt-5.3-codex × pragmatic | model=gpt-5.3-codex provider=openai personality=pragmatic prompt_style=terse_engineer
+- gpt-5.3-codex-friendly | gpt-5.3-codex × friendly | model=gpt-5.3-codex provider=openai personality=friendly prompt_style=warm_collaborative
+- gpt-5.4-pragmatic | gpt-5.4 × pragmatic | model=gpt-5.4 provider=openai personality=pragmatic prompt_style=terse_engineer
+- gpt-5.4-friendly | gpt-5.4 × friendly | model=gpt-5.4 provider=openai personality=friendly prompt_style=warm_collaborative
+Study mode: codex_live_observation
+Probe profile: codex-deep-probe.v1
+Report profile: evidence-dossier.v1
+Artifact root: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T03-01-35Z-f7da671d
+Grounding docs:
+- /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+- /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+Reference docs:
+- https://deepwiki.com/openai/codex
+- https://openai.com/index/unlocking-the-codex-harness/
+Benchmark research profile: /Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T03-01-35Z-f7da671d/benchmark-research-profile.json
+Benchmark profile summary: Repository-grounded software maintenance benchmark with strong verification pressure, moderate-to-high bootstrap risk, and rich tool-mediated debugging/edit/test loops.
+
+Codex Architecture Under Observation
+===================================
+session_config_freeze: Resolve requested model/runtime settings into the effective session configuration that all later turns inherit.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/thread_manager.rs, repos/codex/codex-rs/app-server/src/codex_message_processor.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: session_configured, study_probe(config_freeze.*)
+  hidden_state: config precedence winners, base instruction provenance, already-running-thread override suppression
+  probes: config_freeze, session_freeze_drift, effective_runtime_divergence
+instruction_prompt_assembly: Assemble the model-visible instruction stack for each turn, including base, developer, reconstructed, and update-derived context.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/context_manager/updates.rs, repos/codex/codex-rs/core/src/config/instructions.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/introducing-upgrades-to-codex/
+  visible_events: user_message, study_probe(instruction_channel.*)
+  hidden_state: instruction layering decisions, implicit context injection
+  probes: instruction_channel, instruction_stratification, ambient_state_leakage
+turn_lifecycle_dispatch: Create turn contexts, dispatch work into tasks, and handle interruptions, failovers, and completions.
+  files: repos/codex/codex-rs/core/src/codex.rs, repos/codex/codex-rs/core/src/tasks/regular.rs, repos/codex/codex-rs/core/src/tasks/review.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/introducing-codex/
+  visible_events: turn_started, turn_complete, turn_aborted, study_probe(turn_lifecycle.*)
+  hidden_state: pending input drain behavior, task dispatch category
+  probes: turn_lifecycle, activation_threshold, chain_reaction_cycles
+context_compaction: Compact and rebuild session history under context pressure, preserving some state while potentially losing detail.
+  files: repos/codex/codex-rs/core/src/compact.rs, repos/codex/codex-rs/core/src/codex.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: context_compacted, study_probe(context_compaction.*)
+  hidden_state: history loss vs preserved actionable state, replacement-history shape
+  probes: compaction_continuity, context_pressure, rediscovery_after_compaction
+tool_mediation: Route shell, patch, MCP, and other tools through Codex mediation instead of exposing a single raw shell channel.
+  files: repos/codex/codex-rs/core/src/tools/events.rs, repos/codex/codex-rs/core/src/mcp_tool_call.rs, repos/codex/codex-rs/core/src/tools/mod.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: exec_command_begin, exec_command_end, mcp_tool_call_begin, mcp_tool_call_end, patch_apply_begin, patch_apply_end
+  hidden_state: tool routing decisions, approval path, structured output mediation
+  probes: tool_mediation, tool_mediation_tax
+persistence_resume: Persist rollout state, reconstruct prior sessions, and maintain continuity across resume and listener attachment.
+  files: repos/codex/codex-rs/core/src/rollout, repos/codex/codex-rs/core/src/state_db.rs, repos/codex/codex-rs/app-server/src/codex_message_processor.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: session_configured, study_probe(persistence_reconstruction.*)
+  hidden_state: state DB contention, baseline invalidation, listener generation behavior
+  probes: persistence_continuity, resume_staleness, listener_attach_friction
+app_server_translation: Translate between typed client requests, app-server notifications, and the legacy core event bridge.
+  files: repos/codex/codex-rs/app-server/src/codex_message_processor.rs, repos/codex/codex-rs/app-server/src/bespoke_event_handling.rs, repos/codex/codex-rs/app-server-client/src/lib.rs
+  reference_docs: https://deepwiki.com/openai/codex, https://openai.com/index/unlocking-the-codex-harness/
+  visible_events: codex/event/*, turn/* notifications
+  hidden_state: event fanout drop behavior, typed-vs-legacy visibility gaps
+  probes: event_architecture_discontinuity, listener_backpressure
+reliability_surfaces: Capture friction introduced by Codex’s own harness machinery rather than the underlying coding task.
+  files: repos/codex/codex-rs/core/src/state_db.rs, repos/codex/codex-rs/app-server/src/in_process.rs, repos/codex/codex-rs/core/src/error.rs
+  reference_docs: https://deepwiki.com/openai/codex
+  visible_events: warning, error, stream_error, study_probe(harness_friction.*)
+  hidden_state: DB lock contention, listener attach failures, auth/MCP/runtime mismatch leakage
+  probes: harness_friction, containment_integrity
+
+Experimental Setup
+==================
+Sample size: 5
+Seed: webapp-five-rerun-20260312
+Preset path: /Users/kevinlin/Downloads/CodexPlusClaw/studies/task-presets/swebench-v1.json
+Required task classes: -
+Preferred task classes: -
+Future benchmark targets: -
+Task classes: 
+macOS constraints: this study path is intentionally local-only and assumes a Mac-hosted Codex workspace.
+Validity note: SWE-bench tasks are used as live stimuli for Codex behavior rather than as the sole endpoint metric.
+Benchmark research notes:
+- SWE-bench is suitable for observing Codex search-edit-verify cycles under realistic repository state.
+- Official grading failures must be separated from solver behavior because environment reconstruction cost is often large.
+- Different repos induce very different bootstrap tax and context pressure, so task-class-aware analysis is mandatory.
+
+Telemetry And Artifact Coverage
+===============================
+Run status counts: -
+Task class counts: -
+Token totals: input=0 output=0 cache_read=0
+Turn totals: 0 | Command totals: 0 | Tool totals: 0 | Skill events: 0 | Message metrics: 0 | Anomalies: 0
+Visible output totals: chars=0 tokens_est=0
+Cohort counts: -
+Tool kind totals: -
+Skill name totals: -
+Message category totals: -
+Artifact coverage: all expected artifacts present in the latest attempts.
+
+Official Grading Overview
+=========================
+grader_status=missing
+completed=0 resolved=0 unresolved=0 errors=0
+official_summary_path=-
+
+Observed Codex Harness Behavior
+===============================
+Config/session freezing evidence: -
+Instruction assembly evidence: -
+Context and compaction evidence: -
+Tool mediation evidence: -
+Persistence/reconstruction evidence: -
+Reliability/contention evidence: -
+Subsystem totals: -
+
+Externalized Coordination Lens
+=============================
+externalized_coordination_total=0
+persistence_staleness_risk_total=0
+This lens asks whether Codex keeps useful continuity through persistence, compaction, and layered instruction channels rather than relying on a single flat transcript.
+
+Regulation / Control-Rod Signals
+===============================
+control_rod_intervention_total=0
+These are harness-native regulation surfaces: compaction, config freeze, persistence, approval/listener boundaries, and similar stabilizers.
+
+Containment And Coherence
+========================
+event_discontinuity_total=0 | containment_heat_leak_total=0
+These counters estimate where the harness leaks effort into orchestration overhead or observability gaps rather than direct task progress.
+
+Task-Behavior Evidence Across Live Tasks
+=======================================
+
+Task-Class Evidence Matrix
+==========================
+
+Claim-by-Claim Evidence
+=======================
+codex.compaction_rebuild
+  source: DeepWiki + Codex source
+  text: Codex is not a pure flat-loop harness because it performs native compaction and history rebuild.
+  operationalization: Inspect context-compaction probes, replacement history shape, and post-compaction rediscovery patterns.
+  evidence: none captured yet
+codex.config_freeze
+  source: Codex App Server + core
+  text: Codex behavior is materially shaped by session/config freeze at thread start.
+  operationalization: Compare requested thread-start params against effective SessionConfigured values and turn-level instruction makeup.
+  evidence: none captured yet
+codex.control_rods
+  source: Codex runtime control surfaces
+  text: Codex contains harness-native regulation layers that act like control rods, sometimes stabilizing and sometimes throttling the reaction.
+  operationalization: Track control-rod probe families across compaction, config freeze, persistence, and listener/approval boundaries.
+  evidence: none captured yet
+codex.event_architecture
+  source: Codex App Server event bridge
+  text: Codex’s queue/listener/event bridge creates visibility and discontinuity patterns that wrapper-only telemetry would miss.
+  operationalization: Compare raw legacy event streams, typed notifications, study probes, and lagged/backpressure diagnostics.
+  evidence: none captured yet
+codex.harness_overhead_tax
+  source: Codex runtime orchestration
+  text: A non-trivial share of Codex runtime cost comes from internal harness orchestration, not direct task progress.
+  operationalization: Estimate friction-token, friction-step, and harness-specific incident counts relative to direct edit/verify cycles.
+  evidence: none captured yet
+codex.instruction_stratification
+  source: Codex instruction assembly path
+  text: Codex behaves more like a layered instruction stack than a single undifferentiated transcript.
+  operationalization: Track instruction-channel probe events, model-native instruction preservation, and reconstructed-context shifts after compaction or resume.
+  evidence: none captured yet
+codex.persistence_continuity
+  source: Codex rollout/state DB path
+  text: Codex persistence and resume semantics create both continuity benefits and mismatch risks.
+  operationalization: Track resume/reconstruction probes, listener attach behavior, and stale-state mismatch incidents.
+  evidence: none captured yet
+codex.personality_policy_shape
+  source: Codex model personality support
+  text: Codex personality modes can shape observable agent policy, not only surface tone.
+  operationalization: Compare visible-output density, tool-bridge language, and verbosity-tool coupling between friendly and pragmatic cohorts under paired tasks.
+  evidence: none captured yet
+codex.state_verbalization
+  source: Codex behavior study
+  text: Some Codex/model combinations externalize more actionable state into visible assistant language than others.
+  operationalization: Compare message-level planning, decision, tool-bridge, and verification framing categories across models and personality modes.
+  evidence: none captured yet
+codex.tool_mediation
+  source: Codex core tool orchestration
+  text: Codex tool use is mediated by an internal routing/orchestration layer rather than being equivalent to raw shell execution.
+  operationalization: Track shell vs patch vs MCP tool paths, approval routing, and structured tool-event boundaries.
+  evidence: none captured yet
+grounding.activation_threshold
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Useful work has an activation threshold rather than rising linearly from zero budget.
+  operationalization: Measure tokens/time to first meaningful edit, first verification, first retained patch, and compare across runs and task classes.
+  evidence: none captured yet
+grounding.anti_regularization
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Higher token budgets can anti-regularize the agent and increase redundancy, anxiety loops, or cleanup behavior.
+  operationalization: Track repeated verification, git inspection loops, cleanup-only work, and post-submit activity across task classes.
+  evidence: none captured yet
+grounding.context_vs_budget
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Context window and total task token budget are distinct constraints and should not be conflated.
+  operationalization: Track compaction thresholds, context-window-related probe data, and total token usage separately from wall time.
+  evidence: none captured yet
+grounding.control_regulation
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Long-horizon systems need explicit regulation layers that stabilize search and bound loss, rather than relying on unconstrained continuation.
+  operationalization: Inspect compaction, config freeze, persistence, approval, and listener behaviors as control-rod-like regulation mechanisms.
+  evidence: none captured yet
+grounding.externalized_coordination
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Scaling beyond a single session often requires externalized coordination rather than only enlarging the immediate working context.
+  operationalization: Inspect whether Codex relies on persistence, rollout state, resumability, and reconstructed context rather than pure flat transcript continuation.
+  evidence: none captured yet
+grounding.flat_history_tax
+  source: /Users/kevinlin/Downloads/Token预算实验_完整分析报告_v3.docx
+  text: Flat-history reread imposes a major token tax on agent execution.
+  operationalization: Count repeated file reads without intervening edits, cache-read ratio, prompt growth, and rediscovery after compaction.
+  evidence: none captured yet
+grounding.layered_state
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Layered state/context is preferable to forcing a single flat session to carry all task state.
+  operationalization: Inspect instruction channels, compaction rebuilds, resume continuity, and whether Codex preserves actionable state outside the immediate turn transcript.
+  evidence: none captured yet
+grounding.state_compression_loss
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: State compression is useful but lossy; long-horizon tasks need mechanisms that preserve actionable state across compression boundaries.
+  operationalization: Inspect compaction counts, replacement-history shape, post-compaction rediscovery, and continuity failures.
+  evidence: none captured yet
+grounding.state_verbalization
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: Advanced task schedulers benefit when actionable state is externalized rather than remaining hidden inside a single opaque continuation.
+  operationalization: Track visible assistant bridge language, verification framing, instruction stratification, and tool-grounded commentary ratios.
+  evidence: none captured yet
+grounding.verification_pressure
+  source: /Users/kevinlin/Downloads/TokenMartCC/docs/papers/2026-03-09-单任务十亿级token调度架构初论.md
+  text: External verification pressure improves effective work and stabilizes search.
+  operationalization: Measure edit-to-verification closure, changed test states, verification retry loops, and useful-work proxies on verification-heavy tasks.
+  evidence: none captured yet
+
+Where Codex Looks Similar Or Different
+=====================================
+Similar to layered-state expectations when: compaction_count_total=0 and instruction_channel_probe_total=0
+Potentially unlike pure flat-history assumptions when: config_freeze_drift_count_total=0 and persistence_probe_total=0
+Codex-native harness overhead evidence: -
+Control-rod evidence: control_rod_total=0 | externalized_coordination_total=0
+
+Threats To Validity
+===================
+macOS-only bias: the study currently assumes a local Mac-hosted Codex runtime.
+SWE-bench-only bias: live tasks are real but not representative of every future workload.
+Hidden reasoning observability limits: internal chain-of-thought remains unavailable and some evidence is inferred.
+Harness noise: listener, DB, and translation events can affect observability in ways that are not identical to reasoning failures.
+
+Run Index
+=========
+
+Artifact Appendix
+=================

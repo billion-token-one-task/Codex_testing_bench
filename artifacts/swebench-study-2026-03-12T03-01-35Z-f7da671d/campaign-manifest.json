@@ -1,7 +1,7 @@
 {
   "schema_version": "codex-bench.v1",
   "campaign_id": "swebench-study-2026-03-12T03-01-35Z-f7da671d",
-  "campaign_status": "running",
+  "campaign_status": "run_completed",
   "experiment_id": "exp-20260312030136-d8551ec6",
   "experiment_name": "Codex 5题研究批次 rerun",
   "created_at": "2026-03-12T03:01:36.178718+00:00",
@@ -61,6 +61,8 @@
   "study_mode": "codex_live_observation",
   "max_parallel_runs": 2,
   "per_repo_prepare_parallelism": 1,
+  "run_timeout_seconds": 0,
+  "idle_timeout_seconds": 0,
   "required_task_classes": [],
   "preferred_task_classes": [],
   "future_benchmarks": [],

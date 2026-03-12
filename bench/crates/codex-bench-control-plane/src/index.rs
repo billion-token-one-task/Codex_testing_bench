@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use codex_bench_core::{
     CampaignManifest, ProbeSummary, RunManifest, RunSummary, artifact_inventory_for_attempt,
-    artifact_role_map_for_attempt, read_json,
+    artifact_role_map_for_attempt, read_json, reconcile_campaign_state,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -308,6 +308,7 @@ fn load_run_metrics(run_dir: &Path) -> (Option<RunSummary>, Option<ProbeSummary>
 }
 
 pub fn scan_campaign_detail(_repo_root: &Path, campaign_dir: &Path) -> Result<CampaignDetail> {
+    let _ = reconcile_campaign_state(campaign_dir);
     let manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     let mut runs = Vec::new();
     let runs_root = campaign_dir.join("runs");

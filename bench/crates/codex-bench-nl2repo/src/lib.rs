@@ -9,8 +9,8 @@ use codex_bench_codex::{run_codex_task, write_architecture_map};
 use codex_bench_core::{
     BenchmarkResearchProfile, BenchmarkTaskClassProfile, CampaignManifest, CodexRunRequest,
     DatasetRecord, PrepareCampaignArgs, RunManifest, SelectedInstance, attempt_artifact_paths,
-    command_capture, ensure_absolute_dir, git_commit_all, init_git_workspace, read_json, reset_dir,
-    write_json_pretty,
+    command_capture, ensure_absolute_dir, git_commit_all, init_git_workspace, read_json,
+    reconcile_campaign_state, reset_dir, write_json_pretty,
 };
 use codex_bench_probes::{derive_run_outputs, write_claim_catalog_assets};
 use codex_bench_report::{render_campaign_report, render_run_evidence};
@@ -136,6 +136,8 @@ pub async fn prepare_campaign(args: PrepareCampaignArgs) -> Result<PathBuf> {
             .per_repo_prepare_parallelism
             .unwrap_or(preset.per_repo_prepare_parallelism)
             .max(1),
+        run_timeout_seconds: preset.run_timeout_seconds,
+        idle_timeout_seconds: preset.idle_timeout_seconds,
         required_task_classes: preset.required_task_classes.clone(),
         preferred_task_classes: preset.preferred_task_classes.clone(),
         future_benchmarks: preset.future_benchmarks.clone(),
@@ -211,6 +213,7 @@ fn nl2repo_benchmark_research_profile() -> BenchmarkResearchProfile {
 }
 
 pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
+    let _ = reconcile_campaign_state(campaign_dir);
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "running".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -225,8 +228,19 @@ pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
             run_instance(manifest.as_ref(), &selected).await
         });
     }
+    let mut failure_count = 0usize;
     while let Some(joined) = join_set.join_next().await {
-        joined??;
+        match joined {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                failure_count += 1;
+                eprintln!("nl2repo run instance failed: {error:#}");
+            }
+            Err(error) => {
+                failure_count += 1;
+                eprintln!("nl2repo join task failed: {error:#}");
+            }
+        }
     }
     manifest.campaign_status = "run_completed".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -235,10 +249,14 @@ pub async fn run_campaign(campaign_dir: &Path) -> Result<()> {
     manifest.last_report_path = Some(report_path);
     manifest.last_report_generated_at = Some(Utc::now().to_rfc3339());
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
+    if failure_count > 0 {
+        eprintln!("nl2repo campaign completed with {failure_count} failed run(s)");
+    }
     Ok(())
 }
 
 pub async fn grade_campaign(campaign_dir: &Path) -> Result<()> {
+    let _ = reconcile_campaign_state(campaign_dir);
     let mut manifest: CampaignManifest = read_json(&campaign_dir.join("campaign-manifest.json"))?;
     manifest.campaign_status = "grading".to_string();
     write_json_pretty(&campaign_dir.join("campaign-manifest.json"), &manifest)?;
@@ -339,6 +357,7 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
 
     let run_id = format!("{}-attempt-01", record.instance_id);
     let mut artifact_paths = attempt_artifact_paths(&attempt_dir);
+    let started_at = Utc::now().to_rfc3339();
     let run_manifest = RunManifest {
         schema_version: SCHEMA_VERSION.to_string(),
         campaign_id: manifest.campaign_id.clone(),
@@ -358,65 +377,101 @@ async fn run_instance(manifest: &CampaignManifest, selected: &SelectedInstance) 
         worktree_dir: workspace_dir.clone(),
         attempt: 1,
         status: "running".to_string(),
+        started_at: Some(started_at.clone()),
+        last_updated_at: Some(started_at.clone()),
+        completed_at: None,
         derivations_status: "pending".to_string(),
         evidence_status: "pending".to_string(),
         grading_status: "pending".to_string(),
+        failure_reason: None,
+        failure_class: None,
         artifact_paths: artifact_paths.clone(),
     };
     write_json_pretty(&run_dir.join("manifest.json"), &run_manifest)?;
+    let execution = async {
+        let capture = run_codex_task(CodexRunRequest {
+            model: selected.model.clone(),
+            provider: selected.provider.clone(),
+            personality_mode: selected.personality_mode.clone(),
+            prompt_style: selected.prompt_style.clone(),
+            cohort_id: Some(selected.cohort_id.clone()),
+            run_id: run_id.clone(),
+            repo: record.repo.clone(),
+            instance_id: record.instance_id.clone(),
+            task_class: selected.task_class.clone(),
+            prompt,
+            worktree_dir: workspace_dir.clone(),
+            attempt_dir: attempt_dir.clone(),
+            approval_never: true,
+            run_timeout_seconds: Some(manifest.run_timeout_seconds),
+            idle_timeout_seconds: Some(manifest.idle_timeout_seconds),
+        })
+        .await?;
 
-    let capture = run_codex_task(CodexRunRequest {
-        model: selected.model.clone(),
-        provider: selected.provider.clone(),
-        personality_mode: selected.personality_mode.clone(),
-        prompt_style: selected.prompt_style.clone(),
-        cohort_id: Some(selected.cohort_id.clone()),
-        run_id: run_id.clone(),
-        repo: record.repo.clone(),
-        instance_id: record.instance_id.clone(),
-        task_class: selected.task_class.clone(),
-        prompt,
-        worktree_dir: workspace_dir.clone(),
-        attempt_dir: attempt_dir.clone(),
-        approval_never: true,
-    })
-    .await?;
+        let patch = command_capture(
+            Command::new("git")
+                .arg("-C")
+                .arg(&workspace_dir)
+                .arg("diff")
+                .arg("--binary")
+                .arg("--no-ext-diff"),
+        )
+        .await?;
+        fs::write(attempt_dir.join("patch.diff"), &patch.stdout)?;
 
-    let patch = command_capture(
-        Command::new("git")
-            .arg("-C")
-            .arg(&workspace_dir)
-            .arg("diff")
-            .arg("--binary")
-            .arg("--no-ext-diff"),
-    )
-    .await?;
-    fs::write(attempt_dir.join("patch.diff"), &patch.stdout)?;
-
-    let summary = derive_run_outputs(
-        &attempt_dir,
-        &run_id,
-        &selected.task_class,
-        &record,
-        &capture.decoded_events,
-        &capture.probe_events,
-        &capture.raw_diagnostics,
-        &patch.stdout,
-    )?;
-    render_run_evidence(&attempt_dir, &record, &summary)?;
+        let summary = derive_run_outputs(
+            &attempt_dir,
+            &run_id,
+            &selected.task_class,
+            &record,
+            &capture.decoded_events,
+            &capture.probe_events,
+            &capture.raw_diagnostics,
+            &patch.stdout,
+        )?;
+        render_run_evidence(&attempt_dir, &record, &summary)?;
+        Ok::<_, anyhow::Error>(summary)
+    }
+    .await;
 
     for (name, path) in attempt_artifact_paths(&attempt_dir) {
         artifact_paths.insert(name, path);
     }
-    let finished_manifest = RunManifest {
-        status: summary.status.clone(),
-        derivations_status: "completed".to_string(),
-        evidence_status: "run_evidence_generated".to_string(),
-        artifact_paths,
-        ..run_manifest
-    };
-    write_json_pretty(&run_dir.join("manifest.json"), &finished_manifest)?;
-    Ok(())
+    match execution {
+        Ok(summary) => {
+            let finished_manifest = RunManifest {
+                status: summary.status.clone(),
+                last_updated_at: Some(Utc::now().to_rfc3339()),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                derivations_status: "completed".to_string(),
+                evidence_status: "run_evidence_generated".to_string(),
+                artifact_paths,
+                ..run_manifest
+            };
+            write_json_pretty(&run_dir.join("manifest.json"), &finished_manifest)?;
+            Ok(())
+        }
+        Err(error) => {
+            fs::write(attempt_dir.join("run-error.txt"), format!("{error:#}\n"))?;
+            let failed_manifest = RunManifest {
+                status: "failed".to_string(),
+                last_updated_at: Some(Utc::now().to_rfc3339()),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                derivations_status: "failed".to_string(),
+                evidence_status: if attempt_dir.join("run-evidence.txt").exists() {
+                    "run_evidence_generated".to_string()
+                } else {
+                    "pending".to_string()
+                },
+                failure_reason: Some(error.to_string()),
+                failure_class: Some("solver_runtime".to_string()),
+                artifact_paths,
+                ..run_manifest
+            };
+            write_json_pretty(&run_dir.join("manifest.json"), &failed_manifest)?;
+            Err(error)
+        }
+    }
 }
 
 async fn prepare_workspace(record: &DatasetRecord, workspace_dir: &Path) -> Result<()> {

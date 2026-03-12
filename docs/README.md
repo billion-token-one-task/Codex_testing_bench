@@ -8,6 +8,7 @@
 - [research/codex-observability-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-observability-contract.md)
 - [research/model-personality-study.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/model-personality-study.md)
 - [research/research-console.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console.md)
+- [research/research-console-upgrade-plan.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console-upgrade-plan.md)
 - [probes/probe-taxonomy.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/probes/probe-taxonomy.md)
 - [artifacts/artifact-contract.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/artifacts/artifact-contract.md)
 
@@ -35,6 +36,7 @@
 - [research/codex-behavior-bench-upgrade-plan.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/codex-behavior-bench-upgrade-plan.md)
 - [research/model-personality-study.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/model-personality-study.md)
 - [research/research-console.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console.md)
+- [research/research-console-upgrade-plan.md](/Users/kevinlin/Downloads/CodexPlusClaw/docs/research/research-console-upgrade-plan.md)
 
 ## 扩展 Bench
 

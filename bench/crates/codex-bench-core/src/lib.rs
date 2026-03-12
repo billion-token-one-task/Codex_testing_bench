@@ -4,6 +4,7 @@ pub mod config;
 pub mod io;
 pub mod nlp;
 pub mod python;
+pub mod reconcile;
 pub mod traits;
 pub mod types;
 pub mod workspace;
@@ -20,6 +21,10 @@ pub use config::{
 pub use io::{read_json, read_jsonl_values, write_json_pretty, write_jsonl};
 pub use nlp::{MessageNlpAnalysis, analyze_message, tokenize_research_terms};
 pub use python::preferred_python;
+pub use reconcile::{
+    ReconciliationReport, default_stale_running_secs, reconcile_campaign_state,
+    reconcile_campaign_state_with_threshold,
+};
 pub use traits::{
     BenchmarkAdapter, ClaimCatalog, ProbeDeriver, ReportRenderer, RuntimeAdapter, TaskClassifier,
 };

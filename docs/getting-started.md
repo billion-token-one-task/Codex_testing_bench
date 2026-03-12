@@ -108,6 +108,33 @@ cargo run -p codex-bench-cli -- run ../artifacts/<campaign-id>
 
 如果此时研究控制台正在运行，它会自动看到新的 reports、datasets 和 run 状态变化。
 
+### 3.1 如果 run 长时间卡住怎么办
+
+现在 bench 已经内置两层保护：
+
+- **runtime watchdog**
+  - 单个 run 有总时长和 idle 超时
+- **stale-running reconciliation**
+  - 如果进程已经异常退出，但 `manifest.json` 还残留 `status: running`
+  - 后续执行 `run`、`grade`、`report` 或控制台重新扫描时，会自动把这类 run 改判成：
+    - `status: failed`
+    - `failure_class: interrupted`
+
+所以遇到“某个 run 跑了几小时、后面题目完全不推进”的情况，不再需要手工改 manifest。
+直接重新执行：
+
+```bash
+cargo run -p codex-bench-cli -- report ../artifacts/<campaign-id>
+```
+
+或：
+
+```bash
+cargo run -p codex-bench-cli -- grade ../artifacts/<campaign-id> --command '...'
+```
+
+它会先做状态 reconciliation，再继续后续流程。
+
 同时控制台会直接把这些派生产物组织成：
 
 - `Campaigns` 总览

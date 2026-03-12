@@ -11,6 +11,7 @@ import { PageIntro } from "../components/PageIntro";
 import { Panel } from "../components/Panel";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { SignalBar } from "../components/SignalBar";
+import { StateNotice } from "../components/StateNotice";
 import { StatusBadge } from "../components/StatusBadge";
 import { TimelineRail } from "../components/TimelineRail";
 import { api } from "../lib/api";
@@ -111,6 +112,32 @@ export function RunDetailPage() {
     patch: recentLiveEvents.filter((event) => event.type === "run.patch.appended").length,
     mechanism: recentLiveEvents.filter((event) => !["run.message.appended", "run.tool.appended", "run.command.appended", "run.patch.appended"].includes(event.type)).length,
   }), [recentLiveEvents]);
+  const runReadiness = useMemo(() => {
+    const warnings = runOperational.data?.operational_warnings.length ?? liveSnapshot?.warnings.length ?? 0;
+    const rawEventCount = liveSnapshot?.progress.raw_event_count ?? 0;
+    const normalizedRows =
+      messageRows.length +
+      toolRows.length +
+      patchRows.length +
+      personalityRows.length +
+      skillRows.length +
+      turnRows.length;
+    return {
+      warnings,
+      rawEventCount,
+      normalizedRows,
+    };
+  }, [
+    liveSnapshot?.progress.raw_event_count,
+    liveSnapshot?.warnings.length,
+    messageRows.length,
+    personalityRows.length,
+    patchRows.length,
+    runOperational.data?.operational_warnings.length,
+    skillRows.length,
+    toolRows.length,
+    turnRows.length,
+  ]);
   const eventTableHighlights = useMemo(
     () => Object.entries(runOperational.data?.event_table_counts ?? {}).slice(0, 8),
     [runOperational.data?.event_table_counts],
@@ -170,6 +197,22 @@ export function RunDetailPage() {
             <MetricCard label="Tool / Command" value={`${run.tool_count} / ${run.command_count}`} detail={`${run.patch_file_count} patch files`} tone="pressure" />
             <MetricCard label="Verification / Friction" value={`${run.verification_closure_count} / ${run.harness_friction_count}`} detail={`${run.personality_fallback_count} personality fallback`} tone="verify" />
           </div>
+
+          <Panel title="Run Readiness Dossier" kicker="How complete is this war room right now?">
+            <KeyValueGrid
+              columns={4}
+              items={[
+                { label: "Raw Event Surface", value: runReadiness.rawEventCount, detail: "live raw / probe event rows", tone: runReadiness.rawEventCount ? "signal" : "neutral" },
+                { label: "Normalized Surface", value: runReadiness.normalizedRows, detail: "message / tool / patch / mechanism tables", tone: runReadiness.normalizedRows ? "verify" : "pressure" },
+                { label: "Warnings", value: runReadiness.warnings, detail: runOperational.data?.operational_warnings?.[0] ?? liveSnapshot?.warnings?.[0] ?? "none", tone: runReadiness.warnings ? "anomaly" : "neutral" },
+                { label: "Attempt Artifacts", value: availableArtifacts.length, detail: selectedArtifact?.name ?? "—" },
+                { label: "Latest Report", value: runOperational.data?.latest_reports[0]?.name ?? data?.reports[0]?.name ?? "—" },
+                { label: "Latest Dataset", value: runOperational.data?.latest_datasets[0]?.name ?? data?.datasets[0]?.name ?? "—" },
+                { label: "Current Focus", value: liveSnapshot?.current_focus ?? runOperational.data?.latest_focus ?? "—" },
+                { label: "Latest Message", value: truncateMiddle(liveSnapshot?.latest_message_preview ?? runOperational.data?.latest_message_preview ?? "—", 92) },
+              ]}
+            />
+          </Panel>
 
           {liveSnapshot ? (
             <div className="run-header-band">
@@ -275,6 +318,17 @@ export function RunDetailPage() {
               <div className="war-room-layout">
                 <div className="war-room-column">
                   <Panel title="Message Stream" kicker="Visible output + discourse surface">
+                    {!messageRows.length ? (
+                      <StateNotice
+                        tone={recentLiveEvents.some((event) => event.type === "run.message.appended") ? "warning" : "info"}
+                        title={recentLiveEvents.some((event) => event.type === "run.message.appended") ? "Live message 已经开始流动" : "结构化 message 还未落盘"}
+                        body={
+                          recentLiveEvents.some((event) => event.type === "run.message.appended")
+                            ? "这通常表示 Codex 已经在输出用户可见内容，但 message-metrics 这一层还在等待归一化 rows 或 attempt 文件继续写入。先看下面的 live rail。"
+                            : "如果 run 刚启动，这是正常的。随着消息、tool 和 patch 继续增长，这里会自动切换成完整的 discourse / tone / bridge 分析表。"
+                        }
+                      />
+                    ) : null}
                     <DataTable rows={messageRows.slice(0, 40)} compact />
                     <div className="panel-divider" />
                     <EventRail rows={recentLiveEvents.filter((event) => event.type === "run.message.appended")} emptyLabel="等待 live message 流。" />
@@ -285,11 +339,33 @@ export function RunDetailPage() {
                 </div>
                 <div className="war-room-column">
                   <Panel title="Tool Rail" kicker="Concrete Codex tools / routes / timing">
+                    {!toolRows.length ? (
+                      <StateNotice
+                        tone={recentLiveEvents.some((event) => event.type === "run.tool.appended" || event.type === "run.command.appended") ? "warning" : "info"}
+                        title={recentLiveEvents.some((event) => event.type === "run.tool.appended" || event.type === "run.command.appended") ? "Live tool / command 已出现" : "结构化工具画像尚未完成"}
+                        body={
+                          recentLiveEvents.some((event) => event.type === "run.tool.appended" || event.type === "run.command.appended")
+                            ? "raw event 已经表明 Codex 在调用工具或执行命令；上面的结构化工具画像表还在等待 tool-events / command-events 等归一化文件补齐。"
+                            : "如果当前 run 仍处在早期阅读、推理或等待阶段，这里会暂时为空；一旦 shell、patch、MCP 或 dynamic tool 事件落盘，这个 rail 会自动变得详细。"
+                        }
+                      />
+                    ) : null}
                     <DataTable rows={toolRows.slice(0, 36)} compact />
                     <div className="panel-divider" />
                     <EventRail rows={recentLiveEvents.filter((event) => event.type === "run.tool.appended" || event.type === "run.command.appended")} emptyLabel="等待 live tool / command 流。" />
                   </Panel>
                   <Panel title="Patch Rail" kicker="Patch chain / approvals / diff evolution">
+                    {!patchRows.length ? (
+                      <StateNotice
+                        tone={recentLiveEvents.some((event) => event.type === "run.patch.appended") ? "warning" : "info"}
+                        title={recentLiveEvents.some((event) => event.type === "run.patch.appended") ? "Patch 事件已经出现" : "还没有 patch chain"}
+                        body={
+                          recentLiveEvents.some((event) => event.type === "run.patch.appended")
+                            ? "当前 patch 事件已经在 live rail 中出现，但 patch-chain 或 diff 预览还在等待文件链条补齐。下面的 rail 往往会比结构化 patch 表更早更新。"
+                            : "如果 run 还在搜索、定位或复现问题，这里为空是正常的。真正进入 edit / apply_patch / diff 之后，这里会变成 patch chain 轨道。"
+                        }
+                      />
+                    ) : null}
                     <DataTable rows={patchRows.slice(0, 24)} compact />
                     <pre className="artifact-pre artifact-pre-medium">{patchPreview || "没有 patch diff 预览。"}</pre>
                     <div className="panel-divider" />
@@ -350,6 +426,13 @@ export function RunDetailPage() {
             {detailTab === "messages" ? (
               <div className="page-grid page-grid-2">
                 <Panel title="Message Metrics" kicker="Visible output / discourse / tone">
+                  {!messageRows.length ? (
+                    <StateNotice
+                      tone="warning"
+                      title="message 指标表暂时为空"
+                      body="这不一定意味着 run 没有输出。请结合上面的 live message rail 与 attempt-log 一起看；如果 raw agent events 正在增长，这里通常只是 message-metrics 归一化稍慢。"
+                    />
+                  ) : null}
                   {messageMechanismSummary ? (
                     <>
                       <div className="signal-board-grid signal-board-grid-compact">
@@ -372,9 +455,23 @@ export function RunDetailPage() {
             {detailTab === "tools" ? (
               <div className="page-grid page-grid-2">
                 <Panel title="Tool Events" kicker="Concrete Codex tools / routes / timings">
+                  {!toolRows.length ? (
+                    <StateNotice
+                      tone="warning"
+                      title="tool 表暂时为空"
+                      body="如果下方或 war room 的 live rail 已经出现 command / tool 事件，这里只是归一化数据还没追上。优先结合 live rail、attempt-log 与 raw-agent-events 来判断 run 是否真的卡住。"
+                    />
+                  ) : null}
                   <DataTable rows={toolRows} />
                 </Panel>
                 <Panel title="Patch Chain" kicker="Patch approvals / failures / chain evolution">
+                  {!patchRows.length ? (
+                    <StateNotice
+                      tone="info"
+                      title="patch chain 尚未形成"
+                      body="这通常意味着当前仍在搜索、定位或验证阶段。只要命令、message 或 tool 事件还在前进，就不代表 run 已经失活。"
+                    />
+                  ) : null}
                   <DataTable rows={patchRows} />
                 </Panel>
               </div>
@@ -438,11 +535,14 @@ export function RunDetailPage() {
                     {availableArtifacts.map((artifact) => (
                       <button
                         key={artifact.path}
-                        className={`artifact-chip${selectedArtifact?.path === artifact.path ? " artifact-chip-active" : ""}`}
+                        className={`artifact-row-button${selectedArtifact?.path === artifact.path ? " artifact-row-button-active" : ""}`}
                         onClick={() => setSelectedArtifactPath(artifact.path)}
                       >
-                        <span>{artifact.name}</span>
-                        <span className="artifact-kind">{artifact.kind}</span>
+                        <div className="artifact-row-main">
+                          <strong>{artifact.name}</strong>
+                          <span className="artifact-role">{artifact.role ?? artifact.kind}</span>
+                          <span className="artifact-scope">{artifact.scope ?? artifact.format ?? "—"}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -466,6 +566,27 @@ export function RunDetailPage() {
                           {tail.data?.lines.join("\n") ?? "加载 tail…"}
                         </pre>
                       </div>
+                      <div className="panel-divider" />
+                      <KeyValueGrid
+                        columns={2}
+                        items={[
+                          {
+                            label: "Truth Layer",
+                            value:
+                              selectedArtifact.role?.includes("raw_truth")
+                                ? "observed"
+                                : selectedArtifact.role?.includes("derived")
+                                  ? "derived"
+                                  : selectedArtifact.role?.includes("human_readable")
+                                    ? "dossier"
+                                    : "other",
+                            detail: selectedArtifact.role ?? "—",
+                          },
+                          { label: "Scope", value: selectedArtifact.scope ?? "—", detail: selectedArtifact.kind },
+                          { label: "Format", value: selectedArtifact.format ?? "—", detail: selectedArtifact.previewable ? "previewable" : "opaque" },
+                          { label: "Path", value: truncateMiddle(selectedArtifact.path, 92) },
+                        ]}
+                      />
                     </>
                   ) : (
                     <div className="empty-box">选择一个 artifact 查看。</div>

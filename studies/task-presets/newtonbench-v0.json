@@ -4,6 +4,8 @@
   "benchmark_adapter": "newtonbench",
   "probe_profile": "codex-harness-maximal",
   "report_profile": "evidence-dossier-maximal",
+  "run_timeout_seconds": 2700,
+  "idle_timeout_seconds": 600,
   "requiredTaskClasses": [
     "scientific-equation",
     "experimentation-heavy"

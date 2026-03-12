@@ -4,6 +4,8 @@
   "benchmark_adapter": "repo-patch-jsonl",
   "probe_profile": "codex-deep-probe.v1",
   "report_profile": "evidence-dossier.v1",
+  "run_timeout_seconds": 2700,
+  "idle_timeout_seconds": 600,
   "stages": [
     {
       "name": "architecture-validation",

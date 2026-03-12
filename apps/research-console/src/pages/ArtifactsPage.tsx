@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ArtifactViewer } from "../components/ArtifactViewer";
+import { EventRail } from "../components/EventRail";
 import { KeyValueGrid } from "../components/KeyValueGrid";
 import { PageIntro } from "../components/PageIntro";
 import { Panel } from "../components/Panel";
 import { SegmentedTabs } from "../components/SegmentedTabs";
+import { StateNotice } from "../components/StateNotice";
 import { formatCompact } from "../lib/format";
-import { useArtifactTail, useCampaignDetail, useCampaignOperationalSummary, useCampaignSelection, useRunDetail, useRunOperationalSummary, useWorkspaceIndex } from "../lib/store";
+import { useArtifactTail, useCampaignDetail, useCampaignOperationalSummary, useCampaignSelection, useRecentEventTypes, useRunDetail, useRunOperationalSummary, useWorkspaceIndex } from "../lib/store";
 import type { ArtifactDescriptor } from "../lib/types";
 
 type Scope = "campaign" | "run";
@@ -27,6 +29,7 @@ export function ArtifactsPage() {
   const campaignOperational = useCampaignOperationalSummary(activeCampaign?.campaign_id ?? "");
   const runDetail = useRunDetail(runId);
   const runOperational = useRunOperationalSummary(runId);
+  const recentArtifactEvents = useRecentEventTypes(["artifact.updated", "campaign.artifact.updated", "workspace.updated"], 16);
 
   useEffect(() => {
     if (!activeCampaign) return;
@@ -124,6 +127,13 @@ export function ArtifactsPage() {
           />
         }
       >
+        {!activeCampaign ? (
+          <StateNotice
+            title="当前还没有可浏览的 campaign"
+            body="Artifacts 页会在 workspace 索引和 campaign 产物建立后自动充实。短暂空白不代表 bench 没有在跑。"
+            tone="loading"
+          />
+        ) : null}
         <div className="filter-row filter-row-wide">
           <select value={activeCampaign?.campaign_id ?? ""} onChange={(event) => setCampaignId(event.target.value)}>
             {campaigns.map((campaign) => (
@@ -183,6 +193,18 @@ export function ArtifactsPage() {
           </Panel>
 
       <div className="page-grid page-grid-2">
+        <Panel title="Archive Pulse" kicker="Latest artifact / dataset / report movement">
+          {!recentArtifactEvents.length ? (
+            <StateNotice
+              title="artifact pulse 还很安静"
+              body="如果 run 还在前期搜索阶段，新的 report / dataset / artifact append 事件会比较少。"
+              tone="loading"
+            />
+          ) : (
+            <EventRail rows={recentArtifactEvents} emptyLabel="等待 artifact pulse。" />
+          )}
+        </Panel>
+
         {scope === "campaign" ? (
           <Panel title="Campaign Operational Dossier" kicker="Latest reports / datasets / live status">
             <KeyValueGrid
@@ -241,7 +263,51 @@ export function ArtifactsPage() {
       </div>
 
       <div className="page-grid page-grid-2">
+        <Panel title="Archive Reading Guide" kicker="How to navigate this evidence archive">
+          <ul className="evidence-list">
+            <li>`reports` 适合快速理解结论与 narrative；`datasets` 适合做系统对比和画图。</li>
+            <li>`raw_truth` 优先级最高；`derived_summary / derived_evidence` 要结合 observability contract 一起读。</li>
+            <li>run scope 下优先看 `run-evidence.txt`、`attempt-log.txt`、`raw-agent-events.jsonl`、`codex-probe-events.jsonl`。</li>
+            <li>campaign scope 下优先看 `report.txt`、`model-comparison.md`、`tool-language-coupling.md` 与 `datasets/*.csv`。</li>
+          </ul>
+        </Panel>
+
+        <Panel title="Selected Artifact Dossier" kicker="Why this file matters in the research workflow">
+          {selectedArtifact ? (
+            <KeyValueGrid
+              columns={2}
+              items={[
+                { label: "Name", value: selectedArtifact.name, detail: selectedArtifact.path },
+                { label: "Role", value: selectedArtifact.role ?? "—", detail: selectedArtifact.kind },
+                { label: "Format", value: selectedArtifact.format ?? "—", detail: selectedArtifact.previewable ? "previewable" : "opaque" },
+                { label: "Scope", value: selectedArtifact.scope ?? "—" },
+                { label: "Truth Layer", value: selectedArtifact.role?.includes("raw_truth") ? "observed" : selectedArtifact.role?.includes("derived") ? "derived" : selectedArtifact.role?.includes("human_readable") ? "dossier" : "other" },
+                { label: "Rows / Lines", value: `${formatCompact(selectedArtifact.row_count)} / ${formatCompact(selectedArtifact.line_count)}` },
+                { label: "Bytes", value: formatCompact(selectedArtifact.size_bytes), detail: selectedArtifact.updated_at ?? "—" },
+                { label: "Preview", value: selectedArtifact.previewable ? "yes" : "no" },
+              ]}
+            />
+          ) : (
+            <StateNotice
+              title="先选择一个 artifact"
+              body="选中文件后，这里会说明它在整个研究流水线里的角色，以及应该把它当作 observed、derived 还是 dossier 来读。"
+              tone="info"
+            />
+          )}
+        </Panel>
+      </div>
+
+      <div className="page-grid page-grid-2">
         <Panel title="Artifact Classification Summary" kicker="Role / format / previewability">
+          {!activeArtifacts.length ? (
+            <StateNotice
+              title="当前 scope 下还没有 artifact"
+              body={scope === "campaign"
+                ? "campaign 级 reports / datasets 会在 run 或 report 完成后出现。"
+                : "run 级 attempt artifact 会在该题进入真实求解后逐步落盘。"}
+              tone="info"
+            />
+          ) : null}
           <div className="artifact-summary-grid">
             <div className="focus-note">
               <span className="metric-label">Raw Truth</span>
@@ -277,10 +343,44 @@ export function ArtifactsPage() {
             </div>
           </div>
         </Panel>
+
+        <Panel title="Reading Order" kicker="How to read this archive like a research evidence stack">
+          <div className="focus-grid">
+            <div className="focus-note">
+              <span className="metric-label">1</span>
+              <strong>campaign report / model comparison</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">2</span>
+              <strong>run-evidence / attempt-log</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">3</span>
+              <strong>datasets csv</strong>
+            </div>
+            <div className="focus-note">
+              <span className="metric-label">4</span>
+              <strong>raw truth jsonl</strong>
+            </div>
+          </div>
+          <div className="panel-divider" />
+          <ul className="evidence-list">
+            <li>先读 dossier，再读 derived evidence，最后才回 raw truth 校正。</li>
+            <li>如果你要写结论，先确认 artifact 的 truth level 和 observability layer。</li>
+            <li>run scope 适合解释个例，campaign scope 适合做 paired / aggregate 比较。</li>
+          </ul>
+        </Panel>
       </div>
 
       <div className="page-grid page-grid-2">
         <Panel title="Artifact Inventory" kicker={scope === "campaign" ? "campaign reports / datasets" : "run attempt files"}>
+          {!Object.keys(artifactGroups).length ? (
+            <StateNotice
+              title="artifact inventory 暂时为空"
+              body="当前 scope 还没有可索引的 artifact；等 report、dataset 或 attempt 文件落盘后，这里会自动刷新。"
+              tone="loading"
+            />
+          ) : null}
           <div className="artifact-group-stack">
             {Object.entries(artifactGroups).map(([group, rows]) => (
               <div key={group} className="artifact-group">

@@ -1,4 +1,4 @@
-import { type DependencyList, useCallback, useEffect, useMemo, useState } from "react";
+import { type DependencyList, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "./api";
 import type {
@@ -186,52 +186,58 @@ function usePollingResource<T>(
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const inflightRef = useRef<Promise<void> | null>(null);
+  const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
     if (options?.enabled === false) {
       setLoading(false);
       return;
     }
-    try {
-      const next = await loader();
-      setData(next);
-      setError(null);
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
+    if (inflightRef.current) {
+      return inflightRef.current;
     }
+    const run = (async () => {
+      try {
+        const next = await loader();
+        if (!mountedRef.current) return;
+        setData(next);
+        setError(null);
+      } catch (err) {
+        if (!mountedRef.current) return;
+        setError(String(err));
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+        inflightRef.current = null;
+      }
+    })();
+    inflightRef.current = run;
+    return run;
   }, [loader]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (options?.enabled === false) {
       setLoading(false);
       return;
     }
-    let mounted = true;
     setLoading(true);
-    loader()
-      .then((next) => {
-        if (!mounted) return;
-        setData(next);
-        setError(null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        setError(String(err));
-        setLoading(false);
-      });
+    void refresh();
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
-  }, deps);
+  }, [...deps, refresh]);
 
   useEffect(() => {
     if (options?.enabled === false || !options?.intervalMs) {
       return;
     }
     const timer = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
       void refresh();
     }, options.intervalMs);
     return () => window.clearInterval(timer);

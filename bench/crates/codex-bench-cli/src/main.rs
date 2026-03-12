@@ -8,7 +8,7 @@ use tokio::process::Command as TokioCommand;
 use codex_bench_codex::write_architecture_map;
 use codex_bench_core::{
     CampaignManifest, PrepareCampaignArgs, default_swebench_preset_path, load_study_preset,
-    read_json,
+    read_json, reconcile_campaign_state,
 };
 use codex_bench_newtonbench::{
     grade_campaign as grade_newtonbench_campaign, prepare_campaign as prepare_newtonbench_campaign,
@@ -157,6 +157,7 @@ async fn main() -> Result<()> {
             campaign_dir,
             refresh_repo_cache,
         } => {
+            let _ = reconcile_campaign_state(&campaign_dir);
             let manifest: CampaignManifest =
                 read_json(&campaign_dir.join("campaign-manifest.json"))?;
             match manifest.benchmark_adapter.as_str() {
@@ -204,6 +205,7 @@ async fn main() -> Result<()> {
             campaign_dir,
             command,
         } => {
+            let _ = reconcile_campaign_state(&campaign_dir);
             let manifest: CampaignManifest =
                 read_json(&campaign_dir.join("campaign-manifest.json"))?;
             match manifest.benchmark_adapter.as_str() {
@@ -217,6 +219,7 @@ async fn main() -> Result<()> {
             println!("{}", campaign_dir.display());
         }
         Command::Report { campaign_dir } => {
+            let _ = reconcile_campaign_state(&campaign_dir);
             let report_path = render_campaign_report(&campaign_dir)?;
             println!("{}", report_path.display());
         }

@@ -205,6 +205,8 @@ pub struct LiveOverviewResponse {
     pub active_campaign: Option<CampaignIndexEntry>,
     pub active_campaign_summary: Option<CampaignOperationalSummary>,
     pub active_live_runs: Vec<LiveRunSnapshot>,
+    pub current_campaign_live_runs: Vec<LiveRunSnapshot>,
+    pub other_live_runs: Vec<LiveRunSnapshot>,
     pub hottest_live_runs: Vec<LiveRunSnapshot>,
     pub stalled_live_runs: Vec<LiveRunSnapshot>,
     pub running_processes: Vec<crate::processes::ManagedProcessSnapshot>,
@@ -214,6 +216,7 @@ pub struct LiveOverviewResponse {
     pub latest_global_focus_samples: Vec<String>,
     pub latest_global_message_previews: Vec<String>,
     pub latest_global_warnings: Vec<String>,
+    pub operator_notices: Vec<String>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -255,17 +258,6 @@ async fn get_workspace_index(State(state): State<AppState>) -> ApiResult<Json<Wo
 
 async fn get_live_overview(State(state): State<AppState>) -> ApiResult<Json<LiveOverviewResponse>> {
     let workspace = workspace_index_or_cached(&state).await?;
-    let active_campaign = workspace
-        .campaigns
-        .iter()
-        .find(|campaign| campaign.status == "running")
-        .cloned()
-        .or_else(|| workspace.campaigns.first().cloned());
-    let active_campaign_summary = if let Some(campaign) = &active_campaign {
-        Some(build_campaign_operational_summary(&state, &workspace, campaign.clone()).await?)
-    } else {
-        None
-    };
     let mut active_live_runs = state
         .live_runs
         .read()
@@ -279,6 +271,30 @@ async fn get_live_overview(State(state): State<AppState>) -> ApiResult<Json<Live
             .cmp(&left.last_event_at)
             .then_with(|| left.instance_id.cmp(&right.instance_id))
     });
+    let active_campaign = choose_active_campaign(&workspace, &active_live_runs);
+    let active_campaign_summary = if let Some(campaign) = &active_campaign {
+        Some(build_campaign_operational_summary(&state, &workspace, campaign.clone()).await?)
+    } else {
+        None
+    };
+    let current_campaign_live_runs = if let Some(campaign) = &active_campaign {
+        active_live_runs
+            .iter()
+            .filter(|run| run.campaign_id == campaign.campaign_id)
+            .cloned()
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let other_live_runs = if let Some(campaign) = &active_campaign {
+        active_live_runs
+            .iter()
+            .filter(|run| run.campaign_id != campaign.campaign_id)
+            .cloned()
+            .collect::<Vec<_>>()
+    } else {
+        active_live_runs.clone()
+    };
     let mut hottest_live_runs = active_live_runs.clone();
     hottest_live_runs.sort_by(|left, right| {
         let left_score = live_heat_score(left);
@@ -331,12 +347,28 @@ async fn get_live_overview(State(state): State<AppState>) -> ApiResult<Json<Live
             .flat_map(|run| run.warnings.iter().cloned()),
         10,
     );
+    let mut operator_notices = Vec::new();
+    if !current_campaign_live_runs.is_empty() && running_processes.is_empty() {
+        operator_notices.push(
+            "当前 live run 有活跃项，但 control plane 没有对应受管进程；这通常表示这些 run 由外部 launcher 或旧会话启动。".to_string(),
+        );
+    }
+    if current_campaign_live_runs.is_empty() && !active_live_runs.is_empty() {
+        operator_notices.push(
+            "当前选中的 active campaign 没有 live run，页面正在展示跨 campaign 的历史 live/stalled 现场。".to_string(),
+        );
+    }
+    if hottest_live_runs.is_empty() && !active_live_runs.is_empty() {
+        operator_notices.push("有 live run，但热度排行仍为空；请检查 live snapshot 是否缺少最新 token/tool/message 行。".to_string());
+    }
 
     Ok(Json(LiveOverviewResponse {
         workspace,
         active_campaign,
         active_campaign_summary,
         active_live_runs,
+        current_campaign_live_runs,
+        other_live_runs,
         hottest_live_runs,
         stalled_live_runs,
         active_process_count: running_processes.len(),
@@ -346,7 +378,51 @@ async fn get_live_overview(State(state): State<AppState>) -> ApiResult<Json<Live
         latest_global_focus_samples,
         latest_global_message_previews,
         latest_global_warnings,
+        operator_notices,
     }))
+}
+
+fn choose_active_campaign(
+    workspace: &WorkspaceIndex,
+    active_live_runs: &[LiveRunSnapshot],
+) -> Option<CampaignIndexEntry> {
+    if !active_live_runs.is_empty() {
+        let mut freshest_by_campaign = BTreeMap::<String, String>::new();
+        for run in active_live_runs {
+            let key = run.last_event_at.clone().or_else(|| run.started_at.clone()).unwrap_or_default();
+            let entry = freshest_by_campaign.entry(run.campaign_id.clone()).or_default();
+            if key > *entry {
+                *entry = key;
+            }
+        }
+        if let Some((campaign_id, _)) = freshest_by_campaign
+            .into_iter()
+            .max_by(|left, right| left.1.cmp(&right.1).then_with(|| left.0.cmp(&right.0)))
+        {
+            if let Some(campaign) = workspace
+                .campaigns
+                .iter()
+                .find(|campaign| campaign.campaign_id == campaign_id)
+                .cloned()
+            {
+                return Some(campaign);
+            }
+        }
+    }
+
+    workspace
+        .campaigns
+        .iter()
+        .filter(|campaign| campaign.status == "running" || campaign.active_run_count > 0)
+        .max_by(|left, right| left.created_at.cmp(&right.created_at).then_with(|| left.campaign_id.cmp(&right.campaign_id)))
+        .cloned()
+        .or_else(|| {
+            workspace
+                .campaigns
+                .iter()
+                .max_by(|left, right| left.created_at.cmp(&right.created_at).then_with(|| left.campaign_id.cmp(&right.campaign_id)))
+                .cloned()
+        })
 }
 
 async fn list_campaigns(State(state): State<AppState>) -> ApiResult<Json<Vec<crate::index::CampaignIndexEntry>>> {

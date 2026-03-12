@@ -14,19 +14,42 @@ import type {
   WorkspaceIndex,
 } from "./types";
 
+const inflightGetRequests = new Map<string, Promise<unknown>>();
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
+  const method = init?.method ?? "GET";
+  if (method === "GET" && !init?.body) {
+    const existing = inflightGetRequests.get(path);
+    if (existing) {
+      return existing as Promise<T>;
+    }
   }
-  return response.json() as Promise<T>;
+
+  const run = (async () => {
+    const response = await fetch(path, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      ...init,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `HTTP ${response.status}`);
+    }
+    return response.json() as Promise<T>;
+  })();
+
+  if (method === "GET" && !init?.body) {
+    inflightGetRequests.set(path, run as Promise<unknown>);
+    try {
+      return await run;
+    } finally {
+      inflightGetRequests.delete(path);
+    }
+  }
+
+  return run;
 }
 
 export const api = {
