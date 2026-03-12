@@ -1,0 +1,248 @@
+[
+  {
+    "claim_id": "grounding.activation_threshold",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "first meaningful edit observed at total tokens=87862"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Single-run evidence does not establish a full sigmoid curve."
+    ]
+  },
+  {
+    "claim_id": "grounding.flat_history_tax",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "repeated_read_count=0",
+      "compaction_count=0",
+      "cache_read_ratio=297216/342958"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Repeated-read evidence is inferred from shell-level telemetry."
+    ]
+  },
+  {
+    "claim_id": "grounding.verification_pressure",
+    "label": "evidence_inconclusive",
+    "supporting_evidence": [
+      "first_verification_tokens=None",
+      "useful_step_proxy=0/18",
+      "verification_closure_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Closure is inferred from command chronology rather than semantic proof graphs."
+    ]
+  },
+  {
+    "claim_id": "grounding.externalized_coordination",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "externalized_coordination_count=4",
+      "persistence_continuity_count=0",
+      "instruction_stratification_count=3"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler."
+    ]
+  },
+  {
+    "claim_id": "grounding.control_regulation",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "control_rod_compaction_count=0",
+      "control_rod_config_freeze_count=1",
+      "control_rod_persistence_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "A regulation mechanism can improve stability while also introducing some compression loss or overhead."
+    ]
+  },
+  {
+    "claim_id": "grounding.state_verbalization",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "tool_grounded_commentary_ratio_bps=Some(2328)",
+      "verification_grounded_commentary_ratio_bps=Some(10000)"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Visible commentary is only a proxy for deeper state externalization."
+    ]
+  },
+  {
+    "claim_id": "codex.compaction_rebuild",
+    "label": "not_observable_with_current_probes",
+    "supporting_evidence": [
+      "compaction_count=0",
+      "compaction_rediscovery_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Needs compaction-heavy tasks for strong evidence."
+    ]
+  },
+  {
+    "claim_id": "codex.config_freeze",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "config_freeze_drift_count=1"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Some apparent drift may reflect intentional provider normalization."
+    ]
+  },
+  {
+    "claim_id": "codex.instruction_stratification",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "instruction_stratification_count=3"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps."
+    ]
+  },
+  {
+    "claim_id": "codex.persistence_continuity",
+    "label": "not_observable_with_current_probes",
+    "supporting_evidence": [
+      "persistence_continuity_count=0",
+      "persistence_staleness_risk_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Strong evidence usually requires resume, compaction, or reconstruction heavy runs."
+    ]
+  },
+  {
+    "claim_id": "codex.control_rods",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "control_rod_compaction_count=0",
+      "control_rod_config_freeze_count=1",
+      "control_rod_persistence_count=0",
+      "containment_heat_leak_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone."
+    ]
+  },
+  {
+    "claim_id": "codex.tool_mediation",
+    "label": "evidence_inconclusive",
+    "supporting_evidence": [
+      "tool_mediation_tax_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "A given run may not exercise MCP and patch pathways equally."
+    ]
+  },
+  {
+    "claim_id": "codex.event_architecture",
+    "label": "evidence_inconclusive",
+    "supporting_evidence": [
+      "event_discontinuity_count=0"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "A quiet run may not exercise listener lag or translation discontinuities."
+    ]
+  },
+  {
+    "claim_id": "codex.harness_overhead_tax",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "harness_friction_count=0",
+      "friction_token_proxy=237/346351",
+      "containment_heat_leak_count=0",
+      "harness_overhead_proxy_bps=Some(6)"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Friction-token estimates are inferred from event sequencing and command duration."
+    ]
+  },
+  {
+    "claim_id": "codex.personality_policy_shape",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "visible_output_total_tokens_est=451",
+      "tool_grounded_commentary_ratio_bps=Some(2328)",
+      "tool_burst_count=19"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "Strong support requires paired cohort comparisons across the same tasks."
+    ]
+  },
+  {
+    "claim_id": "codex.state_verbalization",
+    "label": "evidence_consistent",
+    "supporting_evidence": [
+      "actionable_commentary_ratio_bps=Some(10000)",
+      "restatement_ratio_bps=Some(7028)",
+      "redundant_commentary_ratio_bps=Some(0)"
+    ],
+    "conflicting_evidence": [],
+    "relevant_runs": [
+      "django__django-14765[patch-heavy]"
+    ],
+    "caveats": [
+      "A single run cannot by itself establish model-to-model differences."
+    ]
+  }
+]

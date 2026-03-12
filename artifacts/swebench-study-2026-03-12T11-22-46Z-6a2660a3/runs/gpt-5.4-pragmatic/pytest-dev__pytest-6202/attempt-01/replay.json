@@ -1,0 +1,32 @@
+{
+  "artifactPaths": {
+    "anomalies": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/anomalies.jsonl",
+    "attemptLog": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/attempt-log.txt",
+    "claimEvidence": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/claim-evidence.json",
+    "codexProbeEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/codex-probe-events.jsonl",
+    "commandEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/command-events.jsonl",
+    "environmentPlan": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/environment-plan.json",
+    "gradeEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/grade-events.jsonl",
+    "lifecycleEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/lifecycle-events.jsonl",
+    "messageMetrics": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/message-metrics.jsonl",
+    "patch": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/patch.diff",
+    "patchChain": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/patch-chain.jsonl",
+    "patchEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/patch-events.jsonl",
+    "personalityEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/personality-events.jsonl",
+    "probeEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/probe-events.jsonl",
+    "probeSummary": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/probe-summary.json",
+    "prompt": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/prompt.txt",
+    "rawAgentEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/raw-agent-events.jsonl",
+    "rawDiagnostics": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/raw-diagnostics.jsonl",
+    "replay": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/replay.json",
+    "runEvidence": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/run-evidence.txt",
+    "runSummary": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/run-summary.json",
+    "skillEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/skill-events.jsonl",
+    "skillMechanism": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/skill-mechanism.jsonl",
+    "tokenSnapshots": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/token-snapshots.jsonl",
+    "toolEvents": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/tool-events.jsonl",
+    "turnMetrics": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/turn-metrics.jsonl",
+    "verbosityToolCoupling": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/attempt-01/verbosity-tool-coupling.jsonl"
+  },
+  "recordPath": "/Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.4-pragmatic/pytest-dev__pytest-6202/record.json"
+}

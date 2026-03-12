@@ -1,0 +1,384 @@
+Run Summary
+===========
+Instance: django__django-14765
+Repo: django/django
+Model / Provider: gpt-5.3-codex / openai
+Cohort / Personality / PromptStyle: gpt-5.3-codex-friendly / friendly / warm_collaborative
+Task class: patch-heavy
+Status: completed
+Grading status: pending
+Turns observed: 1
+Tokens: input=270075 output=3103 cache_read=226560 total=273178
+Patch SHA256: 9d5135b811ec60dff4d7cf86b39ef11521d52043adb2185e651e8a8d22d8840f
+
+Human-Oriented Overview
+=======================
+Commands=32 | Tools=34 | SkillEvents=0 | MessageMetrics=7 | TokenSnapshots=40 | Anomalies=0
+Tool kinds: apply_patch=1, shell=16
+Observed skills: -
+
+Visible Output Summary
+======================
+visible_output_total_chars=2184 | visible_output_total_tokens_est=544 | sentence_count=29 | paragraph_count=11 | bullet_count=7 | codeblock_count=0
+per_turn_tokens_est=Some(544) | per_tool_call_tokens_est=Some(32) | per_patch_event_tokens_est=Some(544) | per_verification_event_tokens_est=None
+actionable_ratio_bps=Some(10000) | tool_grounded_ratio_bps=Some(2408) | verification_grounded_ratio_bps=Some(9356) | restatement_ratio_bps=Some(7500) | redundant_ratio_bps=Some(0) | social_tone_ratio_bps=Some(3235)
+
+Probe Summary
+=============
+first_controlled_change_tokens=Some(66732)
+ignition_shell_search_count=0
+ignition_patch_apply_count=1
+ignition_tool_mediated_count=0
+control_rod_compaction_count=0
+control_rod_config_freeze_count=1
+control_rod_persistence_count=0
+persistence_continuity_count=0
+persistence_staleness_risk_count=0
+externalized_coordination_count=4
+event_discontinuity_count=0
+containment_heat_leak_count=0
+verification_closure_count=0
+useful_token_proxy_bps=Some(0)
+friction_token_proxy_bps=Some(16)
+harness_overhead_proxy_bps=Some(16)
+tool_burst_count=17 | silent_tool_burst_count=11 | micro_narrated_tool_burst_count=6
+
+Turn Metrics
+============
+turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f status=completed total_delta=273178 input_delta=270075 output_delta=3103 cache_delta=226560 cmds=16 mcp=0 patch=1 skills=0 first=/bin/zsh -lc rg -n "class ProjectState|def __init__\(" django/db/migrations/state.py last=/bin/zsh -lc git diff -- django/db/migrations/state.py tests/migrations/test_state.py
+
+Message Metrics
+===============
+seq=117 phase=commentary chars=194 tokens_est=48 categories=orientation|planning|social_tone|tool_bridge_before|verification_framing next_step=true tool_intent=true verification=true result=false social=true text=I’m going to inspect `ProjectState.__init__()` and the related migration state tests first, then we’ll apply the smallest change that enforces `real_apps` being a set and run the targeted tests.
+seq=213 phase=commentary chars=173 tokens_est=43 categories=observation|orientation|planning|social_tone|tool_bridge_before|verification_framing next_step=true tool_intent=true verification=true result=false social=true text=I found `ProjectState.__init__()` in `django/db/migrations/state.py`; next I’m opening that block and nearby tests to make sure we align behavior and keep the patch minimal.
+seq=331 phase=commentary chars=183 tokens_est=45 categories=orientation|planning|social_tone|task_restatement|verification_framing next_step=true tool_intent=false verification=true result=false social=true text=I confirmed the constructor still coerces non-set iterables; I’m now patching it to require a set for any non-`None` value, and I’ll add a focused regression test for a non-set input.
+seq=422 phase=commentary chars=140 tokens_est=35 categories=decision_explanation|orientation|task_restatement next_step=false tool_intent=true verification=false result=false social=false text=I hit an `apply_patch` wrapper issue in this environment, so I’m switching to a direct in-place shell edit for the same minimal code change.
+seq=519 phase=commentary chars=160 tokens_est=40 categories=orientation|planning|social_tone|task_restatement|tool_bridge_before|verification_framing next_step=true tool_intent=true verification=true result=false social=true text=I’ve made the constructor change and added a regression test; next I’ll run the focused migration state tests to confirm behavior and guard against regressions.
+seq=627 phase=commentary chars=181 tokens_est=45 categories=decision_explanation|orientation|verification_framing next_step=false tool_intent=false verification=true result=false social=false text=The code changes are in place; test execution failed only due local import setup, so I’m rerunning the same focused tests with `PYTHONPATH=.` to validate behavior in this workspace.
+seq=1309 phase=finalanswer chars=1153 tokens_est=288 categories=result_framing|task_restatement|verification_framing next_step=false tool_intent=true verification=true result=false social=false text=Implemented the minimal patch and the regression test.
+
+### Changes made
+- Updated [`ProjectState.__init__()`](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace/django/db/migrations/state.py:91) to:
+  - keep `real_apps` as an empty set only when `real_apps is None`
+  - `assert isinstance(real_apps, set)` for any non-`None` value
+  - stop coercing non-set iterables to `set`
+- Added regression test [`test_real_apps_non_set`](/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace/tests/migrations/test_state.py:927) asserting `AssertionError` for `ProjectState(real_apps=['contenttypes'])`.
+
+### Verification
+Attempted targeted tests:
+- `PYTHONPATH=. python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr`
+
+Blocked by missing dependency in this environment:
+- `ModuleNotFoundError: No module named 'asgiref'`
+
+Patch is ready.
+
+Skill Usage
+===========
+<none observed>
+
+Tool Usage
+==========
+seq=122 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_111VIDm7oFaWWDlky83aQiMH server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=123 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_kXGvknRPREAvU0pZH3n7Hv5P server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=124 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_111VIDm7oFaWWDlky83aQiMH server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=279
+seq=125 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_kXGvknRPREAvU0pZH3n7Hv5P server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=103
+seq=217 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_3CDKK3qTBTdtVCrvYsfBf4uq server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=218 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_rnQwu1hQBAc7K4lEs9MjqVDG server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=219 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_3CDKK3qTBTdtVCrvYsfBf4uq server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2664
+seq=220 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_rnQwu1hQBAc7K4lEs9MjqVDG server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=3717
+seq=230 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_yIlL29649IKR8bToLMBUTjhX server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=231 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_yIlL29649IKR8bToLMBUTjhX server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=802
+seq=336 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_pwVZK5KESxzRQJ8pOLQ6IBr5 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=337 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_pwVZK5KESxzRQJ8pOLQ6IBr5 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=2421
+seq=339 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_k6UHGUOY8qXAhvkfb5pD9DU0 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=340 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_k6UHGUOY8qXAhvkfb5pD9DU0 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=37
+seq=348 phase=begin kind=apply_patch name=apply_patch route=apply_patch turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_ui04Db6T3dF6JOTWHBc5fIRD server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=350 phase=end kind=apply_patch name=apply_patch route=apply_patch turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_ui04Db6T3dF6JOTWHBc5fIRD server=- tool=- success=false duration_ms=0 preceded_tokens=0 output_size=0
+seq=425 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_Xv8qmDG1rOxZUwZPw5CCTt5E server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=426 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_Xv8qmDG1rOxZUwZPw5CCTt5E server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=436 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_3sy6Kc4KMaUJkZZm6eXhdx4I server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=437 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_3sy6Kc4KMaUJkZZm6eXhdx4I server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1714
+seq=447 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_YO02pFGLj7eR6Z9aDdxmZBcL server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=448 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_YO02pFGLj7eR6Z9aDdxmZBcL server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=0
+seq=524 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_KDM92zsw28ynQVvJbAxjPIoJ server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=525 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_KDM92zsw28ynQVvJbAxjPIoJ server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1187
+seq=527 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_mIQriYEk4VSLVlu33AxgAVC0 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=528 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_mIQriYEk4VSLVlu33AxgAVC0 server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1080
+seq=537 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_a94xKol3hYsVjzw4pAqv6hC3 server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=538 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_a94xKol3hYsVjzw4pAqv6hC3 server=- tool=- success=false duration_ms=0 preceded_tokens=0 output_size=719
+seq=630 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_1ozuuaL6v8XsWOSom1p4Pigf server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=633 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_1ozuuaL6v8XsWOSom1p4Pigf server=- tool=- success=false duration_ms=52 preceded_tokens=0 output_size=1087
+seq=643 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_JsK2qhB6VKIN62w1hZmym0gH server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=645 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_JsK2qhB6VKIN62w1hZmym0gH server=- tool=- success=true duration_ms=378 preceded_tokens=0 output_size=67
+seq=655 phase=begin kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_bKkLzss8uPxdsp6i5vOKtx6p server=- tool=- success=- duration_ms=0 preceded_tokens=0 output_size=0
+seq=656 phase=end kind=shell name=shell route=exec_command turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_bKkLzss8uPxdsp6i5vOKtx6p server=- tool=- success=true duration_ms=0 preceded_tokens=0 output_size=1347
+
+Personality Mechanism
+=====================
+seq=0 event=session_configured_probe class=observed turn=- call=- skill=- route=- status=- summary=-
+
+Skill Mechanism
+===============
+<missing>
+
+Patch Mechanism
+===============
+seq=348 event=patch_apply_begin class=observed turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_ui04Db6T3dF6JOTWHBc5fIRD skill=- route=- status=- summary=-
+seq=350 event=patch_apply_end class=observed turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f call=call_ui04Db6T3dF6JOTWHBc5fIRD skill=- route=- status=failed summary=-
+
+Verbosity × Tool Coupling
+=========================
+seq=122 kind=shell name=shell visible_chars_since_last_tool=194 visible_tokens_since_last_tool=48 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=123 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=217 kind=shell name=shell visible_chars_since_last_tool=173 visible_tokens_since_last_tool=43 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=218 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=230 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=336 kind=shell name=shell visible_chars_since_last_tool=183 visible_tokens_since_last_tool=45 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=339 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=348 kind=apply_patch name=apply_patch visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=425 kind=shell name=shell visible_chars_since_last_tool=140 visible_tokens_since_last_tool=35 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=436 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=447 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=524 kind=shell name=shell visible_chars_since_last_tool=160 visible_tokens_since_last_tool=40 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=527 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=537 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=630 kind=shell name=shell visible_chars_since_last_tool=181 visible_tokens_since_last_tool=45 visible_messages_since_last_tool=1 burst_label=micro_narrated_tool_burst
+seq=643 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+seq=655 kind=shell name=shell visible_chars_since_last_tool=0 visible_tokens_since_last_tool=0 visible_messages_since_last_tool=0 burst_label=silent_tool_burst
+
+Token Timeline
+==============
+seq=121 total=15472 input=15170 output=302 cache_read=0 last_total=15472 context_window=258400
+seq=128 total=15472 input=15170 output=302 cache_read=0 last_total=15472 context_window=258400
+seq=129 total=15472 input=15170 output=302 cache_read=0 last_total=15472 context_window=258400
+seq=221 total=31290 input=30831 output=459 cache_read=14976 last_total=15818 context_window=258400
+seq=224 total=31290 input=30831 output=459 cache_read=14976 last_total=15818 context_window=258400
+seq=225 total=31290 input=30831 output=459 cache_read=14976 last_total=15818 context_window=258400
+seq=232 total=48571 input=48030 output=541 cache_read=29952 last_total=17281 context_window=258400
+seq=234 total=48571 input=48030 output=541 cache_read=29952 last_total=17281 context_window=258400
+seq=235 total=48571 input=48030 output=541 cache_read=29952 last_total=17281 context_window=258400
+seq=335 total=66732 input=65548 output=1184 cache_read=47104 last_total=18161 context_window=258400
+seq=342 total=66732 input=65548 output=1184 cache_read=47104 last_total=18161 context_window=258400
+seq=343 total=66732 input=65548 output=1184 cache_read=47104 last_total=18161 context_window=258400
+seq=351 total=85671 input=84287 output=1384 cache_read=65152 last_total=18939 context_window=258400
+seq=353 total=85671 input=84287 output=1384 cache_read=65152 last_total=18939 context_window=258400
+seq=354 total=85671 input=84287 output=1384 cache_read=65152 last_total=18939 context_window=258400
+seq=427 total=104943 input=103286 output=1657 cache_read=83072 last_total=19272 context_window=258400
+seq=430 total=104943 input=103286 output=1657 cache_read=83072 last_total=19272 context_window=258400
+seq=431 total=104943 input=103286 output=1657 cache_read=83072 last_total=19272 context_window=258400
+seq=438 total=124359 input=122604 output=1755 cache_read=102272 last_total=19416 context_window=258400
+seq=441 total=124359 input=122604 output=1755 cache_read=102272 last_total=19416 context_window=258400
+seq=442 total=124359 input=122604 output=1755 cache_read=102272 last_total=19416 context_window=258400
+seq=449 total=144281 input=142395 output=1886 cache_read=102272 last_total=19922 context_window=258400
+seq=452 total=144281 input=142395 output=1886 cache_read=102272 last_total=19922 context_window=258400
+seq=453 total=144281 input=142395 output=1886 cache_read=102272 last_total=19922 context_window=258400
+seq=523 total=164410 input=162361 output=2049 cache_read=121216 last_total=20129 context_window=258400
+seq=531 total=164410 input=162361 output=2049 cache_read=121216 last_total=20129 context_window=258400
+seq=532 total=164410 input=162361 output=2049 cache_read=121216 last_total=20129 context_window=258400
+seq=539 total=185286 input=183049 output=2237 cache_read=141184 last_total=20876 context_window=258400
+seq=542 total=185286 input=183049 output=2237 cache_read=141184 last_total=20876 context_window=258400
+seq=543 total=185286 input=183049 output=2237 cache_read=141184 last_total=20876 context_window=258400
+seq=634 total=206603 input=204193 output=2410 cache_read=161920 last_total=21317 context_window=258400
+seq=637 total=206603 input=204193 output=2410 cache_read=161920 last_total=21317 context_window=258400
+seq=638 total=206603 input=204193 output=2410 cache_read=161920 last_total=21317 context_window=258400
+seq=646 total=228398 input=225932 output=2466 cache_read=183168 last_total=21795 context_window=258400
+seq=649 total=228398 input=225932 output=2466 cache_read=183168 last_total=21795 context_window=258400
+seq=650 total=228398 input=225932 output=2466 cache_read=183168 last_total=21795 context_window=258400
+seq=657 total=250296 input=247787 output=2509 cache_read=204800 last_total=21898 context_window=258400
+seq=660 total=250296 input=247787 output=2509 cache_read=204800 last_total=21898 context_window=258400
+seq=661 total=250296 input=247787 output=2509 cache_read=204800 last_total=21898 context_window=258400
+seq=1311 total=273178 input=270075 output=3103 cache_read=226560 last_total=22882 context_window=258400
+
+Command Timeline
+================
+seq=122 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "class ProjectState|def __init__\(" django/db/migrations/state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=123 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "test_real_apps_non_set|real_apps" tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=124 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "class ProjectState|def __init__\(" django/db/migrations/state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=125 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "test_real_apps_non_set|real_apps" tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=217 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '84,140p' django/db/migrations/state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=218 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '860,960p' tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=219 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '84,140p' django/db/migrations/state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=220 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '860,960p' tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=230 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "real_apps_non_set|real_apps=.*\[|ProjectState\(real_apps|real_apps=" tests django/db/migrations -g'*.py' exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=231 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "real_apps_non_set|real_apps=.*\[|ProjectState\(real_apps|real_apps=" tests django/db/migrations -g'*.py' exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=336 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '1,80p' tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=337 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '1,80p' tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=339 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "class StateTests" tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=340 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc rg -n "class StateTests" tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=425 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc perl -0pi -e 's/        if real_apps:\n            self.real_apps = real_apps if isinstance\(real_apps, set\) else set\(real_apps\)\n        else:\n            self.real_apps = set\(\)/        if real_apps is None:\n            self.real_apps = set()\n        else:\n            assert isinstance(real_apps, set)\n            self.real_apps = real_apps/s' django/db/migrations/state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=426 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc perl -0pi -e 's/        if real_apps:\n            self.real_apps = real_apps if isinstance\(real_apps, set\) else set\(real_apps\)\n        else:\n            self.real_apps = set\(\)/        if real_apps is None:\n            self.real_apps = set()\n        else:\n            assert isinstance(real_apps, set)\n            self.real_apps = real_apps/s' django/db/migrations/state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=436 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '900,950p' tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=437 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '900,950p' tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=447 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc perl -0pi -e 's/\n    def test_ignore_order_wrt\(self\):/\n    def test_real_apps_non_set(self):\n        with self.assertRaises(AssertionError):\n            ProjectState(real_apps=\['\''contenttypes'\''\])\n\n    def test_ignore_order_wrt(self):/s' tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=448 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc perl -0pi -e 's/\n    def test_ignore_order_wrt\(self\):/\n    def test_real_apps_non_set(self):\n        with self.assertRaises(AssertionError):\n            ProjectState(real_apps=\['\''contenttypes'\''\])\n\n    def test_ignore_order_wrt(self):/s' tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=524 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '88,116p' django/db/migrations/state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=525 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '88,116p' django/db/migrations/state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=527 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '918,950p' tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=528 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc sed -n '918,950p' tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=537 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=538 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr exit=1 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=630 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc PYTHONPATH=. python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=633 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc PYTHONPATH=. python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr exit=1 duration_ms=52 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=643 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc git status --short exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=645 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc git status --short exit=0 duration_ms=378 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=655 phase=begin turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc git diff -- django/db/migrations/state.py tests/migrations/test_state.py exit=- duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+seq=656 phase=end turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f command=/bin/zsh -lc git diff -- django/db/migrations/state.py tests/migrations/test_state.py exit=0 duration_ms=0 cwd=/Users/kevinlin/Downloads/CodexPlusClaw/artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/workspace
+
+Session / Config Probe Highlights
+=================================
+config_freeze_drift_count=1
+instruction_shift_count=3
+harness_friction_count=0
+
+Instruction Assembly Summary
+============================
+ConfigFreeze: 1
+InstructionChannel: 3
+TurnLifecycle: 3
+
+Turn and Phase Timeline
+=======================
+seq=16 kind=turn_started turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f model=- provider=- reason=-
+seq=1313 kind=turn_complete turn=019ce1d4-dc3e-7b02-a8dd-9d0ed01df15f model=- provider=- reason=-
+
+Compaction / Reconstruction Timeline
+===================================
+compaction_count=0
+compaction_rediscovery_count=0
+peak_context_utilization_bps=Some(10571)
+
+Derived Probe Events
+====================
+seq=0 subsystem=ConfigFreeze code=config.requested_vs_effective class=inferred summary=effective model `gpt-5.3-codex` frozen for study run `django__django-14765-attempt-01`
+seq=0 subsystem=ConfigFreeze code=control_rod.config_freeze class=inferred summary=session config froze model/runtime choices at `openai::gpt-5.3-codex`
+seq=0 subsystem=PersistenceReconstruction code=persistence.externalized_state class=inferred summary=Codex session was configured to persist extended history, suggesting externalized continuity beyond the immediate turn
+seq=5 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=5 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=9 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=9 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=11 subsystem=InstructionChannel code=instruction.channel_mix class=inferred summary=instruction-layer event observed: turn_context_built
+seq=11 subsystem=InstructionChannel code=instruction.stratification class=inferred summary=Codex exposed layered instruction behavior via `turn_context_built`
+seq=348 subsystem=ToolMediation code=fission.ignition.patch_apply class=exact summary=first controlled change appears to happen via patch application
+seq=425 subsystem=TurnLifecycle code=activation.first_meaningful_edit class=inferred summary=first likely meaningful edit command observed: `/bin/zsh -lc perl -0pi -e 's/        if real_apps:\n            self.real_apps = real_apps if isinstance\(real_apps, set\) else set\(real_apps\)\n        else:\n            self.real_apps = set\(\)/        if real_apps is None:\n            self.real_apps = set()\n        else:\n            assert isinstance(real_apps, set)\n            self.real_apps = real_apps/s' django/db/migrations/state.py` at Some(85671) total tokens
+seq=425 subsystem=TurnLifecycle code=fission.first_controlled_change class=inferred summary=first controlled code-change path appears to begin via `/bin/zsh -lc perl -0pi -e 's/        if real_apps:\n            self.real_apps = real_apps if isinstance\(real_apps, set\) else set\(real_apps\)\n        else:\n            self.real_apps = set\(\)/        if real_apps is None:\n            self.real_apps = set()\n        else:\n            assert isinstance(real_apps, set)\n            self.real_apps = real_apps/s' django/db/migrations/state.py`
+seq=426 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc perl -0pi -e 's/        if real_apps:\n            self.real_apps = real_apps if isinstance\(real_apps, set\) else set\(real_apps\)\n        else:\n            self.real_apps = set\(\)/        if real_apps is None:\n            self.real_apps = set()\n        else:\n            assert isinstance(real_apps, set)\n            self.real_apps = real_apps/s' django/db/migrations/state.py`
+seq=437 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '900,950p' tests/migrations/test_state.py`
+seq=448 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc perl -0pi -e 's/\n    def test_ignore_order_wrt\(self\):/\n    def test_real_apps_non_set(self):\n        with self.assertRaises(AssertionError):\n            ProjectState(real_apps=\['\''contenttypes'\''\])\n\n    def test_ignore_order_wrt(self):/s' tests/migrations/test_state.py`
+seq=525 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '88,116p' django/db/migrations/state.py`
+seq=528 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc sed -n '918,950p' tests/migrations/test_state.py`
+seq=538 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr`
+seq=633 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc PYTHONPATH=. python tests/runtests.py migrations.test_state.StateTests.test_real_apps_non_set migrations.test_state.StateTests.test_real_apps migrations.test_state.ModelStateTests.test_repr`
+seq=645 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc git status --short`
+seq=656 subsystem=TurnLifecycle code=redundancy.post_submit class=inferred summary=command observed after patch application: `/bin/zsh -lc git diff -- django/db/migrations/state.py tests/migrations/test_state.py`
+seq=1314 subsystem=ContextCompaction code=context.cache_read_ratio class=exact summary=cache-read ratio observed as 226560/270075 input tokens
+
+Redundancy Incidents
+====================
+repeated_read_count=0
+repeated_verification_count=0
+repeated_git_inspection_count=0
+post_submit_activity_count=9
+
+Verification Chain
+==================
+first_meaningful_edit_tokens=Some(85671)
+first_verification_tokens=None
+first_patch_tokens=Some(66732)
+final_patch_tokens=Some(273178)
+useful_step_proxy=0/16
+useful_token_proxy=0/273178
+
+Anomalies
+=========
+<none>
+
+Official Grading
+================
+<missing>
+
+Failure Or Success Narrative
+============================
+anomaly_count=0 raw_event_count=1314 raw_probe_count=7 raw_diagnostic_count=783
+chain_reaction_cycle_count=0 containment_breach_count=0
+
+Claim Evidence
+==============
+grounding.activation_threshold | evidence_consistent
+  support: first meaningful edit observed at total tokens=85671
+  caveats: Single-run evidence does not establish a full sigmoid curve.
+grounding.flat_history_tax | evidence_consistent
+  support: repeated_read_count=0; compaction_count=0; cache_read_ratio=226560/270075
+  caveats: Repeated-read evidence is inferred from shell-level telemetry.
+grounding.verification_pressure | evidence_inconclusive
+  support: first_verification_tokens=None; useful_step_proxy=0/16; verification_closure_count=0
+  caveats: Closure is inferred from command chronology rather than semantic proof graphs.
+grounding.externalized_coordination | evidence_consistent
+  support: externalized_coordination_count=4; persistence_continuity_count=0; instruction_stratification_count=3
+  caveats: This is evidence of Codex relying on layered/persistent mechanisms, not a direct test of a multi-agent scheduler.
+grounding.control_regulation | evidence_consistent
+  support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0
+  caveats: A regulation mechanism can improve stability while also introducing some compression loss or overhead.
+grounding.state_verbalization | evidence_consistent
+  support: actionable_commentary_ratio_bps=Some(10000); tool_grounded_commentary_ratio_bps=Some(2408); verification_grounded_commentary_ratio_bps=Some(9356)
+  caveats: Visible commentary is only a proxy for deeper state externalization.
+codex.compaction_rebuild | not_observable_with_current_probes
+  support: compaction_count=0; compaction_rediscovery_count=0
+  caveats: Needs compaction-heavy tasks for strong evidence.
+codex.config_freeze | evidence_consistent
+  support: config_freeze_drift_count=1
+  caveats: Some apparent drift may reflect intentional provider normalization.
+codex.instruction_stratification | evidence_consistent
+  support: instruction_stratification_count=3
+  caveats: Instruction layering is inferred from probe events rather than from direct model-visible prompt dumps.
+codex.persistence_continuity | not_observable_with_current_probes
+  support: persistence_continuity_count=0; persistence_staleness_risk_count=0
+  caveats: Strong evidence usually requires resume, compaction, or reconstruction heavy runs.
+codex.control_rods | evidence_consistent
+  support: control_rod_compaction_count=0; control_rod_config_freeze_count=1; control_rod_persistence_count=0; containment_heat_leak_count=0
+  caveats: This claim interprets regulation behavior at the harness level; it is not meant as a statement about the base model alone.
+codex.tool_mediation | evidence_inconclusive
+  support: tool_mediation_tax_count=0
+  caveats: A given run may not exercise MCP and patch pathways equally.
+codex.event_architecture | evidence_inconclusive
+  support: event_discontinuity_count=0
+  caveats: A quiet run may not exercise listener lag or translation discontinuities.
+codex.harness_overhead_tax | evidence_consistent
+  support: harness_friction_count=0; friction_token_proxy=442/273178; containment_heat_leak_count=0; harness_overhead_proxy_bps=Some(16)
+  caveats: Friction-token estimates are inferred from event sequencing and command duration.
+codex.personality_policy_shape | evidence_consistent
+  support: visible_output_total_tokens_est=544; tool_grounded_commentary_ratio_bps=Some(2408); tool_burst_count=17
+  caveats: Strong support requires paired cohort comparisons across the same tasks.
+codex.state_verbalization | evidence_consistent
+  support: actionable_commentary_ratio_bps=Some(10000); restatement_ratio_bps=Some(7500); redundant_commentary_ratio_bps=Some(0)
+  caveats: A single run cannot by itself establish model-to-model differences.
+
+Artifact Paths
+==============
+anomalies: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/anomalies.jsonl
+attemptLog: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/attempt-log.txt
+claimEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/claim-evidence.json
+codexProbeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/codex-probe-events.jsonl
+commandEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/command-events.jsonl
+environmentPlan: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/environment-plan.json
+gradeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/grade-events.jsonl
+lifecycleEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/lifecycle-events.jsonl
+messageMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/message-metrics.jsonl
+patch: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/patch.diff
+patchChain: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/patch-chain.jsonl
+patchEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/patch-events.jsonl
+personalityEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/personality-events.jsonl
+probeEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/probe-events.jsonl
+probeSummary: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/probe-summary.json
+prompt: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/prompt.txt
+rawAgentEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/raw-agent-events.jsonl
+rawDiagnostics: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/raw-diagnostics.jsonl
+replay: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/replay.json
+runEvidence: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/run-evidence.txt
+runSummary: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/run-summary.json
+skillEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/skill-events.jsonl
+skillMechanism: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/skill-mechanism.jsonl
+tokenSnapshots: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/token-snapshots.jsonl
+toolEvents: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/tool-events.jsonl
+turnMetrics: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/turn-metrics.jsonl
+verbosityToolCoupling: /Users/kevinlin/Downloads/CodexPlusClaw/bench/../artifacts/swebench-study-2026-03-12T11-22-46Z-6a2660a3/runs/gpt-5.3-codex-friendly/django__django-14765/attempt-01/verbosity-tool-coupling.jsonl
